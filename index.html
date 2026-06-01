@@ -1,9 +1,10 @@
+```html
 <!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SPECTRA v3.0 — Phase A</title>
+<title>SPECTRA v3.0 — Phase A (Full)</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -30,6 +31,7 @@
   #manual-controls{display:flex;gap:8px;align-items:center}
   input.card-input{width:56px;padding:6px;border-radius:6px;border:1px solid #e6e6e6}
   #status{margin-left:auto;font-size:13px;color:var(--muted)}
+  footer{margin-top:18px;font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -74,12 +76,17 @@
   </div>
 </div>
 
+<footer>
+  Worker: <span id="worker-ver" class="muted">unknown</span>
+</footer>
+
 <script>
 /* ============================================================
-   Phase A 完全版 index.html
+   Phase A — Full index.html (client-side)
    - currentBoard を唯一の真実に統一
    - MANUAL モード（重複防止・CLEAR・ストリート判定）
    - Worker に完全移行
+   - デバッグログを強化（recalculate / worker messages）
    ============================================================ */
 
 'use strict';
@@ -93,6 +100,9 @@ let msgId = 0;
 const pendingMsg = new Map();
 let worker = null;
 
+/* expose hero for debug / UI integration */
+window.currentHero = window.currentHero || [];
+
 /* -------------------------
    Worker 初期化
    ------------------------- */
@@ -101,6 +111,9 @@ function initWorker() {
     worker = new Worker('./spectra-worker.js', { type: 'module' });
 
     worker.onmessage = (e) => {
+      // Raw log for debugging
+      console.debug('[Worker->CLIENT] raw', e.data);
+
       const payload = e.data;
       const { id, type, data, cached, calcTime } = payload;
 
@@ -117,12 +130,11 @@ function initWorker() {
         document.getElementById('brain-badge').textContent = 'BRAIN:READY';
         document.getElementById('brain-badge').style.color = '#00aa66';
         document.getElementById('status').textContent = 'Ready';
+        if (data && data.version) document.getElementById('worker-ver').textContent = data.version;
         console.debug('[Worker] HELLO', payload);
       } else if (type === 'NUTS') {
-        // 直接通知で来る場合
         renderNutsPanel(data);
       } else if (type === 'TEXTURE') {
-        // 追加表示があればここで処理
         console.debug('[Worker] TEXTURE', data);
       } else {
         console.debug('[Worker] notification', payload);
@@ -139,6 +151,7 @@ function initWorker() {
 
     // INIT handshake
     worker.postMessage({ type: 'INIT' });
+    console.debug('[CLIENT] Worker post INIT');
   } catch (err) {
     console.error('[SPECTRA] Worker init failed:', err);
     document.getElementById('brain-msg').textContent = 'WORKER UNAVAILABLE — CHECK SERVER';
@@ -183,7 +196,7 @@ function createHeatmapGrid() {
         const hand = cell.dataset.hand || null;
         if (hand) {
           console.log('Heatmap click', hand);
-          // クリックで hero にセットするなどのフックをここに入れられる
+          // Hook: set hero or open quick action
         }
       });
       // 初期色
@@ -304,9 +317,13 @@ function renderNutsPanel(nuts) {
 function normalizeCard(s) {
   if (!s) return '';
   const t = String(s).trim().toUpperCase();
-  if (t.length < 2) return '';
-  // Accept forms like "As" "AH" "ah" "10s" not supported; assume 2-char like "9c","Td","Ah"
-  return t;
+  // Accept only 2-char like "9C","TD","AH" or "As" style; normalize suits to lowercase for worker compatibility
+  if (t.length !== 2) return '';
+  const rank = t[0];
+  const suit = t[1].toLowerCase();
+  if (!'23456789TJQKA'.includes(rank)) return '';
+  if (!'cdhs'.includes(suit)) return '';
+  return rank + suit;
 }
 
 function isDuplicateCard(card, board) {
@@ -329,12 +346,11 @@ async function updateBoard(newBoardArray) {
 
   // 重複チェック
   const seen = new Set();
-  for (const c of normalized) {
+  for (let idx = 0; idx < normalized.length; idx++) {
+    const c = normalized[idx];
     if (!c) continue;
     if (seen.has(c)) {
       console.warn('Duplicate card prevented:', c);
-      // 重複は無視してそのカードをクリアする（UI側で警告することも可能）
-      const idx = normalized.indexOf(c);
       normalized[idx] = '';
       continue;
     }
@@ -354,20 +370,24 @@ async function updateBoard(newBoardArray) {
 /* recalculate: Worker に EVAL_169 を投げて Heatmap と NUTS を更新 */
 async function recalculate() {
   try {
-    // EVAL_169 -> heatmap
-    const res = await workerRequest('EVAL_169', { board: currentBoard, hero: [] });
+    console.debug('[recalculate] currentBoard=', currentBoard, 'currentHero=', window.currentHero || []);
+    const evalReq = { board: currentBoard, hero: window.currentHero || [] };
+    console.debug('[recalculate] REQ EVAL_169 ->', evalReq);
+    const res = await workerRequest('EVAL_169', evalReq);
+    console.debug('[recalculate] EVAL_169 RES ->', res);
     if (res && res.data) renderHeatmap(res.data);
 
-    // NUTS -> nuts
-    const nuts = await workerRequest('NUTS', { board: currentBoard, hero: [] });
+    const nutsReq = { board: currentBoard, hero: window.currentHero || [] };
+    console.debug('[recalculate] REQ NUTS ->', nutsReq);
+    const nuts = await workerRequest('NUTS', nutsReq);
+    console.debug('[recalculate] NUTS RES ->', nuts);
     if (nuts && nuts.data) renderNutsPanel(nuts.data);
 
-    // TEXTURE -> optional
     const texture = await workerRequest('TEXTURE', { board: currentBoard });
-    if (texture && texture.data) console.debug('Texture', texture.data);
+    if (texture && texture.data) console.debug('[recalculate] TEXTURE ->', texture.data);
 
   } catch (err) {
-    console.error('recalculate error', err);
+    console.error('[recalculate] error', err);
   }
 }
 
@@ -389,7 +409,6 @@ document.getElementById('apply-manual').addEventListener('click', () => {
 });
 
 document.getElementById('clear-board').addEventListener('click', () => {
-  // clear inputs and board
   for (let i=0;i<5;i++){ const el=document.getElementById('m'+i); if(el) el.value=''; }
   updateBoard(['','','','','']);
 });
@@ -407,6 +426,13 @@ initWorker();
 // 初回サンプル（flop）で描画（Worker 起動待ちのため少し遅延）
 setTimeout(()=>{ updateBoard(['9c','8c','7d','','']); }, 800);
 
+/* Expose helpers for debugging in console */
+window.updateBoard = updateBoard;
+window.recalculate = recalculate;
+window.renderHeatmap = renderHeatmap;
+window.renderNutsPanel = renderNutsPanel;
+
 </script>
 </body>
 </html>
+```
