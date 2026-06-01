@@ -1041,8 +1041,8 @@ class SpectraWorkerManager {
 const worker = new SpectraWorkerManager();
 
 function setWorkerStatus(status) {
-  const dot = el('worker-dot');
-  const txt = el('worker-txt');
+  const dot = document.getElementById('worker-dot');
+  const txt = document.getElementById('worker-txt');
   
   dot.className = '';
   switch (status) {
@@ -1217,7 +1217,6 @@ async function initBrain(){
     document.getElementById('brain-badge').textContent='BRAIN:ERR';
     document.getElementById('brain-badge').style.color='#ff3b3b';
   }
-}
 }
 
 /* ══════════════════════════════
@@ -1417,7 +1416,7 @@ function renderDrawCol(board){
   }
 
   // アウツ走査
-  const draws = HandEval.classifyDraws(heroHand, board);
+  const draws = classifyDraws(heroHand, board);
   if(draws.length===0){
     el.innerHTML='<div class="nc-empty">ドローチャンスなし</div>';
     return;
@@ -2458,7 +2457,15 @@ const HandEval = (() => {
     
     if (equityCache.has(key)) return equityCache.get(key);
     
-    const eq = await HandEval.rangeVsRangeEquity(RANGES.BTN, RANGES.BB, board, 2000, heroHand);
+    const heroArr=(heroHand[0]&&heroHand[1])
+      ?[heroHand[0].rank+heroHand[0].suit,heroHand[1].rank+heroHand[1].suit]:[];
+    const eq = await (async()=>{
+      try{
+        const res=await worker.send('MONTE_CARLO',{hero:heroArr.length?heroArr:['Ac','Kd'],board,iterations:2000});
+        const btn=Math.round(50+(res.equity-50)*0.6);
+        return{btn,bb:100-btn,n:res.total,ms:res.calcTime};
+      }catch(e){ return{btn:50,bb:50,n:0,ms:0}; }
+    })();
     equityCache.set(key, eq);
     
     console.log(`[Equity Engine] Mode: ${hStr === 'RANGE' ? 'Range vs Range' : 'Hero vs Range'} -> BTN/HERO=${eq.btn}% BB=${eq.bb}% n=${eq.n} (${eq.ms}ms)`);
