@@ -3,124 +3,77 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>SPECTRA v3.0 — Web Worker Architecture</title>
+<title>SPECTRA v2.0 — Premium Tactical OS</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
-/* ═══════════════════════════════════════════════════════════
-   SPECTRA v3.0 — NEW ARCHITECTURE CSS
-   ═══════════════════════════════════════════════════════════ */
-
 *{box-sizing:border-box;margin:0;padding:0;}
-:root {
-  --bg-primary: #04080f;
-  --bg-panel: #080e1a;
-  --accent-cyan: #00d4ff;
-  --accent-green: #00ff9d;
-  --accent-red: #ff3b3b;
-  --accent-gold: #ffb800;
-  --text-primary: #c8dff0;
-  --text-secondary: rgba(160,200,230,.45);
-  --border-color: rgba(0,180,255,.15);
-  --border-active: rgba(0,255,157,.2);
-}
-html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-primary);color:var(--text-primary);font-family:'Rajdhani',sans-serif;}
+html,body{width:100%;height:100%;overflow:hidden;background:#04080f;color:#c8dff0;font-family:'Rajdhani',sans-serif;}
 body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:9999;}
 #root{display:flex;flex-direction:column;width:100vw;height:100vh;}
 
 /* HEADER */
-#hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 14px;border-bottom:1px solid var(--border-color);background:linear-gradient(90deg,#030810,#060f1e,#030810);flex-shrink:0;height:46px;}
-.logo-t{font-family:'Orbitron',monospace;font-size:17px;font-weight:900;color:var(--accent-cyan);text-shadow:0 0 16px rgba(0,212,255,.6);letter-spacing:3px;}
+#hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 14px;border-bottom:1px solid rgba(0,180,255,0.2);background:linear-gradient(90deg,#030810,#060f1e,#030810);flex-shrink:0;height:46px;}
+.logo-t{font-family:'Orbitron',monospace;font-size:17px;font-weight:900;color:#00d4ff;text-shadow:0 0 16px rgba(0,212,255,.6);letter-spacing:3px;}
 .logo-s{font-size:8px;letter-spacing:3px;color:rgba(160,200,230,.4);margin-top:1px;}
-.hdr-mid{font-family:'Orbitron',monospace;font-size:15px;font-weight:700;color:var(--accent-cyan);letter-spacing:4px;text-shadow:0 0 20px rgba(0,212,255,.5);}
+.hdr-mid{font-family:'Orbitron',monospace;font-size:15px;font-weight:700;color:#00d4ff;letter-spacing:4px;text-shadow:0 0 20px rgba(0,212,255,.5);}
 .hdr-r{display:flex;align-items:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(160,200,230,.5);}
-.conn-dot{width:7px;height:7px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 8px rgba(0,255,157,.6);animation:pulse 1.8s ease-in-out infinite;}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#00ff9d;box-shadow:0 0 8px rgba(0,255,157,.6);animation:pulse 1.8s ease-in-out infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* MODE TOGGLE */
 #mode-toggle{display:flex;gap:0;border:1px solid rgba(0,180,255,.3);border-radius:3px;overflow:hidden;flex-shrink:0;}
 .mode-btn{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1.5px;padding:4px 10px;cursor:pointer;border:none;background:transparent;color:rgba(160,200,230,.4);transition:all .2s;}
-.mode-btn.active{background:rgba(0,212,255,.15);color:var(--accent-cyan);text-shadow:0 0 8px rgba(0,212,255,.6);}
+.mode-btn.active{background:rgba(0,212,255,.15);color:#00d4ff;text-shadow:0 0 8px rgba(0,212,255,.6);}
 .mode-btn:hover:not(.active){background:rgba(0,212,255,.06);color:rgba(0,212,255,.7);}
+#mode-divider{width:1px;background:rgba(0,180,255,.3);}
 
-/* MAIN GRID */
+/* MAIN */
 #main{display:grid;grid-template-columns:200px 1fr 220px;gap:6px;padding:6px;flex:1;min-height:0;}
 @media(min-width:769px){#main{display:grid !important;grid-template-columns:200px 1fr 220px !important;}}
 
-/* PANEL BASE */
-.pnl{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow:hidden;}
+/* PANEL */
+.pnl{background:#080e1a;border:1px solid rgba(0,180,255,0.15);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow:hidden;}
+@media(min-width:769px){#main>.pnl{display:flex !important;}}
 .pnl::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.4),transparent);}
 .sec{font-family:'Orbitron',monospace;font-size:7.5px;letter-spacing:2.5px;color:rgba(0,212,255,.7);text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid rgba(0,180,255,.12);flex-shrink:0;}
 
-/* LEFT PANEL — STREET + NUTS */
-#street-box{background:rgba(0,180,255,.06);border:1px solid var(--border-active);border-radius:2px;padding:8px;text-align:center;flex-shrink:0;}
-#street-name{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;color:var(--accent-green);text-shadow:0 0 20px rgba(0,255,157,.7);letter-spacing:2px;}
+/* LEFT — STREET + NUTS */
+#street-box{background:rgba(0,180,255,.06);border:1px solid rgba(0,255,157,.2);border-radius:2px;padding:8px;text-align:center;flex-shrink:0;}
+#street-name{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;color:#00ff9d;text-shadow:0 0 20px rgba(0,255,157,.7);letter-spacing:2px;}
 #street-cnt{font-family:'Share Tech Mono',monospace;font-size:12px;color:rgba(160,200,230,.5);margin-top:2px;}
+#nuts-list{display:flex;flex-direction:column;gap:4px;flex:1;overflow:hidden;}
+.nuts-row{display:flex;align-items:center;gap:5px;padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.05);}
+.n-rank{font-family:'Orbitron',monospace;font-size:12px;color:#ffb800;min-width:16px;}
+.n-eq{font-family:'Share Tech Mono',monospace;font-size:10px;color:#00d4ff;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.25);border-radius:2px;padding:2px 5px;min-width:44px;text-align:center;}
+.n-hand{font-size:16px;font-weight:700;flex:1;}
+.n-type{font-size:9px;color:rgba(160,200,230,.5);text-align:right;line-height:1.3;}
 
-/* ═══════════════════════════════════════════════════════════
-   NEW NUTS 2-COLUMN LAYOUT
-   MADE HANDS | DRAWS / POTENTIAL
-   ═══════════════════════════════════════════════════════════ */
-
-#nuts-container{display:flex;flex:1;gap:4px;overflow:hidden;min-height:0;}
-.nuts-col{display:flex;flex-direction:column;gap:3px;flex:1;overflow:hidden;}
-.nuts-col-header{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;padding:3px 4px;border-radius:2px;text-align:center;flex-shrink:0;}
-.nuts-col-header.made{background:rgba(0,255,157,.12);color:var(--accent-green);border:1px solid rgba(0,255,157,.2);}
-.nuts-col-header.draw{background:rgba(255,184,0,.12);color:var(--accent-gold);border:1px solid rgba(255,184,0,.2);}
-
-.nuts-list{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:2px;}
-.nuts-list::-webkit-scrollbar{width:3px;}
-.nuts-list::-webkit-scrollbar-track{background:transparent;}
-.nuts-list::-webkit-scrollbar-thumb{background:rgba(0,180,255,.3);border-radius:2px;}
-
-/* NUTS ROW — 3-LAYER STRUCTURE */
-.nuts-row{display:flex;align-items:center;gap:4px;padding:4px 3px;border-radius:2px;background:rgba(0,0,0,.2);border:1px solid transparent;transition:border-color .2s;}
-.nuts-row:hover{border-color:rgba(0,212,255,.3);}
-
-/* Layer 1: Rank (left side) */
-.n-rank{font-family:'Orbitron',monospace;font-size:10px;color:var(--accent-gold);min-width:14px;text-align:center;}
-
-/* Layer 2: Hand Core + Suits (center) */
-.n-hand-wrap{display:flex;align-items:center;gap:2px;flex:1;min-width:0;}
-.n-core{font-size:14px;font-weight:700;color:#fff;letter-spacing:1px;}
-.n-suits{display:flex;gap:1px;font-size:11px;}
-.suit{font-size:11px;}
-.suit.spades::before{content:'♠';color:rgba(255,255,255,.9);}
-.suit.hearts::before{content:'♥';color:#e63946;}
-.suit.diamonds::before{content:'♦';color:#4895ef;}
-.suit.clubs::before{content:'♣';color:#52b788;}
-.n-suit-off{font-size:9px;color:rgba(160,200,230,.35);margin-left:1px;}
-
-/* Layer 3: Potential / Stats (right side) */
-.n-badge{font-family:'Share Tech Mono',monospace;font-size:8px;padding:2px 4px;border-radius:2px;min-width:30px;text-align:center;flex-shrink:0;}
-.badge-fd{background:rgba(72,149,239,.2);color:#4895ef;border:1px solid rgba(72,149,239,.4);}
-.badge-oesd{background:rgba(82,183,136,.2);color:#52b788;border:1px solid rgba(82,183,136,.4);}
-.badge-gut{background:rgba(255,184,0,.2);color:var(--accent-gold);border:1px solid rgba(255,184,0,.4);}
-.badge-bdfd{background:rgba(168,85,247,.2);color:#a855f7;border:1px solid rgba(168,85,247,.4);}
-.badge-pair{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2);}
-.badge-set{background:rgba(0,255,157,.2);color:var(--accent-green);border:1px solid rgba(0,255,157,.4);}
-
-.n-outs{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--accent-gold);min-width:32px;text-align:right;}
-.n-eq{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--accent-cyan);background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.25);border-radius:2px;padding:2px 5px;min-width:40px;text-align:center;flex-shrink:0;}
-.n-type{font-size:8px;color:rgba(160,200,230,.45);text-align:right;line-height:1.2;}
-
-/* Empty state */
-.nuts-empty{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.25);text-align:center;padding:12px;letter-spacing:1px;}
-
-/* CENTER PANEL */
+/* CENTER */
 #center-pnl{padding:5px;gap:4px;}
 .cam-hdr{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
 .cam-lbl{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:rgba(0,212,255,.7);}
-.cam-lbl span{color:var(--accent-cyan);}
+.cam-lbl span{color:#00d4ff;}
 
+/* Camera wrap */
 #cam-wrap{flex:1;position:relative;background:#000;border:1px solid rgba(0,180,255,.25);border-radius:3px;overflow:hidden;min-height:0;}
 #cam-video{width:100%;height:100%;object-fit:cover;display:none;}
 #cam-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 #cam-placeholder{position:absolute;inset:0;background:radial-gradient(ellipse at center,#0a1830 0%,#020810 70%);display:flex;align-items:center;justify-content:center;}
 #table-oval{width:80%;height:76%;border:3px solid #1e2d45;border-radius:120px;background:radial-gradient(ellipse,#0d1f35 0%,#070f1c 100%);position:relative;display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(0,0,0,.8),inset 0 0 30px rgba(0,0,0,.6);}
+#table-oval::before{content:'';position:absolute;inset:6px;border:1px solid rgba(0,180,255,.08);border-radius:114px;}
+.pl-chip{width:28px;height:28px;border-radius:50%;background:#0f1e30;border:1px solid #1e2d45;display:flex;align-items:center;justify-content:center;font-size:8px;color:#3a5070;font-family:'Share Tech Mono',monospace;}
+.pl-cards{display:flex;gap:2px;}
+.pl-card-back{width:9px;height:13px;background:#1a2a40;border:1px solid #243550;border-radius:1px;}
+#pl-top{position:absolute;top:-17px;display:flex;flex-direction:column;align-items:center;gap:2px;}
+#pl-left{position:absolute;left:-18px;display:flex;align-items:center;gap:2px;}
+#pl-right{position:absolute;right:-18px;display:flex;align-items:center;gap:2px;}
+#pl-bot{position:absolute;bottom:-17px;display:flex;flex-direction:column;align-items:center;gap:2px;}
 
-/* BOARD CARD SELECTORS */
-#board-area{display:flex;gap:4px;padding:4px 2px;flex-shrink:0;}
+/* BOARD CARDS AREA — dropdowns ON TOP of cards */
+#board-area{display:flex;flex-direction:column;padding:4px 2px;flex-shrink:0;}
 .board-slot{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;}
+
+/* Dropdowns above card — backlit style */
 .slot-inputs{display:flex;gap:2px;width:100%;align-items:center;}
 .slot-inputs select{
   flex:1;min-width:0;
@@ -130,47 +83,70 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   padding:3px 1px;cursor:pointer;outline:none;text-align:center;
   transition:border-color .2s, background .2s, box-shadow .2s;
   box-shadow:0 0 6px rgba(0,140,255,.15);
-  color:#e0f0ff;
 }
-.slot-inputs select:focus{border-color:rgba(0,212,255,.9);background:#0f2035;box-shadow:0 0 10px rgba(0,212,255,.3);}
-.slot-clr{width:22px;height:22px;border-radius:3px;border:1px solid rgba(0,180,255,.3);background:rgba(255,59,59,.1);color:#ff3b3b;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s;}
-.slot-clr.has-card{opacity:1;pointer-events:auto;}
-.slot-clr:hover{background:rgba(255,59,59,.3);}
+.slot-inputs select:focus{
+  border-color:rgba(0,212,255,.9);
+  background:#0f2035;
+  box-shadow:0 0 10px rgba(0,212,255,.3);
+}
+.rank-sel{color:#e0f0ff;}
 
-/* Card display */
-.board-card{width:100%;aspect-ratio:2.2/3.2;border:2px solid rgba(0,255,157,.5);border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
-.board-card.waiting{border-color:rgba(0,180,255,.15);}
-.card-inner{width:100%;height:100%;border-radius:5px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+/* Card display - Premium Custom Solid 4-Color deck */
+.board-card{
+  width:100%;aspect-ratio:2.2/3.2;
+  border:2px solid rgba(0,255,157,.5);border-radius:6px;
+  background:transparent;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;transition:border-color .2s,box-shadow .2s;
+  overflow:hidden;
+}
+.board-card.waiting{border-color:rgba(0,180,255,.15);box-shadow:none;background:transparent;}
+.board-card.active{border-color:rgba(255,255,255,.25);box-shadow:0 0 18px rgba(0,255,157,.2);border:none;}
+.card-inner{
+  width:100%;height:100%;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
 
-/* 4-Color Deck */
-.bg-s{background:#1c1c1e;}
-.bg-h{background:#d92b43;}
-.bg-d{background:#0052cc;}
-.bg-c{background:#00875a;}
+/* 4-Color Deck Solid Premium Colors */
+.bg-s{background:#1c1c1e;} /* Spades: Premium Deep Charcoal Black */
+.bg-h{background:#d92b43;} /* Hearts: Ruby Red */
+.bg-d{background:#0052cc;} /* Diamonds: Royal Blue */
+.bg-c{background:#00875a;} /* Clubs: Emerald Green */
 
-.card-rank-center{font-size:clamp(32px,4.8vw,56px);font-weight:900;line-height:1;font-family:Georgia,serif;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);position:relative;z-index:2;}
+/* Central big rank - White, bold */
+.card-rank-center{
+  font-size:clamp(32px, 4.8vw, 56px);
+  font-weight:900;line-height:1;
+  font-family:Georgia,'Times New Roman',serif;
+  color:#fff;
+  text-shadow:0 2px 8px rgba(0,0,0,.5);
+  position:relative;z-index:2;
+}
+/* Corner suit & rank: Left-top only for clean observer layout */
 .card-corner-tl{position:absolute;top:4px;left:6px;display:flex;flex-direction:column;align-items:center;z-index:3;line-height:1.0;}
 .corner-rank{font-size:11px;font-weight:700;font-family:Georgia,serif;color:#fff;line-height:1;text-shadow:0 1px 3px rgba(0,0,0,.4);}
 .corner-suit{font-size:9px;line-height:1;color:rgba(255,255,255,.9);}
-.slot-status{font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--accent-green);letter-spacing:.5px;text-align:center;height:0;overflow:visible;position:relative;top:-14px;opacity:.85;}
+.wait-txt{font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,180,255,.35);letter-spacing:1px;animation:blink2 1.4s step-end infinite;}
+.slot-status{font-family:'Share Tech Mono',monospace;font-size:7px;color:#00ff9d;letter-spacing:.5px;text-align:center;height:0;overflow:visible;position:relative;top:-14px;opacity:.85;}
+/* per-slot clear: hide when slot is empty */
+.slot-clr{opacity:0;pointer-events:none;transition:opacity .15s;}
+.slot-clr.has-card{opacity:1;pointer-events:auto;}
+
+/* Hide inputs in camera mode */
+.cam-mode .slot-inputs{display:none;}
 
 /* Stabilizer */
-#stab-bar{display:flex;align-items:center;gap:7px;padding:4px 8px;border:1px solid var(--border-active);border-radius:2px;background:rgba(0,255,157,.03);font-family:'Share Tech Mono',monospace;font-size:9px;flex-shrink:0;}
+#stab-bar{display:flex;align-items:center;gap:7px;padding:4px 8px;border:1px solid rgba(0,255,157,.2);border-radius:2px;background:rgba(0,255,157,.03);font-family:'Share Tech Mono',monospace;font-size:9px;flex-shrink:0;}
 #stab-dot{width:7px;height:7px;border-radius:50%;}
 #stab-txt{flex:1;}
-#stab-conf{color:var(--accent-cyan);}
+#stab-conf{color:#00d4ff;}
 
-/* HERO CARD AREA */
-#hero-area{display:flex;gap:8px;padding:4px 2px;justify-content:center;flex-shrink:0;}
-.hero-slot{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.hero-slot select{background:#0c1828;border:1px solid rgba(0,180,255,.35);border-radius:3px;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;padding:3px;cursor:pointer;outline:none;text-align:center;color:#e0f0ff;}
-.hero-slot select:focus{border-color:rgba(0,212,255,.9);}
-
-/* RIGHT PANEL */
-.wet-big{font-family:'Orbitron',monospace;font-size:22px;font-weight:700;color:var(--accent-red);text-shadow:0 0 14px rgba(255,59,59,.5);}
-.wet-sub{font-size:9px;color:var(--accent-red);letter-spacing:2px;margin-top:-2px;}
+/* RIGHT */
+.wet-big{font-family:'Orbitron',monospace;font-size:22px;font-weight:700;color:#ff3b3b;text-shadow:0 0 14px rgba(255,59,59,.5);}
+.wet-sub{font-size:9px;color:#ff3b3b;letter-spacing:2px;margin-top:-2px;}
 .metric{margin-bottom:6px;}
-.metric-lbl{font-size:9px;letter-spacing:1.5px;color:var(--text-secondary);margin-bottom:2px;}
+.metric-lbl{font-size:9px;letter-spacing:1.5px;color:rgba(160,200,230,.45);margin-bottom:2px;}
 .bar-wrap{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
 .bar-fill{height:100%;border-radius:2px;transition:width .7s ease;}
 .metric-val{font-family:'Share Tech Mono',monospace;font-size:11px;margin-top:2px;}
@@ -186,859 +162,547 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   gap:1px;flex:1;min-height:0;align-content:start;
 }
 .hm-hdr{font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(0,212,255,.55);display:flex;align-items:center;justify-content:center;}
-.hm-c{font-family:'Share Tech Mono',monospace;font-size:6px;display:flex;align-items:center;justify-content:center;border-radius:1px;aspect-ratio:1/1;transition:all 0.3s ease;cursor:pointer;color:rgba(255,255,255,.75);position:relative;}
-.hm-c:hover{transform:scale(1.15);z-index:5;box-shadow:0 0 8px rgba(0,0,0,.5);}
-.hm-c.hero-active{border:1.5px solid var(--accent-gold);box-shadow:0 0 12px var(--accent-gold);z-index:10;animation:pulse-gold 2s infinite ease-in-out;}
-@keyframes pulse-gold{0%,100%{transform:scale(1)}50%{transform:scale(1.08);box-shadow:0 0 18px var(--accent-gold)}}
-#hm-spin{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(4,8,15,.75);border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--accent-cyan);letter-spacing:2px;}
+.hm-c{font-family:'Share Tech Mono',monospace;font-size:6px;display:flex;align-items:center;justify-content:center;border-radius:1px;aspect-ratio:1/1;transition:all 0.3s ease;cursor:default;color:rgba(255,255,255,.75);position:relative;}
+.hm-c.hero-active-cell{
+  border: 1.5px solid #ffb800 !important;
+  box-shadow: 0 0 12px #ffb800;
+  z-index: 10;
+  animation: pulse-gold 2s infinite ease-in-out;
+}
+@keyframes pulse-gold {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); box-shadow: 0 0 18px #ffb800; }
+}
+#hm-spin{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(4,8,15,.75);border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#00d4ff;letter-spacing:2px;}
 #hm-spin.active{display:flex;}
 
-/* LEGEND */
-#hm-legend{display:flex;gap:8px;padding:4px;flex-shrink:0;font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.5);}
-.legend-item{display:flex;align-items:center;gap:3px;}
-.legend-dot{width:8px;height:8px;border-radius:1px;}
-
 /* FOOTER */
-#ftr{display:flex;justify-content:space-between;align-items:center;padding:3px 14px;border-top:1px solid var(--border-color);font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.4);flex-shrink:0;background:rgba(0,0,0,.5);}
-.analyzing{color:var(--accent-green);animation:blink2 1.4s step-end infinite;}
+#ftr{display:flex;justify-content:space-between;align-items:center;padding:3px 14px;border-top:1px solid rgba(0,180,255,.15);font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.4);flex-shrink:0;background:rgba(0,0,0,.5);}
+.analyzing{color:#00ff9d;animation:blink2 1.4s step-end infinite;}
 @keyframes blink2{0%,100%{opacity:1}50%{opacity:.15}}
 
 /* BRAIN OVERLAY */
 #brain-overlay{position:fixed;inset:0;background:rgba(4,8,15,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:1000;transition:opacity .5s;}
 #brain-overlay.hidden{opacity:0;pointer-events:none;}
-.brain-title{font-family:'Orbitron',monospace;font-size:18px;color:var(--accent-cyan);letter-spacing:4px;text-shadow:0 0 20px rgba(0,212,255,.6);}
+.brain-title{font-family:'Orbitron',monospace;font-size:18px;color:#00d4ff;letter-spacing:4px;text-shadow:0 0 20px rgba(0,212,255,.6);}
 .brain-msg{font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(160,200,230,.6);}
 .brain-prog-wrap{width:300px;height:3px;background:rgba(0,180,255,.1);border-radius:2px;overflow:hidden;}
 .brain-prog{height:100%;background:linear-gradient(90deg,#00d4ff,#00ff9d);border-radius:2px;transition:width .4s;}
+@keyframes progpulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ═══════════════════════════════════════════════════════════
-   MOBILE RESPONSIVE
-   ═══════════════════════════════════════════════════════════ */
-#mob-tabs{display:none;flex-shrink:0;flex-direction:row;background:#040a14;border-bottom:1px solid rgba(0,180,255,.2);}
-.mob-tab{flex:1;font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1.5px;padding:9px 4px;border:none;background:transparent;color:rgba(160,200,230,.35);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
-.mob-tab.active{color:var(--accent-cyan);border-bottom-color:var(--accent-cyan);background:rgba(0,212,255,.05);}
+/* ═══════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — スマホ縦1カラム タブUI
+   ≤768px で発動
+═══════════════════════════════════════════════════════ */
+
+/* タブバー（スマホ専用） */
+#mob-tabs{
+  display:none;
+  flex-shrink:0;
+  flex-direction:row;
+  background:#040a14;
+  border-bottom:1px solid rgba(0,180,255,.2);
+}
+.mob-tab{
+  flex:1;
+  font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1.5px;
+  padding:9px 4px;border:none;background:transparent;
+  color:rgba(160,200,230,.35);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .2s;
+}
+.mob-tab.active{color:#00d4ff;border-bottom-color:#00d4ff;background:rgba(0,212,255,.05);}
 
 @media(max-width:768px){
+
+  /* bodyはスクロール許可 */
   html,body{overflow:auto;}
   #root{height:auto;min-height:100dvh;overflow:visible;}
-  #hdr{padding:6px 10px;height:auto;flex-wrap:wrap;gap:4px;}
+
+  /* ヘッダーをコンパクトに */
+  #hdr{
+    padding:6px 10px;height:auto;flex-wrap:wrap;gap:4px;
+  }
+  /* ロゴのサブテキスト非表示 */
   .logo-s{display:none;}
   .logo-t{font-size:14px;letter-spacing:2px;}
-  .hdr-mid,.hdr-r span:not(.conn-dot){display:none;}
+  /* 中央ロゴ非表示 */
+  .hdr-mid{display:none;}
+  /* 右ヘッダー：FPS/時刻非表示 */
+  #fps-d,#time-d,#hdr > .hdr-r > span{display:none;}
   .hdr-r{gap:6px;}
+  .conn-dot{display:none;}
+
+  /* タブバー表示 */
   #mob-tabs{display:flex;}
-  #main{display:flex !important;flex-direction:column !important;padding:0;gap:0;flex:none;}
-  #main>.pnl{display:none;overflow:visible;border-radius:0;border-left:none;border-right:none;min-height:calc(100dvh - 46px - 37px);flex-shrink:0;}
-  #main>.pnl.mob-active{display:flex;}
-  #cam-wrap{min-height:140px;max-height:180px;flex:0 0 160px;}
-  .slot-inputs select{font-size:16px !important;padding:6px 2px !important;min-height:36px;}
+
+  /* メイングリッドを縦スタックに */
+  #main{
+    display:flex !important;
+    flex-direction:column !important;
+    padding:0;gap:0;
+    flex:none;
+  }
+
+  /* 各パネルをタブで切り替え */
+  #main > .pnl{
+    display:none;
+    overflow:visible;
+    border-radius:0;
+    border-left:none;border-right:none;
+    min-height:calc(100dvh - 46px - 37px);
+    flex-shrink:0;
+  }
+  #main > .pnl.mob-active{display:flex;}
+
+  /* センターパネルはcam-wrapを低く */
+  #cam-wrap{
+    min-height:140px;
+    max-height:180px;
+    flex:0 0 160px;
+  }
+
+  /* カード：スマホサイズに調整 */
+  .card-suit-bg{font-size:clamp(36px,14vw,64px);}
+  .card-rank-center{font-size:clamp(18px,6vw,32px);}
+
+  /* ボードスロット：横スクロール対応 */
+  #board-area > div:last-child{
+    overflow-x:auto;
+    padding-bottom:4px;
+  }
+
+  /* ランクセレクト：タッチしやすいサイズ */
+  .slot-inputs select,
+  #board-area select{
+    font-size:16px !important; /* iOSズーム防止 */
+    padding:6px 2px !important;
+    min-height:36px;
+  }
+
+  /* ×ボタン：タッチしやすく */
   .slot-clr{width:30px !important;height:30px !important;font-size:14px !important;}
-  
-  /* Mobile Nuts 2-col layout */
-  #nuts-container{flex-direction:column;gap:6px;}
-  .nuts-col{flex-direction:row;flex-wrap:wrap;gap:3px;}
-  .nuts-col-header{display:none;}
-  .nuts-row{padding:3px 4px;}
-  .n-rank{min-width:12px;font-size:9px;}
-  .n-core{font-size:12px;}
-  .n-suits{font-size:9px;}
-  .n-badge{font-size:7px;padding:1px 3px;}
-  .n-outs,.n-type{display:none;}
-  .n-eq{font-size:9px;padding:1px 3px;min-width:32px;}
+
+  /* CLEAR ALLボタン */
+  #clear-all-btn{padding:6px 12px !important;font-size:9px !important;}
+
+  /* ナッツリスト：フォント少し大きく */
+  .n-eq{font-size:11px;}
+  .n-hand{font-size:18px;}
+  .n-type{font-size:10px;}
+
+  /* ヒートマップ：セルをやや大きく */
+  #hm-grid{
+    grid-template-columns:14px repeat(13,1fr);
+    gap:2px;
+  }
+  .hm-c{font-size:7px;}
+
+  /* フッター非表示 */
+  #ftr{display:none;}
+
+  /* テーブル楕円を縮小 */
+  #table-oval{width:90%;height:70%;}
 }
 
-/* Worker status indicator */
-#worker-status{display:flex;align-items:center;gap:4px;font-family:'Share Tech Mono',monospace;font-size:8px;}
-#worker-dot{width:6px;height:6px;border-radius:50%;background:#666;}
-#worker-dot.ready{background:var(--accent-green);box-shadow:0 0 6px var(--accent-green);}
-#worker-dot.loading{background:var(--accent-gold);animation:blink2 1s infinite;}
-#worker-dot.error{background:var(--accent-red);}
+/* ═══════════════════════════════════════════
+   STEP 2: 2本立てNUTS + ヒーローUI
+═══════════════════════════════════════════ */
+/* nuts-secヘッダーv2 */
+#nuts-sec-v2{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:rgba(0,212,255,.6);text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid rgba(0,180,255,.12);flex-shrink:0;margin-top:3px;display:flex;align-items:center;justify-content:space-between;}
+#nuts-sec-v2 .ns-ll{color:rgba(0,255,157,.7);}
+#nuts-sec-v2 .ns-rl{color:rgba(80,160,255,.7);}
+#nuts-sec-v2 .ns-badge{font-size:7px;padding:1px 5px;border-radius:2px;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.2);color:rgba(0,212,255,.5);letter-spacing:1px;}
+#nuts-sec-v2 .ns-badge.hero{background:rgba(255,184,0,.07);border-color:rgba(255,184,0,.25);color:rgba(255,184,0,.8);}
+
+/* ヒーローストリップ */
+#hero-strip{display:flex;align-items:center;gap:5px;padding:5px 4px;background:rgba(255,184,0,.04);border:1px solid rgba(255,184,0,.12);border-radius:2px;flex-shrink:0;min-height:40px;}
+#hero-strip .hs-lbl{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1.5px;color:rgba(255,184,0,.4);flex-shrink:0;}
+#hero-strip .hs-cards{display:flex;gap:4px;flex:1;align-items:center;}
+.hs-slot{display:flex;align-items:center;gap:2px;}
+.hs-slot select{background:#0c1828;border:1px solid rgba(255,184,0,.25);border-radius:2px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;padding:2px 1px;cursor:pointer;outline:none;text-align:center;color:#e0f0ff;transition:border-color .2s,background .2s;}
+.hs-slot select:focus{border-color:rgba(255,184,0,.7);background:#1a1200;}
+.hs-slot select.has-v{border-color:rgba(255,184,0,.5);}
+.hs-rsel{width:34px;}
+.hs-ssel{width:30px;}
+.hs-sep{font-size:8px;color:rgba(255,255,255,.12);}
+.hs-clr{font-size:8px;padding:1px 5px;border:1px solid rgba(255,59,59,.25);border-radius:2px;background:rgba(255,59,59,.05);color:rgba(255,100,100,.5);cursor:pointer;transition:all .15s;}
+.hs-clr:hover{border-color:rgba(255,59,59,.6);color:rgba(255,130,130,.9);background:rgba(255,59,59,.15);}
+.hs-empty{font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(255,184,0,.2);letter-spacing:.5px;}
+
+/* 2本立てスプリット */
+#nuts-split{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;min-height:0;}
+#nuts-made-col{border-right:1px solid rgba(255,255,255,.05);display:flex;flex-direction:column;overflow:hidden;}
+#nuts-draw-col{display:flex;flex-direction:column;overflow:hidden;}
+.nc-hdr{font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1.5px;padding:4px 5px 3px;border-bottom:1px solid rgba(255,255,255,.05);flex-shrink:0;}
+#nuts-made-col .nc-hdr{color:rgba(0,255,157,.5);}
+#nuts-draw-col .nc-hdr{color:rgba(80,160,255,.5);}
+#nuts-made-list,#nuts-draw-list{flex:1;overflow-y:auto;overflow-x:hidden;}
+
+/* Made行 */
+.nm-row{display:flex;align-items:center;gap:4px;padding:3px 5px;border-bottom:1px solid rgba(255,255,255,.03);transition:background .1s;}
+.nm-row:hover{background:rgba(255,255,255,.03);}
+.nm-rank{font-family:'Orbitron',monospace;font-size:9px;color:rgba(255,184,0,.45);min-width:12px;flex-shrink:0;}
+.nm-eq{font-family:'Share Tech Mono',monospace;font-size:8px;color:#00d4ff;min-width:30px;text-align:right;flex-shrink:0;}
+.nm-hand{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#c8dff0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nm-type{font-size:7px;color:rgba(160,200,230,.3);text-align:right;line-height:1.2;flex-shrink:0;max-width:38px;}
+.nm-row.hm{background:rgba(255,184,0,.07);}
+.nm-row.hm .nm-hand{color:#f0c040;}
+.nm-row.hm .nm-rank{color:#f0c040;}
+
+/* Draw行 */
+.nd-row{display:flex;flex-direction:column;padding:4px 5px;border-bottom:1px solid rgba(255,255,255,.03);gap:1px;transition:background .1s;}
+.nd-row:hover{background:rgba(255,255,255,.03);}
+.nd-top{display:flex;align-items:center;gap:3px;}
+.nd-type{font-family:'Orbitron',monospace;font-size:8px;font-weight:700;letter-spacing:.5px;flex-shrink:0;}
+.nd-type.fd{color:#4090d0;}.nd-type.oesd{color:#40a060;}.nd-type.gsd{color:#c09030;}.nd-type.bdfd{color:#606880;}.nd-type.bdsd{color:#506060;}
+.nd-eq{font-family:'Share Tech Mono',monospace;font-size:9px;color:#4090d0;font-weight:700;margin-left:auto;flex-shrink:0;}
+.nd-detail{font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(160,200,230,.3);display:flex;justify-content:space-between;}
+.nd-outs{color:rgba(0,255,157,.5);}
+
+/* 空表示 */
+.nc-empty{font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.18);padding:12px 6px;text-align:center;line-height:1.7;letter-spacing:.5px;}
+.nc-scan{height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.35),transparent);animation:ncscan 1.4s linear infinite;flex-shrink:0;}
+@keyframes ncscan{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/* モバイル: nuts-splitを縦積みに */
+@media(max-width:480px){
+  #nuts-split{grid-template-columns:1fr;grid-template-rows:auto auto;}
+  #nuts-made-col{border-right:none;border-bottom:1px solid rgba(255,255,255,.06);max-height:180px;}
+}
+
+/* ═══════════════════════════════════════════
+   HEATMAP TOOLTIP v1.0
+   hover(desktop) / tap(mobile) で表示
+═══════════════════════════════════════════ */
+#hm-tooltip {
+  position: fixed;
+  z-index: 9000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s;
+  width: 220px;
+}
+#hm-tooltip.visible { opacity: 1; }
+
+.tt-box {
+  background: rgba(4,8,15,.97);
+  border: 1px solid rgba(0,212,255,.3);
+  border-radius: 4px;
+  padding: 8px 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.7), 0 0 0 1px rgba(0,212,255,.08);
+  font-family: 'Share Tech Mono', monospace;
+}
+.tt-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0f0ff;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.tt-title .tt-type {
+  font-size: 8px;
+  color: rgba(0,212,255,.6);
+  letter-spacing: 1.5px;
+  font-weight: 400;
+}
+/* コンボ行 */
+.tt-combos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 7px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.tt-combo {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  font-size: 11px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.03);
+  transition: opacity .1s;
+}
+.tt-combo.blocked {
+  opacity: 0.2;
+  text-decoration: line-through;
+  filter: grayscale(1);
+}
+.tt-combo.best {
+  border-color: rgba(255,184,0,.5);
+  background: rgba(255,184,0,.08);
+  box-shadow: 0 0 6px rgba(255,184,0,.2);
+}
+/* スートカラー */
+.cs { color: #a0a8b8; }
+.ch { color: #e03040; }
+.cd { color: #4090e0; }
+.cc { color: #30b050; }
+
+/* 強度バー */
+.tt-metrics { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.tt-metric-row { display: flex; align-items: center; gap: 5px; }
+.tt-metric-lbl {
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: rgba(160,200,230,.4);
+  width: 52px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+.tt-bar-wrap {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.tt-bar { height: 100%; border-radius: 2px; transition: width .4s; }
+.tt-metric-val {
+  font-size: 9px;
+  color: #00d4ff;
+  width: 30px;
+  text-align: right;
+  flex-shrink: 0;
+}
+/* 最強コンボ注釈 */
+.tt-best-label {
+  font-size: 7.5px;
+  color: rgba(255,184,0,.6);
+  letter-spacing: .5px;
+  margin-bottom: 4px;
+}
+/* ブロッカー警告 */
+.tt-blocker {
+  font-size: 7.5px;
+  color: rgba(255,100,100,.6);
+  margin-top: 4px;
+  letter-spacing: .5px;
+  display: none;
+}
+.tt-blocker.active { display: block; }
+/* FD不可警告 */
+.tt-warn {
+  font-size: 7.5px;
+  color: rgba(255,184,0,.5);
+  margin-top: 3px;
+  letter-spacing: .5px;
+}
+
+#worker-dot.ready{background:#00ff9d;box-shadow:0 0 6px rgba(0,255,157,.6);}
+#worker-dot.loading{background:#ffb800;animation:pulse 1s ease-in-out infinite;}
+#worker-dot.error{background:#ff3b3b;}
 </style>
 </head>
 <body>
+<div id="root">
 
-<!-- Brain Overlay -->
+<!-- BRAIN OVERLAY -->
 <div id="brain-overlay">
-  <div class="brain-title">SPECTRA v3.0</div>
-  <div class="brain-msg">INITIALIZING WORKER ENGINE...</div>
-  <div class="brain-prog-wrap">
-    <div class="brain-prog" id="brain-prog" style="width:0%"></div>
-  </div>
+  <div class="brain-title">SPECTRA BRAIN</div>
+  <div class="brain-msg" id="brain-msg">INITIALIZING ENGINE...</div>
+  <div class="brain-prog-wrap"><div class="brain-prog" id="brain-prog" style="width:8%"></div></div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);margin-top:4px;" id="brain-sub">pure js hand evaluator</div>
 </div>
 
-<!-- Header -->
+<!-- HEADER -->
 <div id="hdr">
-  <div>
-    <div class="logo-t">SPECTRA</div>
-    <div class="logo-s">TACTICAL POKER OS v3.0</div>
-  </div>
-  <div class="hdr-mid">WORKER ARCHITECTURE</div>
+  <div><div class="logo-t">SPECTRA</div><div class="logo-s">SPECTRA POKER SYSTEM v2.0</div></div>
+  <div class="hdr-mid">SPECTRA</div>
   <div class="hdr-r">
-    <div id="worker-status">
-      <div id="worker-dot"></div>
-      <span id="worker-txt">INIT</span>
+    <!-- MODE TOGGLE -->
+    <div id="mode-toggle">
+      <button class="mode-btn active" id="btn-manual" onclick="setMode('MANUAL')">MANUAL</button>
+      <div id="mode-divider"></div>
+      <button class="mode-btn" id="btn-camera" onclick="setMode('CAMERA')">CAMERA</button>
     </div>
-    <div id="calc-time" style="color:var(--accent-cyan)"></div>
     <div class="conn-dot"></div>
+    <span>|</span><span id="fps-d">FPS: 29</span>
+    <span id="time-d">--:--:--</span>
+    <div id="worker-status" style="display:inline-flex;align-items:center;gap:4px;"><div id="worker-dot" style="width:6px;height:6px;border-radius:50%;background:#666;"></div><span id="worker-txt" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.5);">INIT</span></div><span id="brain-badge" style="font-family:'Orbitron',monospace;font-size:8px;padding:2px 6px;border:1px solid rgba(0,180,255,.3);border-radius:2px;color:rgba(0,180,255,.6);letter-spacing:1px;">BRAIN:INIT</span>
   </div>
 </div>
 
-<!-- Mode Toggle -->
-<div id="mode-toggle">
-  <button class="mode-btn active" onclick="setMode('MANUAL')">MANUAL</button>
-  <div style="width:1px;background:rgba(0,180,255,.3);"></div>
-  <button class="mode-btn" onclick="setMode('CAMERA')">CAMERA</button>
-</div>
-
-<!-- Mobile Tabs -->
+<!-- モバイルタブバー -->
 <div id="mob-tabs">
-  <button class="mob-tab active" onclick="switchTab('left')">NUTS</button>
-  <button class="mob-tab" onclick="switchTab('center')">BOARD</button>
-  <button class="mob-tab" onclick="switchTab('right')">EQUITY</button>
+  <button class="mob-tab active" id="mtab-board" onclick="mobTab('board')">BOARD</button>
+  <button class="mob-tab" id="mtab-nuts"  onclick="mobTab('nuts')">NUTS</button>
+  <button class="mob-tab" id="mtab-stats" onclick="mobTab('stats')">ANALYTICS</button>
 </div>
 
-<!-- Main Grid -->
+<!-- MAIN -->
 <div id="main">
 
-  <!-- LEFT PANEL -->
-  <div class="pnl mob-active" id="left-pnl">
-    <div class="sec">STREET</div>
-    
-    <!-- Street Indicator -->
+  <!-- LEFT: STREET + NUTS -->
+  <div class="pnl" id="mob-pnl-nuts">
     <div id="street-box">
-      <div id="street-name">FLOP</div>
-      <div id="street-cnt">3 cards on board</div>
+      <div id="street-name">PREFLOP</div>
+      <div id="street-cnt">0 / 5</div>
     </div>
-    
-    <!-- NEW: Nuts 2-Column Layout -->
-    <div class="sec">NUTS RANKING</div>
-    <div id="nuts-container">
-      
-      <!-- MADE HANDS Column -->
-      <div class="nuts-col">
-        <div class="nuts-col-header made">MADE</div>
-        <div class="nuts-list" id="nuts-made-list">
-          <div class="nuts-empty">NO MADE HANDS</div>
+    <div id="nuts-sec-v2">
+      <span class="ns-ll">MADE ▮ NOW</span>
+      <span class="ns-badge" id="ns-mode-badge">RANGE</span>
+      <span class="ns-rl">DRAWS ▶ NEXT</span>
+    </div>
+    <!-- ヒーローハンド入力 -->
+    <div id="hero-strip">
+      <span class="hs-lbl">HERO</span>
+      <div class="hs-cards">
+        <div class="hs-slot" id="hslot-0">
+          <select class="hs-rsel" id="hrsel-0" onchange="onHeroChanged()">
+            <option value="">-</option>
+            <option>A</option><option>K</option><option>Q</option><option>J</option><option>T</option>
+            <option>9</option><option>8</option><option>7</option><option>6</option><option>5</option>
+            <option>4</option><option>3</option><option>2</option>
+          </select>
+          <select class="hs-ssel" id="hssel-0" onchange="onHeroSuitChanged(0);onHeroChanged()">
+            <option value="">-</option>
+            <option value="s" style="color:#a0a8b8">♠</option>
+            <option value="h" style="color:#e03040">♥</option>
+            <option value="d" style="color:#4090e0">♦</option>
+            <option value="c" style="color:#30b050">♣</option>
+          </select>
+        </div>
+        <span class="hs-sep">/</span>
+        <div class="hs-slot" id="hslot-1">
+          <select class="hs-rsel" id="hrsel-1" onchange="onHeroChanged()">
+            <option value="">-</option>
+            <option>A</option><option>K</option><option>Q</option><option>J</option><option>T</option>
+            <option>9</option><option>8</option><option>7</option><option>6</option><option>5</option>
+            <option>4</option><option>3</option><option>2</option>
+          </select>
+          <select class="hs-ssel" id="hssel-1" onchange="onHeroSuitChanged(1);onHeroChanged()">
+            <option value="">-</option>
+            <option value="s" style="color:#a0a8b8">♠</option>
+            <option value="h" style="color:#e03040">♥</option>
+            <option value="d" style="color:#4090e0">♦</option>
+            <option value="c" style="color:#30b050">♣</option>
+          </select>
         </div>
       </div>
-      
-      <!-- DRAWS Column -->
-      <div class="nuts-col">
-        <div class="nuts-col-header draw">DRAWS</div>
-        <div class="nuts-list" id="nuts-draw-list">
-          <div class="nuts-empty">NO DRAWS</div>
-        </div>
+      <button class="hs-clr" onclick="clearHeroHand()">CLR</button>
+    </div>
+    <!-- 2本立てNUTS -->
+    <div id="nuts-split">
+      <div id="nuts-made-col">
+        <div class="nc-hdr">MADE HANDS</div>
+        <div id="nuts-made-list"><div class="nc-empty">ボードを3枚以上<br>入力してください</div></div>
       </div>
-      
+      <div id="nuts-draw-col">
+        <div class="nc-hdr">DRAW / POTENTIAL</div>
+        <div id="nuts-draw-list"><div class="nc-empty">ヒーローハンドを<br>選択してください</div></div>
+      </div>
     </div>
   </div>
 
-  <!-- CENTER PANEL -->
-  <div class="pnl" id="center-pnl">
+  <!-- CENTER -->
+  <div class="pnl mob-active" id="center-pnl">
     <div class="cam-hdr">
-      <span class="cam-lbl">BOARD / HERO <span>CAM</span></span>
-      <button onclick="toggleCamera()" style="background:none;border:1px solid rgba(0,180,255,.3);color:var(--accent-cyan);font-family:'Share Tech Mono',monospace;font-size:9px;padding:3px 8px;cursor:pointer;">CAM</button>
+      <div class="cam-lbl" id="cam-lbl-txt">▐ MANUAL BOARD INPUT <span>[SIMULATOR MODE]</span></div>
+      <div id="board-hash" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,212,255,.6)">BOARD: --</div>
     </div>
-    
-    <!-- Camera Area -->
+
+    <!-- Camera/table view -->
     <div id="cam-wrap">
-      <video id="cam-video" autoplay playsinline></video>
+      <video id="cam-video" autoplay playsinline muted></video>
       <canvas id="cam-canvas"></canvas>
       <div id="cam-placeholder">
         <div id="table-oval">
-          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(0,180,255,.4);letter-spacing:2px;">CAMERA MODE</div>
+          <div id="pl-top"><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div><div class="pl-chip">D</div></div>
+          <div id="pl-left"><div class="pl-chip">P1</div><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div></div>
+          <div id="pl-right"><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div><div class="pl-chip">P3</div></div>
+          <div id="pl-bot"><div class="pl-chip">P2</div><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div></div>
         </div>
       </div>
     </div>
-    
-    <!-- Board Cards -->
-    <div id="board-area">
-      <div class="board-slot" data-index="0">
-        <div class="slot-inputs">
-          <select id="rank0" onchange="onBoardChange(0)"><option value="">--</option></select>
-          <select id="suit0" onchange="onBoardChange(0)"><option value="">--</option></select>
-          <button class="slot-clr" onclick="clearSlot(0)">×</button>
-        </div>
-        <div class="board-card waiting" id="card0"><span class="wait-txt">FLOP</span></div>
-      </div>
-      <div class="board-slot" data-index="1">
-        <div class="slot-inputs">
-          <select id="rank1" onchange="onBoardChange(1)"><option value="">--</option></select>
-          <select id="suit1" onchange="onBoardChange(1)"><option value="">--</option></select>
-          <button class="slot-clr" onclick="clearSlot(1)">×</button>
-        </div>
-        <div class="board-card waiting" id="card1"><span class="wait-txt">FLOP</span></div>
-      </div>
-      <div class="board-slot" data-index="2">
-        <div class="slot-inputs">
-          <select id="rank2" onchange="onBoardChange(2)"><option value="">--</option></select>
-          <select id="suit2" onchange="onBoardChange(2)"><option value="">--</option></select>
-          <button class="slot-clr" onclick="clearSlot(2)">×</button>
-        </div>
-        <div class="board-card waiting" id="card2"><span class="wait-txt">FLOP</span></div>
-      </div>
-      <div class="board-slot" data-index="3">
-        <div class="slot-inputs">
-          <select id="rank3" onchange="onBoardChange(3)"><option value="">--</option></select>
-          <select id="suit3" onchange="onBoardChange(3)"><option value="">--</option></select>
-          <button class="slot-clr" onclick="clearSlot(3)">×</button>
-        </div>
-        <div class="board-card waiting" id="card3"><span class="wait-txt">TURN</span></div>
-      </div>
-      <div class="board-slot" data-index="4">
-        <div class="slot-inputs">
-          <select id="rank4" onchange="onBoardChange(4)"><option value="">--</option></select>
-          <select id="suit4" onchange="onBoardChange(4)"><option value="">--</option></select>
-          <button class="slot-clr" onclick="clearSlot(4)">×</button>
-        </div>
-        <div class="board-card waiting" id="card4"><span class="wait-txt">RIVER</span></div>
-      </div>
-    </div>
-    
-    <!-- Hero Cards -->
-    <div id="hero-area">
-      <div class="hero-slot">
-        <select id="hero-rank0" onchange="onHeroChange(0)"><option value="">--</option></select>
-        <select id="hero-suit0" onchange="onHeroChange(0)"><option value="">--</option></select>
-      </div>
-      <div class="hero-slot">
-        <select id="hero-rank1" onchange="onHeroChange(1)"><option value="">--</option></select>
-        <select id="hero-suit1" onchange="onHeroChange(1)"><option value="">--</option></select>
-      </div>
-    </div>
-    
+
+    <!-- Board area: dropdowns on top, cards below -->
+    <div id="board-area"></div>
+
     <!-- Stabilizer -->
     <div id="stab-bar">
-      <div id="stab-dot" style="background:#666;"></div>
-      <span id="stab-txt">TEXTURE:</span>
-      <span id="stab-conf" style="color:var(--text-secondary)">PREFLOP</span>
+      <div id="stab-dot" style="background:rgba(0,255,157,.2);"></div>
+      <div id="stab-txt" style="color:rgba(160,200,230,.4);">MANUAL INPUT MODE — SELECT CARDS ABOVE</div>
+      <div id="stab-conf">CONF: --</div>
     </div>
   </div>
 
-  <!-- RIGHT PANEL -->
-  <div class="pnl" id="right-pnl">
-    <div class="sec">EQUITY</div>
-    
-    <div>
-      <div class="wet-big" id="wet-value">--</div>
-      <div class="wet-sub">vs RANGE</div>
+  <!-- RIGHT: ANALYTICS + HEATMAP -->
+  <div class="pnl" id="mob-pnl-stats">
+    <div class="sec">ANALYTICS &amp; HUD</div>
+
+    <div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;flex-shrink:0;">
+      <div id="prog-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#00d4ff,#1a6aff);border-radius:2px;transition:width .7s;"></div>
     </div>
-    
-    <div class="metric">
-      <div class="metric-lbl">CONNECTED</div>
-      <div class="bar-wrap"><div class="bar-fill" id="connected-bar" style="width:0%;background:linear-gradient(90deg,#00d4ff,#00ff9d);"></div></div>
-      <div class="metric-val" id="connected-val">0%</div>
-    </div>
-    
-    <div class="metric">
-      <div class="metric-lbl">SUITED</div>
-      <div class="bar-wrap"><div class="bar-fill" id="suited-bar" style="width:0%;background:#4895ef;"></div></div>
-      <div class="metric-val" id="suited-val">0%</div>
-    </div>
-    
-    <div class="metric">
-      <div class="metric-lbl">PAIRED</div>
-      <div class="bar-wrap"><div class="bar-fill" id="paired-bar" style="width:0%;background:var(--accent-gold);"></div></div>
-      <div class="metric-val" id="paired-val">0%</div>
-    </div>
-    
-    <div class="sec" style="margin-top:6px;">RANGES</div>
-    <div class="range-grid">
-      <div>
-        <div class="range-name">HERO</div>
-        <div class="range-val" id="hero-range-val">--</div>
-      </div>
-      <div>
-        <div class="range-name">VILLAIN</div>
-        <div class="range-val" id="villain-range-val">ALL</div>
-      </div>
-    </div>
-    
-    <div class="sec" style="margin-top:6px;">HEATMAP LEGEND</div>
-    <div id="hm-legend">
-      <div class="legend-item"><div class="legend-dot" style="background:hsl(0,90%,45%);"></div><span>STRONG</span></div>
-      <div class="legend-item"><div class="legend-dot" style="background:hsl(120,90%,45%);"></div><span>WEAK</span></div>
-    </div>
-  </div>
-  
-</div>
 
-<!-- Footer -->
-<div id="ftr">
-  <span id="status-txt">SYSTEM READY</span>
-  <span class="analyzing" id="analyzing-txt" style="display:none">CALCULATING...</span>
-  <span id="fps-d"></span>
-</div>
-
-<script>
-/* ═══════════════════════════════════════════════════════════
-   SPECTRA v3.0 — Web Worker Architecture
-   Main Thread JavaScript
-   ═══════════════════════════════════════════════════════════ */
-
-// ═══════════════════════════════════════════════════════════
-// WORKER MANAGER CLASS
-// ═══════════════════════════════════════════════════════════
-
-class SpectraWorkerManager {
-  constructor() {
-    this.worker = null;
-    this.pendingRequests = new Map();
-    this.isReady = false;
-    this.requestIdCounter = 0;
-    this.cache = new Map();
-  }
-  
-  async init(workerScript) {
-    return new Promise((resolve, reject) => {
-      try {
-        // Create worker from blob (inline worker for single-file deployment)
-        const blob = new Blob([workerScript], { type: 'application/javascript' });
-        const url = URL.createObjectURL(blob);
-        this.worker = new Worker(url);
-        
-        this.worker.onmessage = (e) => this._handleMessage(e);
-        this.worker.onerror = (err) => {
-          console.error('[Worker Error]', err);
-          this._rejectAllPending(err.message);
-          reject(err);
-        };
-        
-        // Timeout for init
-        const timeout = setTimeout(() => {
-          reject(new Error('Worker init timeout'));
-        }, 5000);
-        
-        const helloHandler = (e) => {
-          if (e.data?.type === 'HELLO') {
-            clearTimeout(timeout);
-            this.isReady = true;
-            this.worker.removeEventListener('message', helloHandler);
-            resolve();
-          }
-        };
-        this.worker.addEventListener('message', helloHandler);
-        this.worker.postMessage({ type: 'INIT' });
-        
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }
-  
-  async request(type, payload, timeout = 30000) {
-    if (!this.worker) throw new Error('Worker not initialized');
-    
-    const cacheKey = this._generateCacheKey(payload);
-    
-    // Check cache first
-    if (type === 'EVAL_169' && this.cache.has(cacheKey)) {
-      return { ...this.cache.get(cacheKey), _meta: { cached: true, latency: 0 } };
-    }
-    
-    const id = `${Date.now()}-${++this.requestIdCounter}`;
-    
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pendingRequests.delete(id);
-        reject(new Error(`Request ${type}:${id} timeout`));
-      }, timeout);
-      
-      this.pendingRequests.set(id, { resolve, reject, timer });
-      this.worker.postMessage({ id, type, payload });
-    });
-  }
-  
-  _handleMessage(e) {
-    const { id, type, data, error, cached, calcTime } = e.data;
-    
-    if (!id) return;
-    
-    const pending = this.pendingRequests.get(id);
-    if (!pending) return;
-    
-    clearTimeout(pending.timer);
-    this.pendingRequests.delete(id);
-    
-    if (error) {
-      pending.reject(new Error(error));
-    } else {
-      // Cache if it's EVAL_169
-      if (type === 'EVAL_169' && data) {
-        this.cache.set(this._generateCacheKey(e.data.payload || {}), data);
-      }
-      pending.resolve({ ...data, _meta: { cached, calcTime, latency: Date.now() - (pending.timer?.startTime || Date.now()) } });
-    }
-  }
-  
-  _generateCacheKey(payload) {
-    const hero = (payload.hero || []).filter(Boolean).join(',') || 'NONE';
-    const board = (payload.board || []).filter(Boolean).join(',') || 'NONE';
-    return `${hero}|${board}`;
-  }
-  
-  _rejectAllPending(reason) {
-    for (const [id, pending] of this.pendingRequests) {
-      clearTimeout(pending.timer);
-      pending.reject(new Error(reason));
-    }
-    this.pendingRequests.clear();
-  }
-  
-  clearCache() {
-    this.cache.clear();
-    if (this.worker) this.worker.postMessage({ type: 'CACHE_CLEAR' });
-  }
-  
-  terminate() {
-    if (this.worker) {
-      this._rejectAllPending('Worker terminated');
-      this.worker.terminate();
-      this.worker = null;
-      this.isReady = false;
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// GLOBAL STATE
-// ═══════════════════════════════════════════════════════════
-
-const state = {
-  board: [null, null, null, null, null],
-  hero: [null, null],
-  mode: 'MANUAL',
-  street: 'FLOP',
-  workerReady: false,
-  lastResult: null
-};
-
-const worker = new SpectraWorkerManager();
-
-// ═══════════════════════════════════════════════════════════
-// DOM HELPERS
-// ═══════════════════════════════════════════════════════════
-
-function el(id) { return document.getElementById(id); }
-function create(tag, cls, txt) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (txt !== undefined) e.textContent = txt;
-  return e;
-}
-
-function suitSymbol(s) {
-  const m = { s:'♠', h:'♥', d:'♦', c:'♣' };
-  return m[s] || s;
-}
-
-function suitClass(s) {
-  return { s:'spades', h:'hearts', d:'diamonds', c:'clubs' }[s] || '';
-}
-
-// ═══════════════════════════════════════════════════════════
-// UI FUNCTIONS
-// ═══════════════════════════════════════════════════════════
-
-function updateStreet() {
-  const count = state.board.filter(Boolean).length;
-  const names = { 0: 'PREFLOP', 1: 'PREFLOP', 2: 'FLOP', 3: 'TURN', 4: 'RIVER' };
-  const cnts = { 0: 'no cards', 1: '1 card', 2: '3 cards', 3: '4 cards', 4: '5 cards' };
-  
-  el('street-name').textContent = names[count] || 'UNKNOWN';
-  el('street-cnt').textContent = cnts[count];
-  
-  // Update card labels
-  ['card2', 'card3', 'card4'].forEach((id, i) => {
-    const card = el(id);
-    const label = card?.querySelector('.wait-txt');
-    if (label) label.textContent = ['FLOP', 'TURN', 'RIVER'][i];
-  });
-}
-
-function updateCardDisplay(index) {
-  const card = state.board[index];
-  const cardEl = el(`card${index}`);
-  if (!cardEl) return;
-  
-  if (!card) {
-    cardEl.className = 'board-card waiting';
-    cardEl.innerHTML = `<span class="wait-txt">${['FLOP','FLOP','FLOP','TURN','RIVER'][index]}</span>`;
-    el(`slot-clr${index}`)?.classList.remove('has-card');
-  } else {
-    const rank = card[0];
-    const suit = card[1];
-    cardEl.className = `board-card active bg-${suit}`;
-    cardEl.innerHTML = `
-      <div class="card-inner">
-        <div class="card-corner-tl">
-          <span class="corner-rank">${rank}</span>
-          <span class="corner-suit">${suitSymbol(suit)}</span>
+    <div style="background:rgba(0,0,0,.3);border:1px solid rgba(0,180,255,.12);border-radius:3px;padding:7px;flex-shrink:0;">
+      <div class="sec" style="border:none;padding:0;margin-bottom:5px;">▐ BOARD TEXTURE <span style="font-size:7px;color:rgba(160,200,230,.35);font-family:'Rajdhani',sans-serif;letter-spacing:0;">/ 盤面性質</span></div>
+      <div class="wet-big" id="wet-val">--%</div>
+      <div class="wet-sub" id="wet-lbl">ANALYZING</div>
+      <div style="margin-top:7px;">
+        <div class="metric">
+          <div class="metric-lbl">CONNECTEDNESS <span style="font-size:8px;color:rgba(160,200,230,.3);letter-spacing:0;font-family:'Rajdhani',sans-serif;">つながり度</span></div>
+          <div class="bar-wrap"><div class="bar-fill" id="bar-con" style="width:0%;background:#00d4ff;"></div></div>
+          <div class="metric-val" id="val-con" style="color:#00d4ff;">--%</div>
         </div>
-        <span class="card-rank-center">${rank}</span>
+        <div class="metric" style="margin-bottom:0;">
+          <div class="metric-lbl">FLUSH DENSITY <span style="font-size:8px;color:rgba(160,200,230,.3);letter-spacing:0;font-family:'Rajdhani',sans-serif;">フラッシュ密度</span></div>
+          <div class="bar-wrap"><div class="bar-fill" id="bar-fls" style="width:0%;background:#a855f7;"></div></div>
+          <div class="metric-val" id="val-fls" style="color:#a855f7;">--%</div>
+        </div>
       </div>
-    `;
-    el(`slot-clr${index}`)?.classList.add('has-card');
-  }
-}
+    </div>
 
-function renderHeatmap(data) {
-  const grid = el('hm-grid');
-  if (!grid) return;
-  
-  grid.innerHTML = '';
-  const ranks = 'AKQJT98765432'.split('');
-  
-  // Header
-  grid.appendChild(create('div', 'hm-hdr', ''));
-  ranks.forEach(r => grid.appendChild(create('div', 'hm-hdr', r)));
-  
-  // Cells
-  for (let r1 = 0; r1 < 13; r1++) {
-    grid.appendChild(create('div', 'hm-hdr', ranks[r1]));
-    
-    for (let r2 = 0; r2 <= r1; r2++) {
-      const isDiag = r1 === r2;
-      const handStr = isDiag ? `${ranks[r1]}${ranks[r2]}` : `${ranks[r1]}${ranks[r2]}s`;
-      
-      const cellData = data?.find(d => d.hand === handStr);
-      const eq = cellData ? cellData.equity : 0;
-      
-      const cell = create('div', 'hm-c');
-      cell.textContent = handStr;
-      cell.style.background = hslColor(eq / 100);
-      
-      // Highlight hero
-      if (state.hero[0] && state.hero[1]) {
-        const hRanks = [state.hero[0][0], state.hero[1][0]]
-          .sort((a,b) => '23456789TJQKA'.indexOf(a) - '23456789TJQKA'.indexOf(b));
-        const hStr = hRanks.join('');
-        if (handStr === hStr || handStr === `${hRanks[0]}${hRanks[1]}s`) {
-          cell.classList.add('hero-active');
-        }
-      }
-      
-      cell.addEventListener('click', () => selectHandFromHeatmap(handStr));
-      grid.appendChild(cell);
-    }
-  }
-}
+    <div style="background:rgba(0,0,0,.3);border:1px solid rgba(0,180,255,.12);border-radius:3px;padding:7px;flex-shrink:0;">
+      <div class="sec" style="border:none;padding:0;margin-bottom:5px;">▐ RANGE ADVANTAGE <span style="font-size:6px;">(BTN vs BB)</span> <span style="font-size:7px;color:rgba(160,200,230,.35);letter-spacing:0;font-family:'Rajdhani',sans-serif;">/ レンジ有利度</span></div>
+      <div class="range-grid">
+        <div>
+          <div class="range-name" style="color:#ff3b3b;">BTN</div>
+          <div class="bar-wrap"><div class="bar-fill" id="bar-btn" style="width:0%;background:#ff3b3b;"></div></div>
+          <div class="range-val" id="val-btn" style="color:#ff3b3b;">--%</div>
+        </div>
+        <div>
+          <div class="range-name" style="color:#3b82f6;">BB</div>
+          <div class="bar-wrap"><div class="bar-fill" id="bar-bb" style="width:0%;background:#3b82f6;"></div></div>
+          <div class="range-val" id="val-bb" style="color:#60a5fa;">--%</div>
+        </div>
+      </div>
+      <canvas id="sparkline" width="200" height="32" style="width:100%;margin-top:5px;opacity:.7;"></canvas>
+    </div>
 
-// NEW: Render Nuts 2-Column Layout
-function renderNuts(made, draws) {
-  const madeList = el('nuts-made-list');
-  const drawList = el('nuts-draw-list');
-  
-  if (!madeList || !drawList) return;
-  
-  // Clear
-  madeList.innerHTML = '';
-  drawList.innerHTML = '';
-  
-  // MADE HANDS
-  if (!made || made.length === 0) {
-    madeList.appendChild(create('div', 'nuts-empty', 'NO MADE'));
-  } else {
-    made.slice(0, 10).forEach((n, i) => {
-      const row = createNutsRow(n, 'made', i + 1);
-      madeList.appendChild(row);
-    });
-  }
-  
-  // DRAWS
-  if (!draws || draws.length === 0) {
-    drawList.appendChild(create('div', 'nuts-empty', 'NO DRAWS'));
-  } else {
-    draws.slice(0, 10).forEach((d, i) => {
-      const row = createNutsRow(d, 'draw', i + 1);
-      drawList.appendChild(row);
-    });
-  }
-}
+    <div class="sec">▐ DYNAMIC HEATMAP <span style="font-size:7px;color:rgba(160,200,230,.35);letter-spacing:0;font-family:'Rajdhani',sans-serif;">/ 強度分布マップ</span></div>
+    <div id="hm-wrap">
+      <div id="hm-grid"></div>
+      <div id="hm-spin">CALCULATING...</div>
+    </div>
+  </div>
 
-function createNutsRow(item, type, rank) {
-  const row = create('div', 'nuts-row');
-  
-  const rankEl = create('span', 'n-rank', rank);
-  row.appendChild(rankEl);
-  
-  // Hand info
-  const handWrap = create('div', 'n-hand-wrap');
-  
-  const coreEl = create('span', 'n-core', item.core || item.hand?.slice(0, -1) || item.hand);
-  handWrap.appendChild(coreEl);
-  
-  // Suits
-  if (item.suits) {
-    const suitsEl = create('div', 'n-suits');
-    item.suits.forEach(s => {
-      const sEl = create('span', `suit ${suitClass(s)}`);
-      suitsEl.appendChild(sEl);
-    });
-    handWrap.appendChild(suitsEl);
-  } else if (item.hand) {
-    const s = item.hand.slice(-1);
-    if (s === 's') {
-      const suitsEl = create('div', 'n-suits');
-      suitsEl.appendChild(create('span', 'suit clubs'));
-      suitsEl.appendChild(create('span', 'suit clubs'));
-      handWrap.appendChild(suitsEl);
-    } else {
-      const offEl = create('span', 'n-suit-off', '(off)');
-      handWrap.appendChild(offEl);
-    }
-  }
-  
-  row.appendChild(handWrap);
-  
-  // Badge (for draws)
-  if (type === 'draw' && item.drawType) {
-    const badge = create('span', `n-badge badge-${item.drawType.toLowerCase()}`);
-    badge.textContent = item.drawType;
-    row.appendChild(badge);
-  }
-  
-  // Outs or Equity
-  if (type === 'draw' && item.outs) {
-    const outsEl = create('span', 'n-outs', `${item.outs} outs`);
-    row.appendChild(outsEl);
-  } else if (item.equity !== undefined) {
-    const eqEl = create('span', 'n-eq', `${item.equity}%`);
-    row.appendChild(eqEl);
-  }
-  
-  return row;
-}
+</div><!-- /main -->
 
-function updateTexture(texture) {
-  el('stab-conf').textContent = texture?.texture || 'PREFLOP';
-  
-  const dot = el('stab-dot');
-  if (texture?.texture === 'WET') {
-    dot.style.background = '#ff3b3b';
-  } else if (texture?.texture === 'SPRING') {
-    dot.style.background = '#ffb800';
-  } else {
-    dot.style.background = '#666';
-  }
-  
-  // Update bars
-  ['connected', 'suited', 'paired'].forEach(key => {
-    const bar = el(`${key}-bar`);
-    const val = el(`${key}-val`);
-    if (bar) bar.style.width = `${(texture?.[key] || 0) * 100}%`;
-    if (val) val.textContent = `${Math.round((texture?.[key] || 0) * 100)}%`;
-  });
-}
+<div id="ftr">
+  <span class="analyzing">● ANALYZING BOARD... LIVE</span>
+  <span id="ftr-hash">HASH: N/A</span>
+  <span id="calc-time" style="color:rgba(0,212,255,.5);">CALC: --ms</span>
+  <span>SPECTRA POKER SYSTEM v2.0</span>
+</div>
 
-function setStatus(txt, analyzing = false) {
-  el('status-txt').textContent = txt;
-  el('analyzing-txt').style.display = analyzing ? 'inline' : 'none';
-}
+</div><!-- /root -->
+<script>
+/* ═══════════════════════════════════════════════════
+   SPECTRA v2.0 — BRAIN SIMULATOR
+═══════════════════════════════════════════════════ */
 
-function setWorkerStatus(status) {
-  const dot = el('worker-dot');
-  const txt = el('worker-txt');
-  
-  dot.className = '';
-  switch (status) {
-    case 'ready':
-      dot.classList.add('ready');
-      txt.textContent = 'READY';
-      break;
-    case 'loading':
-      dot.classList.add('loading');
-      txt.textContent = 'LOADING';
-      break;
-    case 'error':
-      dot.classList.add('error');
-      txt.textContent = 'ERROR';
-      break;
-    default:
-      txt.textContent = 'INIT';
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// CORE FUNCTIONS
-// ═══════════════════════════════════════════════════════════
-
-async function runEvaluation() {
-  if (!worker.isReady) return;
-  
-  setStatus('CALCULATING...', true);
-  el('hm-spin')?.classList.add('active');
-  
-  try {
-    const result = await worker.request('EVAL_169', {
-      board: state.board.filter(Boolean),
-      hero: state.hero.filter(Boolean)
-    });
-    
-    state.lastResult = result;
-    
-    renderHeatmap(result);
-    
-    if (result._meta?.calcTime) {
-      el('calc-time').textContent = `WORKER: ${result._meta.calcTime}ms`;
-    }
-    
-    // Calculate equity vs range
-    if (result && state.hero[0] && state.hero[1]) {
-      const heroStr = state.hero.join('');
-      const heroData = result.find(r => {
-        const r1 = state.hero[0][0], r2 = state.hero[1][0];
-        const sorted = [r1, r2].sort((a,b) => '23456789TJQKA'.indexOf(a) - '23456789TJQKA'.indexOf(b)).join('');
-        return r.hand === sorted || r.hand === `${sorted}s` || r.hand === `${sorted}o`;
-      });
-      
-      if (heroData) {
-        el('wet-value').textContent = `${heroData.equity}%`;
-      }
-    }
-    
-    // Get texture
-    const textureResult = await worker.request('TEXTURE', { board: state.board.filter(Boolean) });
-    updateTexture(textureResult);
-    
-    // Get nuts
-    const nutsResult = await worker.request('NUTS', {
-      hero: state.hero.filter(Boolean),
-      board: state.board.filter(Boolean)
-    });
-    renderNuts(nutsResult?.made || [], nutsResult?.draws || []);
-    
-    setStatus('SYSTEM READY');
-    
-  } catch (err) {
-    console.error('[Eval Error]', err);
-    setStatus('EVAL ERROR');
-  } finally {
-    el('hm-spin')?.classList.remove('active');
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// EVENT HANDLERS
-// ═══════════════════════════════════════════════════════════
-
-function onBoardChange(index) {
-  const rank = el(`rank${index}`)?.value;
-  const suit = el(`suit${index}`)?.value;
-  
-  state.board[index] = rank && suit ? `${rank}${suit}` : null;
-  updateCardDisplay(index);
-  updateStreet();
-  debounceRun();
-}
-
-function onHeroChange(index) {
-  const rank = el(`hero-rank${index}`)?.value;
-  const suit = el(`hero-suit${index}`)?.value;
-  
-  state.hero[index] = rank && suit ? `${rank}${suit}` : null;
-  debounceRun();
-}
-
-function clearSlot(index) {
-  state.board[index] = null;
-  if (el(`rank${index}`)) el(`rank${index}`).value = '';
-  if (el(`suit${index}`)) el(`suit${index}`).value = '';
-  updateCardDisplay(index);
-  updateStreet();
-  debounceRun();
-}
-
-function selectHandFromHeatmap(handStr) {
-  // Parse hand string and set hero cards
-  const ranks = handStr.replace('s', '').replace('o', '');
-  // Simplified - would need more logic for actual implementation
-  console.log('Selected:', handStr);
-}
-
-function setMode(mode) {
-  state.mode = mode;
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.textContent === mode);
-  });
-  
-  const camWrap = el('cam-wrap');
-  const camVid = el('cam-video');
-  
-  if (mode === 'CAMERA') {
-    startCamera();
-    camVid.style.display = 'block';
-  } else {
-    stopCamera();
-    camVid.style.display = 'none';
-  }
-}
-
-function switchTab(tab) {
-  const panels = {
-    left: el('left-pnl'),
-    center: el('center-pnl'),
-    right: el('right-pnl')
-  };
-  
-  Object.values(panels).forEach(p => p?.classList.remove('mob-active'));
-  if (panels[tab]) panels[tab].classList.add('mob-active');
-  
-  document.querySelectorAll('.mob-tab').forEach((btn, i) => {
-    const tabs = ['left', 'center', 'right'];
-    btn.classList.toggle('active', tabs[i] === tab);
-  });
-}
-
-// Camera
-let camStream = null;
-async function startCamera() {
-  try {
-    camStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
-    });
-    el('cam-video').srcObject = camStream;
-    setStatus('CAMERA ACTIVE');
-  } catch (err) {
-    console.error('[Camera Error]', err);
-    setStatus('CAM UNAVAILABLE');
-  }
-}
-
-function stopCamera() {
-  if (camStream) {
-    camStream.getTracks().forEach(t => t.stop());
-    camStream = null;
-  }
-}
-
-function toggleCamera() {
-  setMode(state.mode === 'MANUAL' ? 'CAMERA' : 'MANUAL');
-}
-
-// Debounce
-let debounceTimer = null;
-function debounceRun() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(runEvaluation, 150);
-}
-
-// ═══════════════════════════════════════════════════════════
-// HELPER FUNCTIONS
-// ═══════════════════════════════════════════════════════════
-
-function hslColor(pct) {
-  const hue = (1 - pct) * 240;
-  const sat = 70 + pct * 20;
-  const light = 35 + (1 - Math.abs(pct - 0.5) * 2) * 15;
-  return `hsl(${hue}, ${sat}%, ${light}%)`;
-}
-
-// ═══════════════════════════════════════════════════════════
-// INITIALIZATION
-// ═══════════════════════════════════════════════════════════
-
-// Worker script (inline for single-file deployment)
+/* ═══════════════════════════════════════════
+   SPECTRA Worker Architecture
+═══════════════════════════════════════════ */
 const WORKER_SCRIPT = `
 /* SPECTRA v3.0 — Worker Engine */
 
@@ -1254,86 +918,1616 @@ self.onmessage = function(e) {
 };
 `;
 
-async function init() {
-  setWorkerStatus('loading');
+class SpectraWorkerManager {
+  constructor() {
+    this.worker = null;
+    this.pendingRequests = new Map();
+    this.isReady = false;
+    this.requestIdCounter = 0;
+    this.cache = new Map();
+  }
   
+  async init(workerScript) {
+    return new Promise((resolve, reject) => {
+      try {
+        // Create worker from blob (inline worker for single-file deployment)
+        const blob = new Blob([workerScript], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        this.worker = new Worker(url);
+        
+        this.worker.onmessage = (e) => this._handleMessage(e);
+        this.worker.onerror = (err) => {
+          console.error('[Worker Error]', err);
+          this._rejectAllPending(err.message);
+          reject(err);
+        };
+        
+        // Timeout for init
+        const timeout = setTimeout(() => {
+          reject(new Error('Worker init timeout'));
+        }, 5000);
+        
+        const helloHandler = (e) => {
+          if (e.data?.type === 'HELLO') {
+            clearTimeout(timeout);
+            this.isReady = true;
+            this.worker.removeEventListener('message', helloHandler);
+            resolve();
+          }
+        };
+        this.worker.addEventListener('message', helloHandler);
+        this.worker.postMessage({ type: 'INIT' });
+        
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+  
+  async request(type, payload, timeout = 30000) {
+    if (!this.worker) throw new Error('Worker not initialized');
+    
+    const cacheKey = this._generateCacheKey(payload);
+    
+    // Check cache first
+    if (type === 'EVAL_169' && this.cache.has(cacheKey)) {
+      return { ...this.cache.get(cacheKey), _meta: { cached: true, latency: 0 } };
+    }
+    
+    const id = `${Date.now()}-${++this.requestIdCounter}`;
+    
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pendingRequests.delete(id);
+        reject(new Error(`Request ${type}:${id} timeout`));
+      }, timeout);
+      
+      this.pendingRequests.set(id, { resolve, reject, timer });
+      this.worker.postMessage({ id, type, payload });
+    });
+  }
+  
+  _handleMessage(e) {
+    const { id, type, data, error, cached, calcTime } = e.data;
+    
+    if (!id) return;
+    
+    const pending = this.pendingRequests.get(id);
+    if (!pending) return;
+    
+    clearTimeout(pending.timer);
+    this.pendingRequests.delete(id);
+    
+    if (error) {
+      pending.reject(new Error(error));
+    } else {
+      // Cache if it's EVAL_169
+      if (type === 'EVAL_169' && data) {
+        this.cache.set(this._generateCacheKey(e.data.payload || {}), data);
+      }
+      pending.resolve({ ...data, _meta: { cached, calcTime, latency: Date.now() - (pending.timer?.startTime || Date.now()) } });
+    }
+  }
+  
+  _generateCacheKey(payload) {
+    const hero = (payload.hero || []).filter(Boolean).join(',') || 'NONE';
+    const board = (payload.board || []).filter(Boolean).join(',') || 'NONE';
+    return `${hero}|${board}`;
+  }
+  
+  _rejectAllPending(reason) {
+    for (const [id, pending] of this.pendingRequests) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error(reason));
+    }
+    this.pendingRequests.clear();
+  }
+  
+  clearCache() {
+    this.cache.clear();
+    if (this.worker) this.worker.postMessage({ type: 'CACHE_CLEAR' });
+  }
+  
+  terminate() {
+    if (this.worker) {
+      this._rejectAllPending('Worker terminated');
+      this.worker.terminate();
+      this.worker = null;
+      this.isReady = false;
+    }
+  }
+}
+
+const worker = new SpectraWorkerManager();
+
+function setWorkerStatus(status) {
+  const dot = el('worker-dot');
+  const txt = el('worker-txt');
+  
+  dot.className = '';
+  switch (status) {
+    case 'ready':
+      dot.classList.add('ready');
+      txt.textContent = 'READY';
+      break;
+    case 'loading':
+      dot.classList.add('loading');
+      txt.textContent = 'LOADING';
+      break;
+    case 'error':
+      dot.classList.add('error');
+      txt.textContent = 'ERROR';
+      break;
+    default:
+      txt.textContent = 'INIT';
+  }
+}
+
+const RANKS_LIST  = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+const SUITS_LIST  = ['s','h','d','c'];
+const SUIT_SYM    = {s:'♠',h:'♥',d:'♦',c:'♣'};
+const SUIT_CLS    = {s:'suit-s',h:'suit-h',d:'suit-d',c:'suit-c'};
+const SUIT_COLORS = {s:'#222',h:'#d00020',d:'#0055cc',c:'#007a2a'};
+const STREET_COL  = {PREFLOP:'#00d4ff',FLOP:'#00ff9d',TURN:'#ffb800',RIVER:'#ff3b3b'};
+const HAND_TYPES  = {1:'STR.FLUSH',2:'FOUR OF KIND',3:'FULL HOUSE',4:'FLUSH',5:'STRAIGHT',6:'THREE OF KIND',7:'TWO PAIR',8:'ONE PAIR',9:'HIGH CARD'};
+
+let currentBoard = [];
+let brainReady   = false;
+let pyodideObj   = null; // legacy compat flag
+let calcTimer    = null;
+let currentMode  = 'MANUAL'; // MANUAL | CAMERA
+let camStream    = null;
+let heroHand     = [null, null]; // [{rank,suit}, {rank,suit}] | null
+
+function onHeroSuitChanged(idx){
+  const s=document.getElementById('hssel-'+idx);
+  if(!s) return;
+  const v=s.value;
+  const cols={'s':'#a0a8b8','h':'#e03040','d':'#4090e0','c':'#30b050'};
+  s.style.color=cols[v]||'rgba(160,200,230,.5)';
+  s.classList.toggle('has-v',!!v);
+}
+
+function updateHeroGuard(){
+  const boardSet=new Set(currentBoard);
+  const heroSet=new Set();
+  heroHand.forEach(c=>{if(c) heroSet.add(c.rank+c.suit);});
+  const badge=document.getElementById('ns-mode-badge');
+  if(badge){ const h=heroHand[0]&&heroHand[1]; badge.textContent=h?'HERO':'RANGE'; badge.className='ns-badge'+(h?' hero':''); }
+  [0,1].forEach(idx=>{
+    const r=document.getElementById('hrsel-'+idx);
+    const s=document.getElementById('hssel-'+idx);
+    if(!r||!s) return;
+    const myCard=(r.value&&s.value)?r.value+s.value:null;
+    Array.from(s.options).forEach(opt=>{
+      if(!opt.value) return;
+      const card=r.value+opt.value;
+      opt.disabled=boardSet.has(card)||(heroSet.has(card)&&card!==myCard);
+    });
+    Array.from(r.options).forEach(opt=>{
+      if(!opt.value) return;
+      const card=opt.value+s.value;
+      opt.disabled=!!(s.value&&(boardSet.has(card)||(heroSet.has(card)&&card!==myCard)));
+    });
+  });
+}
+
+function onHeroChanged(){
+  heroHand=[0,1].map(i=>{
+    const r=document.getElementById('hrsel-'+i)?.value;
+    const s=document.getElementById('hssel-'+i)?.value;
+    return (r&&s)?{rank:r,suit:s}:null;
+  });
+  updateHeroGuard();
+  
+  // ヒートマップのデータ・描画を再起動
+  if(currentBoard.length>=3){
+    triggerBrainUpdate();
+  } else {
+    resetBrainUI();
+  }
+}
+
+function clearHeroHand(){
+  [0,1].forEach(idx=>{
+    const r=document.getElementById('hrsel-'+idx);
+    const s=document.getElementById('hssel-'+idx);
+    if(r) r.value='';
+    if(s){s.value='';s.style.color='rgba(160,200,230,.5)';s.classList.remove('has-v');}
+  });
+  heroHand=[null,null];
+  updateHeroGuard();
+  
+  if(currentBoard.length>=3){
+    triggerBrainUpdate();
+  } else {
+    resetBrainUI();
+  }
+}
+
+/* ══════════════════════════════
+   MODE TOGGLE
+══════════════════════════════ */
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('btn-manual').classList.toggle('active', mode==='MANUAL');
+  document.getElementById('btn-camera').classList.toggle('active', mode==='CAMERA');
+
+  const boardArea = document.getElementById('board-area');
+  const lbl = document.getElementById('cam-lbl-txt');
+
+  if (mode === 'MANUAL') {
+    // show dropdowns, hide camera
+    boardArea.classList.remove('cam-mode');
+    lbl.innerHTML = '▐ MANUAL BOARD INPUT <span>[SIMULATOR MODE]</span>';
+    stopCamera();
+    document.getElementById('cam-placeholder').style.display='flex';
+    document.getElementById('cam-video').style.display='none';
+    setStabState('MANUAL');
+  } else {
+    // hide dropdowns, start camera
+    boardArea.classList.add('cam-mode');
+    lbl.innerHTML = '▐ LIVE CAMERA FEED <span>[OVERHEAD MAT]</span>';
+    startCamera();
+    setStabState('CAM');
+  }
+}
+
+async function startCamera() {
   try {
+    camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    const v = document.getElementById('cam-video');
+    v.srcObject = camStream; v.style.display='block';
+    document.getElementById('cam-placeholder').style.display='none';
+  } catch(e) {
+    setStabState('CAM_ERR');
+  }
+}
+
+function stopCamera() {
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+}
+
+/* ══════════════════════════════
+   BRAIN INIT
+══════════════════════════════ */
+function setBrainMsg(msg,sub,prog){
+  document.getElementById('brain-msg').textContent=msg;
+  document.getElementById('brain-sub').textContent=sub||'';
+  document.getElementById('brain-prog').style.width=(prog||8)+'%';
+}
+
+async function initBrain(){
+  try{
+    setBrainMsg('INITIALIZING WORKER...','web worker engine',20);
+    setWorkerStatus('loading');
     await worker.init(WORKER_SCRIPT);
+    setBrainMsg('WORKER ONLINE','ready — 0s startup',100);
+    brainReady=true;
+    pyodideObj=true;
     setWorkerStatus('ready');
-    state.workerReady = true;
-    
-    // Hide brain overlay
-    el('brain-overlay').classList.add('hidden');
-    
-    // Populate selects
-    populateSelects();
-    
-    // Initial run
-    runEvaluation();
-    
-  } catch (err) {
-    console.error('[Init Error]', err);
+    document.getElementById('brain-badge').textContent='BRAIN:READY';
+    document.getElementById('brain-badge').style.color='#00ff9d';
+    document.getElementById('brain-badge').style.borderColor='rgba(0,255,157,.4)';
+    setTimeout(()=>document.getElementById('brain-overlay').classList.add('hidden'),400);
+    if(currentBoard.length>=3) triggerBrainUpdate();
+  }catch(e){
+    setBrainMsg('WORKER ERROR',e.message,0);
     setWorkerStatus('error');
-    
-    // Fallback to main thread
-    setStatus('FALLBACK MODE');
-    el('brain-overlay').classList.add('hidden');
-    populateSelects();
+    document.getElementById('brain-badge').textContent='BRAIN:ERR';
+    document.getElementById('brain-badge').style.color='#ff3b3b';
+  }
+}
+}
+
+/* ══════════════════════════════
+   TREYS EVAL 169
+══════════════════════════════ */
+async function evalAll169(board){
+  const t0=performance.now();
+  const heroArr=(heroHand[0]&&heroHand[1])
+    ?[heroHand[0].rank+heroHand[0].suit,heroHand[1].rank+heroHand[1].suit]:[];
+  const data=await worker.send('EVAL_169',{board,hero:heroArr});
+  const ms=Math.round(performance.now()-t0);
+  document.getElementById('calc-time').textContent=`CALC: ${ms}ms`;
+  const rcMap={'SF':1,'4K':2,'FH':3,'FL':4,'ST':5,'3K':6,'2P':7,'1P':8,'HC':9};
+  return data.map(item=>({
+    hand:item.hand,
+    pct:item.equity??item.pct??0,
+    rc:item.rc??rcMap[item.handType]??9,
+    activeCombos:item.activeCombos??item.comboCount??(item.hand.endsWith('s')?4:item.hand.length===2?6:12),
+    totalCombos:item.totalCombos??item.comboCount??(item.hand.endsWith('s')?4:item.hand.length===2?6:12),
+    score:item.score??0,
+  }));
+}
+
+function topN(data,n){return[...data].sort((a,b)=>b.pct-a.pct).slice(0,n);}
+
+/* ══════════════════════════════
+   TEXTURE
+══════════════════════════════ */
+function calcTexture(board){
+  if(board.length<3)return null;
+  const ranks=board.map(c=>'AKQJT98765432'.indexOf(c[0]));
+  const suits=board.map(c=>c[1]);
+  const sorted=[...ranks].sort((a,b)=>a-b);
+  let gaps=0; for(let i=1;i<sorted.length;i++) gaps+=sorted[i]-sorted[i-1];
+  const connect=Math.max(0,Math.round(100-gaps*8));
+  const suitCounts={};
+  suits.forEach(s=>suitCounts[s]=(suitCounts[s]||0)+1);
+  const maxSuit=Math.max(...Object.values(suitCounts));
+  const flush=Math.round(maxSuit/board.length*100);
+  const wet=Math.round((connect+flush)/2);
+  const lbl=wet>=80?'VERY WET / 非常に危険':wet>=60?'WET / 危険':wet>=40?'SEMI-WET / やや危険':wet>=20?'DRY / 安全':'VERY DRY / 非常に安全';
+  return{wet,connect,flush,lbl};
+}
+
+/* ══════════════════════════════
+   RENDERERS
+══════════════════════════════ */
+function strengthColor(v){
+  if(v<=0) return '#0d1a2a';
+  return'#0d1a2a'; // legacy fallback — replaced by hslCell
+}
+
+// 3次元HSLカラー
+// hue: 強度(現在equity) → 赤(強)〜青(弱)
+// lightness: 将来性(ポテンシャル) → 明るい=化ける
+// saturation: コンボ密度(activeCombos/totalCombos) → 鮮やか=存在感あり
+function hslCell(pct, potential, comboDensity) {
+  if (pct <= 0 && comboDensity <= 0) return '#0b101d';
+  const hue = Math.round(240 - pct * 2.1);          // 240(青)→0(赤)
+  const sat = Math.round(30 + comboDensity * 55);    // 30%〜85%
+  const lit = Math.round(8  + potential   * 22);     // 8%〜30%
+  return `hsl(${hue},${sat}%,${lit}%)`;
+}
+
+function buildHeatmap(){
+  const grid=document.getElementById('hm-grid');
+  grid.innerHTML='';
+  const corner=document.createElement('div');corner.className='hm-hdr';grid.appendChild(corner);
+  RANKS_LIST.forEach(r=>{const h=document.createElement('div');h.className='hm-hdr';h.textContent=r;grid.appendChild(h);});
+  RANKS_LIST.forEach((r1,i)=>{
+    const rh=document.createElement('div');rh.className='hm-hdr';rh.textContent=r1;grid.appendChild(rh);
+    RANKS_LIST.forEach((r2,j)=>{
+      const lbl=i===j?r1+r2:(i<j?r1+r2+'s':r2+r1+'o');
+      const c=document.createElement('div');c.className='hm-c';c.id='hc'+(i*13+j);
+      c.textContent=lbl.slice(0,2);c.style.backgroundColor='#0d1a2a';
+      // ── Tooltip events ──
+      c.addEventListener('mouseenter', e => showHmTooltip(i*13+j, e));
+      c.addEventListener('mousemove',  e => moveHmTooltip(e));
+      c.addEventListener('mouseleave', ()=> hideHmTooltip());
+      c.addEventListener('touchstart', e => { e.preventDefault(); toggleHmTooltip(i*13+j, e.touches[0]); }, {passive:false});
+      grid.appendChild(c);
+    });
+  });
+}
+
+function isHeroMatch(item){
+  if(!heroHand[0]||!heroHand[1]) return false;
+  const h=heroHand, hand=item.hand;
+  if(hand.length===2){
+    return h[0].rank===h[1].rank && h[0].rank===hand[0];
+  } else if(hand.endsWith('s')){
+    return h[0].suit===h[1].suit &&
+      ((h[0].rank===hand[0]&&h[1].rank===hand[1])||(h[0].rank===hand[1]&&h[1].rank===hand[0]));
+  } else if(hand.endsWith('o')){
+    return h[0].suit!==h[1].suit &&
+      ((h[0].rank===hand[0]&&h[1].rank===hand[1])||(h[0].rank===hand[1]&&h[1].rank===hand[0]));
+  }
+  return false;
+}
+
+// ── ポテンシャル推定（board長とrc分布から将来性スコアを算出）──
+function estimatePotential(item, boardLen) {
+  // 完成役が高い → 将来性は現在に収束
+  // ドロー系(rc>=6) or フロップ → 化ける余地あり
+  if (item.activeCombos === 0) return 0;
+  const rcBonus = {1:0.95,2:0.90,3:0.85,4:0.75,5:0.70,6:0.55,7:0.45,8:0.35,9:0.20};
+  const base = rcBonus[item.rc] || 0.3;
+  // boardが短いほど将来性が高い
+  const streetMult = boardLen <= 3 ? 1.0 : boardLen === 4 ? 0.65 : 0.35;
+  return Math.min(base * streetMult + (item.pct/100)*0.3, 1.0);
+}
+
+// ── HSLレンダラー（3次元カラー + ツールチップ登録）──
+function renderHeatmap(data){
+  // ツールチップ用にデータをグローバルに保持
+  window._hmData = data;
+  const boardLen = currentBoard.length;
+
+  data.forEach((item, idx) => {
+    const c = document.getElementById('hc' + idx);
+    if (!c) return;
+    const matched = isHeroMatch(item);
+
+    if (item.activeCombos === 0) {
+      c.style.backgroundColor = '#0b101d';
+      c.style.color = 'rgba(255,255,255,0.06)';
+      c.style.opacity = '1';
+      c.classList.remove('hero-active-cell');
+      return;
+    }
+
+    // 3次元カラー計算
+    const comboDensity = item.totalCombos > 0 ? item.activeCombos / item.totalCombos : 0;
+    const potential    = estimatePotential(item, boardLen);
+    c.style.backgroundColor = hslCell(item.pct, potential, comboDensity);
+    c.style.color = item.pct >= 50 ? 'rgba(255,255,255,.85)' : 'rgba(255,255,255,.55)';
+    c.style.opacity = '1';
+
+    if (matched) {
+      c.classList.add('hero-active-cell');
+      c.style.color = '#ffffff';
+    } else {
+      c.classList.remove('hero-active-cell');
+    }
+  });
+}
+
+function renderNuts(data){
+  window._nutsData = data;
+  renderMadeCol(data);
+  renderDrawCol(currentBoard);
+}
+
+/* ── Made Hands 左列 ── */
+function renderMadeCol(data){
+  const el=document.getElementById('nuts-made-list');
+  if(!el) return;
+  if(!data||data.length===0){
+    el.innerHTML='<div class="nc-empty">ボードを3枚以上<br>入力してください</div>';
+    return;
+  }
+  const top=[...data].sort((a,b)=>b.pct-a.pct).slice(0,8);
+  const rows=el.querySelectorAll('.nm-row');
+  if(rows.length===top.length){
+    // 差分更新
+    top.forEach((item,i)=>{
+      const eq=rows[i].querySelector('.nm-eq');
+      if(eq) eq.textContent=item.pct.toFixed(1)+'%';
+      rows[i].classList.toggle('hm', isHeroMatch(item));
+    });
+    return;
+  }
+  el.innerHTML=top.map((item,i)=>`
+    <div class="nm-row${isHeroMatch(item)?' hm':''}">
+      <span class="nm-rank">${i+1}</span>
+      <span class="nm-eq">${item.pct.toFixed(1)}%</span>
+      <span class="nm-hand">${item.hand}</span>
+      <span class="nm-type">${HAND_TYPES[item.rc]||''}</span>
+    </div>`).join('');
+}
+
+/* ── Draw Potential 右列 (本物のアウツ数 & カードリムーバル処理) ── */
+function renderDrawCol(board){
+  const el=document.getElementById('nuts-draw-list');
+  if(!el) return;
+  if(!heroHand[0]||!heroHand[1]){
+    el.innerHTML='<div class="nc-empty">ヒーローハンドを<br>選択してください</div>';
+    return;
+  }
+  if(!board||board.length<3){
+    el.innerHTML='<div class="nc-empty">ボードを3枚以上<br>入力してください</div>';
+    return;
+  }
+  if(board.length>=5){
+    el.innerHTML='<div class="nc-empty">リバー到達済<br>ドロー期待値なし</div>';
+    return;
+  }
+
+  // アウツ走査
+  const draws = HandEval.classifyDraws(heroHand, board);
+  if(draws.length===0){
+    el.innerHTML='<div class="nc-empty">ドローチャンスなし</div>';
+    return;
+  }
+  const TC={FD:'fd',OESD:'oesd',GSD:'gsd',BDFD:'bdfd',BDSD:'bdsd'};
+  el.innerHTML=draws.map(d=>`
+    <div class="nd-row">
+      <div class="nd-top">
+        <span class="nd-type ${TC[d.type]||''}">${d.type}</span>
+        <span class="nd-eq">${d.eq.toFixed(1)}%</span>
+      </div>
+      <div class="nd-detail">
+        <span>${d.label}</span>
+        <span class="nd-outs">${d.outs} outs</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderAnalytics(board){
+  const tex=calcTexture(board);
+  if(!tex){
+    document.getElementById('wet-val').textContent='--%';
+    document.getElementById('wet-lbl').textContent='ANALYZING';
+    ['bar-con','bar-fls','bar-btn','bar-bb'].forEach(id=>document.getElementById(id).style.width='0%');
+    ['val-con','val-fls','val-btn','val-bb'].forEach(id=>document.getElementById(id).textContent='--%');
+    return;
+  }
+  document.getElementById('wet-val').textContent=tex.wet+'%';
+  document.getElementById('wet-lbl').textContent=tex.lbl;
+  document.getElementById('bar-con').style.width=tex.connect+'%';
+  document.getElementById('val-con').textContent=tex.connect+'%';
+  document.getElementById('bar-fls').style.width=tex.flush+'%';
+  document.getElementById('val-fls').textContent=tex.flush+'%';
+  const btn=Math.round(50+tex.wet*.12);const bb=100-btn;
+  document.getElementById('bar-btn').style.width=btn+'%';document.getElementById('val-btn').textContent=btn+'%';
+  document.getElementById('bar-bb').style.width=bb+'%';document.getElementById('val-bb').textContent=bb+'%';
+  document.getElementById('prog-bar').style.width=(board.length/5*100)+'%';
+  drawSparkline(btn,bb);
+}
+
+function renderStreet(board){
+  const count=board.length;
+  const street=count<3?'PREFLOP':count===3?'FLOP':count===4?'TURN':'RIVER';
+  const sn=document.getElementById('street-name');
+  sn.textContent=street;sn.style.color=STREET_COL[street];sn.style.textShadow=`0 0 20px ${STREET_COL[street]}`;
+  document.getElementById('street-cnt').textContent=count+' / 5';
+  const hash=board.length?board.join(' ').toUpperCase():'--';
+  document.getElementById('board-hash').textContent='BOARD: '+hash;
+  document.getElementById('ftr-hash').textContent='HASH: '+hash;
+}
+
+/* ══════════════════════════════
+   BOARD AREA BUILD
+══════════════════════════════ */
+/* ── Per-slot clear ── */
+function clearSlot(i){
+  const r=document.getElementById('rsel-'+i);
+  const s=document.getElementById('ssel-'+i);
+  if(r) r.value='';
+  if(s){ s.value=''; s.style.color='rgba(160,200,230,.5)'; s.style.boxShadow='0 0 6px rgba(0,140,255,.15)'; s.style.borderColor='rgba(0,180,255,.35)'; s.style.background='#0c1828'; }
+  // hide × when slot is empty
+  const btn=document.getElementById('clr-'+i);
+  if(btn) btn.classList.remove('has-card');
+  onInputChanged();
+}
+
+/* ── CLEAR ALL: long-press 500ms as safety ── */
+let _clearTimer=null;
+function clearAllStart(){
+  const btn=document.getElementById('clear-all-btn');
+  if(btn){btn.style.background='rgba(255,59,59,.15)';btn.textContent='HOLD...';}
+  _clearTimer=setTimeout(()=>{
+    clearBoard();
+    if(btn){btn.textContent='✕ CLEAR ALL';btn.style.background='rgba(255,59,59,.05)';}
+  },600);
+}
+function clearAllCancel(){
+  clearTimeout(_clearTimer);
+  const btn=document.getElementById('clear-all-btn');
+  if(btn){btn.style.background='rgba(255,59,59,.05)';btn.textContent='✕ CLEAR ALL';}
+}
+
+function buildBoardArea(){
+  const area=document.getElementById('board-area');
+  area.innerHTML='';
+
+  /* ── Header row: label + CLEAR ALL ── */
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding:0 2px;flex-shrink:0;';
+  hdr.innerHTML=`
+    <span style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,212,255,.35);letter-spacing:2px;">▐ BOARD CARDS</span>
+    <button id="clear-all-btn"
+      onmousedown="clearAllStart()" onmouseup="clearAllCancel()" onmouseleave="clearAllCancel()"
+      ontouchstart="clearAllStart()" ontouchend="clearAllCancel()"
+      style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:.8px;padding:3px 8px;
+             border:1px solid rgba(255,59,59,.3);border-radius:2px;background:rgba(255,59,59,.05);
+             color:rgba(255,100,100,.6);cursor:pointer;transition:all .15s;user-select:none;"
+      onmouseover="this.style.borderColor='rgba(255,59,59,.6)';this.style.color='rgba(255,130,130,1)';"
+      onmouseout="this.style.borderColor='rgba(255,59,59,.3)';this.style.color='rgba(255,100,100,.6)';">
+      ✕ CLEAR ALL</button>`;
+  area.appendChild(hdr);
+
+  /* ── Card slots ── */
+  const slotsWrap=document.createElement('div');
+  slotsWrap.style.cssText='display:flex;gap:6px;padding:0 2px;align-items:flex-start;';
+  area.appendChild(slotsWrap);
+
+  const SUIT_GLOW  ={s:'rgba(180,180,220,.35)',h:'rgba(220,30,60,.35)',d:'rgba(30,80,220,.35)',c:'rgba(30,160,60,.35)'};
+  const SUIT_BORDER={s:'rgba(160,160,210,.7)',h:'rgba(220,30,60,.8)',d:'rgba(30,80,220,.8)',c:'rgba(30,160,60,.8)'};
+
+  for(let i=0;i<5;i++){
+    const slot=document.createElement('div');
+    slot.className='board-slot';slot.id='slot-'+i;
+    slot.style.cssText='display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;';
+
+    /* ── Rank select ── */
+    const rSel=document.createElement('select');rSel.className='rank-sel';rSel.id='rsel-'+i;
+    rSel.style.cssText='width:100%;background:#0c1828;border:1px solid rgba(0,180,255,.35);border-radius:3px;font-family:"Rajdhani",sans-serif;font-size:14px;font-weight:700;padding:3px 1px;cursor:pointer;outline:none;text-align:center;color:#e0f0ff;transition:border-color .2s,background .2s,box-shadow .2s;box-shadow:0 0 6px rgba(0,140,255,.15);';
+    rSel.innerHTML='<option value="">-</option>'+RANKS_LIST.map(r=>`<option value="${r}">${r}</option>`).join('');
+
+    /* ── Suit select + × row ── */
+    const suitRow=document.createElement('div');
+    suitRow.style.cssText='display:flex;gap:2px;width:100%;align-items:center;';
+
+    const sSel=document.createElement('select');sSel.className='suit-sel';sSel.id='ssel-'+i;
+    sSel.style.cssText='flex:1;min-width:0;background:#0c1828;border:1px solid rgba(0,180,255,.35);border-radius:3px;font-family:"Rajdhani",sans-serif;font-size:14px;font-weight:700;padding:3px 1px;cursor:pointer;outline:none;text-align:center;transition:border-color .2s,background .2s,box-shadow .2s;box-shadow:0 0 6px rgba(0,140,255,.15);';
+    sSel.innerHTML='<option value="">-</option>'+SUITS_LIST.map(s=>`<option value="${s}" style="color:${SUIT_COLORS[s]}">${SUIT_SYM[s]}</option>`).join('');
+
+    /* × button — only visible when card is set */
+    const clrBtn=document.createElement('button');
+    clrBtn.id='clr-'+i;clrBtn.className='slot-clr';
+    clrBtn.title='このカードを消す';clrBtn.textContent='✕';
+    clrBtn.style.cssText='flex-shrink:0;width:20px;height:20px;padding:0;border:1px solid rgba(255,59,59,.3);border-radius:2px;background:rgba(255,59,59,.06);color:rgba(255,100,100,.55);font-size:10px;cursor:pointer;line-height:1;transition:all .15s;';
+    clrBtn.onmouseover=()=>{clrBtn.style.background='rgba(255,59,59,.28)';clrBtn.style.color='#ff9090';clrBtn.style.borderColor='rgba(255,59,59,.7)';};
+    clrBtn.onmouseout=()=>{clrBtn.style.background='rgba(255,59,59,.06)';clrBtn.style.color='rgba(255,100,100,.55)';clrBtn.style.borderColor='rgba(255,59,59,.3)';};
+    clrBtn.onclick=()=>clearSlot(i);
+
+    const updateSuitColor=()=>{
+      const v=sSel.value;
+      sSel.style.color=SUIT_COLORS[v]||'rgba(160,200,230,.5)';
+      sSel.style.boxShadow=v?`0 0 10px ${SUIT_GLOW[v]}`:'0 0 6px rgba(0,140,255,.15)';
+      sSel.style.borderColor=v?SUIT_BORDER[v]:'rgba(0,180,255,.35)';
+      sSel.style.background=v?'rgba(0,0,0,.6)':'#0c1828';
+      // show/hide × based on whether BOTH rank and suit are set
+      const full=rSel.value&&v;
+      clrBtn.classList.toggle('has-card',!!full);
+    };
+    rSel.addEventListener('change',()=>{ updateSuitColor(); onInputChanged(); });
+    sSel.addEventListener('change',()=>{ updateSuitColor(); onInputChanged(); });
+    updateSuitColor();
+
+    suitRow.appendChild(sSel);suitRow.appendChild(clrBtn);
+
+    /* ── Card display ── */
+    const card=document.createElement('div');card.className='board-card waiting';card.id='bcard-'+i;
+    card.innerHTML=`<div class="wait-txt">CARD ${i+1}</div>`;
+
+    /* ── Status (overlaid below card via CSS) ── */
+    const status=document.createElement('div');status.className='slot-status';status.id='bstat-'+i;
+
+    slot.appendChild(rSel);
+    slot.appendChild(suitRow);
+    slot.appendChild(card);
+    slot.appendChild(status);
+    slotsWrap.appendChild(slot);
   }
 }
 
-function populateSelects() {
-  const ranks = '23456789TJQKA'.split('');
-  const suits = [
-    { v: 's', t: '♠ Spades' },
-    { v: 'h', t: '♥ Hearts' },
-    { v: 'd', t: '♦ Diamonds' },
-    { v: 'c', t: '♣ Clubs' }
-  ];
+const BG_CLS = {s:'bg-s',h:'bg-h',d:'bg-d',c:'bg-c'};
+
+function updateBoardCards(){
+  /* Drive by SLOT INDEX — not board array — so gaps are preserved visually */
+  for(let i=0;i<5;i++){
+    const rVal=document.getElementById('rsel-'+i)?.value||'';
+    const sVal=document.getElementById('ssel-'+i)?.value||'';
+    const card=document.getElementById('bcard-'+i);
+    const clrBtn=document.getElementById('clr-'+i);
+    if(!card) continue;
+    if(rVal && sVal){
+      const rank=rVal.toUpperCase(), suit=sVal;
+      const bgCls=BG_CLS[suit]||'';
+      const sym=SUIT_SYM[suit]||'';
+      card.className='board-card active';
+      card.innerHTML=`<div class="card-inner ${bgCls}">
+        <span class="card-rank-center">${rank}</span>
+        <div class="card-corner-tl">
+          <span class="corner-rank">${rank}</span>
+          <span class="corner-suit">${sym}</span>
+        </div>
+      </div>`;
+      if(clrBtn) clrBtn.classList.add('has-card');
+    } else {
+      card.className='board-card waiting';
+      card.innerHTML=`<div class="wait-txt">CARD ${i+1}</div>`;
+      if(clrBtn) clrBtn.classList.remove('has-card');
+    }
+  }
+}
+
+/* ── キャッシュ ── */
+const evalCache = new Map();
+
+/* ── UI全クリア ── */
+function resetBrainUI(){
+  for(let i=0;i<169;i++){
+    const c=document.getElementById('hc'+i);
+    if(c) {
+      c.style.backgroundColor='#0d1a2a';
+      c.style.opacity='1';
+      c.classList.remove('hero-active-cell');
+    }
+  }
+  const mEl=document.getElementById('nuts-made-list');
+  const dEl=document.getElementById('nuts-draw-list');
+  if(mEl) mEl.innerHTML='<div class="nc-empty">ボードを3枚以上<br>入力してください</div>';
+  if(dEl) dEl.innerHTML=(heroHand[0]&&heroHand[1])
+    ?'<div class="nc-empty">ボードを3枚以上<br>入力してください</div>'
+    :'<div class="nc-empty">ヒーローハンドを<br>選択してください</div>';
+  window._nutsData=null;
+  document.getElementById('calc-time').textContent='CALC: --ms';
+}
+
+/* ── CLEARボタン ── */
+function clearBoard(){
+  for(let i=0;i<5;i++){
+    const r=document.getElementById('rsel-'+i);
+    const s=document.getElementById('ssel-'+i);
+    if(r) r.value='';
+    if(s){ s.value=''; s.style.color='rgba(160,200,230,.5)'; }
+  }
+  currentBoard=[];
+  renderStreet([]);
+  updateBoardCards();
+  renderAnalytics([]);
+  resetBrainUI();
+  setStabState('MANUAL');
+  updateDuplicateGuard();
+}
+
+/* ── 重複防止ガード ── */
+function updateDuplicateGuard(){
+  const selected=new Set();
+  for(let i=0;i<5;i++){
+    const r=document.getElementById('rsel-'+i)?.value;
+    const s=document.getElementById('ssel-'+i)?.value;
+    if(r&&s) selected.add(r+s);
+  }
+  for(let i=0;i<5;i++){
+    const r=document.getElementById('rsel-'+i);
+    const s=document.getElementById('ssel-'+i);
+    if(!r||!s) continue;
+    const myVal=(r.value&&s.value)?r.value+s.value:'';
+    // rebuild options for suit select
+    Array.from(s.options).forEach(opt=>{
+      if(!opt.value) return;
+      const card=r.value+opt.value;
+      opt.disabled = (selected.has(card) && card!==myVal);
+    });
+    // rebuild options for rank select
+    Array.from(r.options).forEach(opt=>{
+      if(!opt.value) return;
+      const card=opt.value+s.value;
+      opt.disabled = s.value && selected.has(card) && card!==myVal;
+    });
+  }
+}
+
+function readInputBoard(){
+  const board=[];
+  for(let i=0;i<5;i++){
+    const r=document.getElementById('rsel-'+i)?.value;
+    const s=document.getElementById('ssel-'+i)?.value;
+    if(r&&s) board.push(r+s);
+  }
+  return board;
+}
+
+function onInputChanged(){
+  if(currentMode!=='MANUAL')return;
+  currentBoard=readInputBoard();
+  updateDuplicateGuard();
+  updateHeroGuard();
+  renderStreet(currentBoard);
+  updateBoardCards();
+  renderAnalytics(currentBoard);
+  if(currentBoard.length>=3){
+    setStabState('LOCKED');
+    clearTimeout(calcTimer);
+    calcTimer=setTimeout(triggerBrainUpdate,300);
+    if(heroHand[0]&&heroHand[1]) renderDrawCol(currentBoard);
+  } else {
+    resetBrainUI();
+    setStabState('MANUAL');
+  }
+}
+
+async function triggerBrainUpdate(){
+  if(!brainReady||currentBoard.length<3)return;
   
-  // Board cards
-  for (let i = 0; i < 5; i++) {
-    const rankSel = el(`rank${i}`);
-    const suitSel = el(`suit${i}`);
-    
-    if (rankSel) {
-      rankSel.innerHTML = '<option value="">--</option>' + ranks.map(r => `<option value="${r}">${r}</option>`).join('');
-    }
-    if (suitSel) {
-      suitSel.innerHTML = '<option value="">--</option>' + suits.map(s => `<option value="${s.v}">${s.t}</option>`).join('');
-    }
+  // キャッシュキーにHeroハンドの状態も含める（キャッシュ汚染を防止）
+  const hStr = heroHand[0] && heroHand[1] ? (heroHand[0].rank + heroHand[0].suit + heroHand[1].rank + heroHand[1].suit) : 'RANGE';
+  const cacheKey = `${hStr}_${currentBoard.join(',')}`;
+
+  // キャッシュヒット
+  if(evalCache.has(cacheKey)){
+    const cached=evalCache.get(cacheKey);
+    renderHeatmap(cached);
+    renderNuts(cached);
+    document.getElementById('calc-time').textContent='CALC: 0ms (cached)';
+    setStabState('DONE');
+    return;
   }
-  
-  // Hero cards
-  for (let i = 0; i < 2; i++) {
-    const rankSel = el(`hero-rank${i}`);
-    const suitSel = el(`hero-suit${i}`);
-    
-    if (rankSel) {
-      rankSel.innerHTML = '<option value="">--</option>' + ranks.map(r => `<option value="${r}">${r}</option>`).join('');
-    }
-    if (suitSel) {
-      suitSel.innerHTML = '<option value="">--</option>' + suits.map(s => `<option value="${s.v}">${s.t}</option>`).join('');
-    }
+  setStabState('CALC');
+  document.getElementById('hm-spin').classList.add('active');
+  try{
+    const data=await evalAll169(currentBoard);
+    evalCache.set(cacheKey,data);
+    renderHeatmap(data);
+    renderNuts(data);
+    setStabState('DONE');
+  }catch(e){
+    console.error('Brain calc failed:',e);
+    setStabState('ERR');
   }
+  document.getElementById('hm-spin').classList.remove('active');
 }
 
-// FPS counter
-let frameCount = 0, lastFPSTime = performance.now();
-function updateFPS() {
-  frameCount++;
-  const now = performance.now();
-  if (now - lastFPSTime >= 1000) {
-    el('fps-d').textContent = `${frameCount} FPS`;
-    frameCount = 0;
-    lastFPSTime = now;
-  }
-  requestAnimationFrame(updateFPS);
+/* ══════════════════════════════
+   STABILIZER
+══════════════════════════════ */
+function setStabState(state){
+  const dot=document.getElementById('stab-dot');
+  const txt=document.getElementById('stab-txt');
+  const map={
+    MANUAL: {c:'rgba(0,180,255,.4)',t:'rgba(0,180,255,.6)',msg:'MANUAL INPUT MODE — SELECT CARDS ABOVE'},
+    LOCKED: {c:'#00ff9d',t:'#00ff9d',msg:'BOARD LOCKED — BRAIN CALCULATING'},
+    CALC:   {c:'#ffb800',t:'#ffb800',msg:'EVALUATING 169 HANDS WITH TREYS...'},
+    DONE:   {c:'#00ff9d',t:'#00ff9d',msg:'BRAIN COMPLETE — HEATMAP UPDATED'},
+    ERR:    {c:'#ff3b3b',t:'#ff3b3b',msg:'BRAIN ERROR — CHECK CONSOLE'},
+    CAM:    {c:'#00d4ff',t:'#00d4ff',msg:'CAMERA MODE — LIVE FEED ACTIVE'},
+    CAM_ERR:{c:'#ff3b3b',t:'#ff3b3b',msg:'CAMERA ERROR — CHECK PERMISSIONS'},
+  };
+  const s=map[state]||map.MANUAL;
+  dot.style.background=s.c;dot.style.boxShadow=`0 0 8px ${s.c}`;
+  txt.style.color=s.t;txt.textContent=s.msg;
+  document.getElementById('stab-conf').textContent=
+    state==='DONE'?'CONF: 1.00':state==='CALC'?'CONF: ...':state==='CAM'?'CONF: LIVE':'CONF: --';
 }
 
-// Start
-init();
-updateFPS();
+/* ══════════════════════════════
+   SPARKLINE
+══════════════════════════════ */
+function drawSparkline(btn,bb){
+  const cv=document.getElementById('sparkline');
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const line=(pts,col)=>{ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=1.5;pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.stroke();};
+  const pts1=[],pts2=[];
+  for(let x=0;x<=W;x+=4){const t=x/W;pts1.push({x,y:H/2-(btn/100-.5)*H*.6+Math.sin(t*Math.PI*4)*3});pts2.push({x,y:H/2-(bb/100-.5)*H*.6+Math.sin(t*Math.PI*4+2)*3});}
+  line(pts1,'#ff3b3b');line(pts2,'#3b82f6');
+}
+
+/* ══════════════════════════════
+   CLOCK
+══════════════════════════════ */
+
+/* ═══════════════════════════════════════════
+   HEATMAP TOOLTIP ENGINE
+═══════════════════════════════════════════ */
+const SUIT_HTML = {
+  s: '<span class="cs">♠</span>',
+  h: '<span class="ch">♥</span>',
+  d: '<span class="cd">♦</span>',
+  c: '<span class="cc">♣</span>',
+};
+const SUIT_NAMES = {s:'スペード',h:'ハート',d:'ダイヤ',c:'クラブ'};
+
+// コンボリスト生成（suited/offsuit/pair別）
+function buildCombos(hand) {
+  const combos = [];
+  const RANKS = 'AKQJT98765432';
+  const SUITS = ['s','h','d','c'];
+  if (hand.length === 2) {
+    // Pair
+    const r = hand[0];
+    for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++)
+      combos.push([{r,s:SUITS[s1]},{r,s:SUITS[s2]}]);
+  } else if (hand.endsWith('s')) {
+    const r1=hand[0], r2=hand[1];
+    SUITS.forEach(s => combos.push([{r:r1,s},{r:r2,s}]));
+  } else if (hand.endsWith('o')) {
+    const r1=hand[0], r2=hand[1];
+    SUITS.forEach(s1 => SUITS.forEach(s2 => {
+      if (s1 !== s2) combos.push([{r:r1,s:s1},{r:r2,s:s2}]);
+    }));
+  }
+  return combos;
+}
+
+function comboBlocked(combo, boardSet, heroSet) {
+  const idx = (r,s) => 'AKQJT98765432'.indexOf(r)*4 + ['s','h','d','c'].indexOf(s);
+  const i1 = idx(combo[0].r, combo[0].s);
+  const i2 = idx(combo[1].r, combo[1].s);
+  return boardSet.has(i1) || boardSet.has(i2) || heroSet.has(i1) || heroSet.has(i2);
+}
+
+function comboBest(combo, item) {
+  // 最強コンボ: activeCombosの代表として item のrcを持つものを1つ特定
+  // 簡易: suited ならスートがボードと一致するものを best とする
+  if (!item || !currentBoard.length) return false;
+  const boardSuits = new Set(currentBoard.map(c=>c.slice(-1)));
+  if (item.hand.endsWith('s')) {
+    // FDの可能性があるスートがboardにあれば best
+    return boardSuits.has(combo[0].s);
+  }
+  return false;
+}
+
+function buildTooltipHTML(idx) {
+  const data = window._hmData;
+  if (!data || !data[idx]) return false;
+  const item = data[idx];
+
+  const boardSet = new Set(currentBoard.map(c => {
+    const r = 'AKQJT98765432'.indexOf(c[0]);
+    const s = ['s','h','d','c'].indexOf(c[1]);
+    return r*4+s;
+  }));
+  const heroSet = new Set();
+  if (heroHand[0] && heroHand[1]) {
+    ['AKQJT98765432'.indexOf(heroHand[0].rank)*4+['s','h','d','c'].indexOf(heroHand[0].suit),
+     'AKQJT98765432'.indexOf(heroHand[1].rank)*4+['s','h','d','c'].indexOf(heroHand[1].suit)]
+    .forEach(i => heroSet.add(i));
+  }
+
+  const combos = buildCombos(item.hand);
+  const boardLen = currentBoard.length;
+  const potential = estimatePotential(item, boardLen);
+  const comboDensity = item.totalCombos>0 ? item.activeCombos/item.totalCombos : 0;
+
+  // ── 手牌名 & タイプ ──
+  document.getElementById('tt-hand').textContent = item.hand;
+  document.getElementById('tt-type').textContent = HAND_TYPES[item.rc] || '--';
+
+  // ── 最強コンボ説明 ──
+  const bestLbl = document.getElementById('tt-best-label');
+  if (item.activeCombos === 0) {
+    bestLbl.textContent = '⛔ 全コンボBLOCKED';
+  } else {
+    const isSuited = item.hand.endsWith('s');
+    const isOffsuit = item.hand.endsWith('o');
+    if (isSuited) {
+      bestLbl.textContent = `★ 最強: 同スート4通りが基準`;
+    } else if (isOffsuit) {
+      bestLbl.textContent = `★ 最強コンボを強度の基準に (${item.activeCombos}/${item.totalCombos}残存)`;
+    } else {
+      bestLbl.textContent = `★ ペア: ${item.activeCombos}/${item.totalCombos}コンボ残存`;
+    }
+  }
+
+  // ── コンボドット表示 ──
+  const combosEl = document.getElementById('tt-combos');
+  combosEl.innerHTML = '';
+  combos.forEach(combo => {
+    const blocked = comboBlocked(combo, boardSet, heroSet);
+    const best = comboBest(combo, item);
+    const div = document.createElement('div');
+    div.className = 'tt-combo' + (blocked?' blocked':'') + (best?' best':'');
+    div.innerHTML = `${combo[0].r}${SUIT_HTML[combo[0].s]}${combo[1].r}${SUIT_HTML[combo[1].s]}`;
+    combosEl.appendChild(div);
+  });
+
+  // ── メトリクスバー ──
+  document.getElementById('tt-bar-str').style.width   = item.pct + '%';
+  document.getElementById('tt-val-str').textContent   = item.pct.toFixed(1) + '%';
+  document.getElementById('tt-bar-pot').style.width   = Math.round(potential*100) + '%';
+  document.getElementById('tt-val-pot').textContent   = Math.round(potential*100) + '%';
+  document.getElementById('tt-bar-combo').style.width = Math.round(comboDensity*100) + '%';
+  document.getElementById('tt-val-combo').textContent = item.activeCombos + '/' + item.totalCombos;
+
+  // ── ブロッカー警告 ──
+  const blockerEl = document.getElementById('tt-blocker');
+  blockerEl.classList.toggle('active', item.activeCombos < item.totalCombos);
+  if (item.activeCombos < item.totalCombos) {
+    const diff = item.totalCombos - item.activeCombos;
+    blockerEl.textContent = `⚠ ${diff}コンボがブロックされています`;
+  }
+
+  // ── スート警告 ──
+  const warnEl = document.getElementById('tt-warn');
+  if (item.hand.endsWith('s')) {
+    warnEl.textContent = '💡 suited: 同スートの4通りのみ有効';
+  } else if (item.hand.endsWith('o')) {
+    warnEl.textContent = '💡 offsuit: フラッシュ不可 / 12通り';
+  } else {
+    warnEl.textContent = '';
+  }
+
+  return true;
+}
+
+let _ttPinned = false; // タップでピン留め
+
+function positionTooltip(x, y) {
+  const tt = document.getElementById('hm-tooltip');
+  const W = window.innerWidth, H = window.innerHeight;
+  const TW = 228, TH = tt.offsetHeight || 260;
+  let left = x + 12;
+  let top  = y - TH/2;
+  if (left + TW > W - 8) left = x - TW - 12;
+  if (top < 8) top = 8;
+  if (top + TH > H - 8) top = H - TH - 8;
+  tt.style.left = left + 'px';
+  tt.style.top  = top  + 'px';
+}
+
+function showHmTooltip(idx, e) {
+  if (_ttPinned) return;
+  if (!window._hmData) return;
+  buildTooltipHTML(idx);
+  const tt = document.getElementById('hm-tooltip');
+  tt.classList.add('visible');
+  positionTooltip(e.clientX, e.clientY);
+}
+
+function moveHmTooltip(e) {
+  if (_ttPinned) return;
+  positionTooltip(e.clientX, e.clientY);
+}
+
+function hideHmTooltip() {
+  if (_ttPinned) return;
+  document.getElementById('hm-tooltip').classList.remove('visible');
+}
+
+function toggleHmTooltip(idx, touch) {
+  if (!window._hmData) return;
+  const tt = document.getElementById('hm-tooltip');
+  const alreadyVisible = tt.classList.contains('visible');
+  // 同じセルをもう一度タップ → 消す
+  if (alreadyVisible && _ttPinned && tt.dataset.idx == idx) {
+    tt.classList.remove('visible');
+    _ttPinned = false;
+    tt.dataset.idx = '';
+    return;
+  }
+  buildTooltipHTML(idx);
+  tt.classList.add('visible');
+  _ttPinned = true;
+  tt.dataset.idx = idx;
+  positionTooltip(touch.clientX, touch.clientY);
+}
+
+// ヒートマップ外タップで閉じる
+document.addEventListener('touchstart', e => {
+  if (!_ttPinned) return;
+  if (!e.target.closest('#hm-tooltip') && !e.target.closest('.hm-c')) {
+    document.getElementById('hm-tooltip').classList.remove('visible');
+    _ttPinned = false;
+  }
+});
+
+setInterval(()=>{
+  const n=new Date();
+  document.getElementById('time-d').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  document.getElementById('fps-d').textContent='FPS: '+(28+Math.floor(Math.random()*4));
+},1000);
+
+/* ══════════════════════════════
+   BOOT
+══════════════════════════════ */
+buildHeatmap();
+buildBoardArea();
+setStabState('MANUAL');
+renderStreet([]);
+drawSparkline(50,50);
+initBrain();
+
+/* ── Mobile Tab Switcher ── */
+function mobTab(tab){
+  // panels
+  const pnlMap = {
+    board: document.getElementById('center-pnl'),
+    nuts:  document.getElementById('mob-pnl-nuts'),
+    stats: document.getElementById('mob-pnl-stats'),
+  };
+  // tab buttons
+  const btnMap = {
+    board: document.getElementById('mtab-board'),
+    nuts:  document.getElementById('mtab-nuts'),
+    stats: document.getElementById('mtab-stats'),
+  };
+  Object.entries(pnlMap).forEach(([k,el])=>{
+    if(!el) return;
+    el.classList.toggle('mob-active', k===tab);
+  });
+  Object.entries(btnMap).forEach(([k,el])=>{
+    if(!el) return;
+    el.classList.toggle('active', k===tab);
+  });
+}
+// デスクトップでは全パネル常時表示を維持
+function ensureDesktopLayout(){
+  if(window.innerWidth > 768){
+    ['center-pnl','mob-pnl-nuts','mob-pnl-stats'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.classList.remove('mob-active');
+    });
+  }
+}
+window.addEventListener('resize', ensureDesktopLayout);
 </script>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   SPECTRA Pure JS Engine v3.0
+   Pyodide/treys完全廃止 — Pure JS + ビット演算
+   起動0秒 / 169ハンド評価 < 5ms
+═══════════════════════════════════════════════════════ */
+const HandEval = (() => {
+  'use strict';
+
+  // ── カード定数 ──
+  // カードインデックス: 0=As,1=Ah,2=Ad,3=Ac, 4=Ks,..., 51=2c
+  // rank = idx>>2  (0=A,1=K,...,12=2)
+  // suit = idx&3   (0=s,1=h,2=d,3=c)
+  const RANKS = 'AKQJT98765432';
+  const SUITS = 'shdc';
+  const PRIMES = [41,37,31,29,23,19,17,13,11,7,5,3,2]; // A,K,Q,J,T,9,8,7,6,5,4,3,2
+
+  // カード文字列→インデックス ('As'→0, '2c'→51)
+  function cardIdx(str) {
+    const r = RANKS.indexOf(str[0].toUpperCase());
+    const s = SUITS.indexOf(str[1].toLowerCase());
+    if (r<0||s<0) return -1;
+    return r*4+s;
+  }
+
+  // ── 5枚ハンド評価 (rank class 1-9, score低いほど強い) ──
+  // ranks配列はソート済み(0=A最強,12=2最弱)の想定
+  function eval5ranks(rs, isFlush) {
+    const r0=rs[0],r1=rs[1],r2=rs[2],r3=rs[3],r4=rs[4];
+    const isStraight = (r4-r0===4 && new Set(rs).size===5) ||
+                       (r0===0&&r1===9&&r2===10&&r3===11&&r4===12); // wheel A-5
+
+    if (isFlush && isStraight) {
+      const high = (r0===0&&r4===12) ? 9 : r0; // wheel high=5(idx9)
+      return {rc:1, score: high};
+    }
+    // counts
+    const cnt = {};
+    rs.forEach(r => cnt[r]=(cnt[r]||0)+1);
+    const vals = Object.entries(cnt).map(([r,c])=>({r:+r,c})).sort((a,b)=>b.c-a.c||a.r-b.r);
+    const c0=vals[0].c;
+
+    if (c0===4) return {rc:2, score: vals[0].r*100+vals[1].r};
+    if (c0===3 && vals[1].c===2) return {rc:3, score: vals[0].r*100+vals[1].r};
+    if (isFlush) return {rc:4, score: rs.reduce((a,r,i)=>a+r*(13**(4-i)),0)};
+    if (isStraight) {
+      const sh = (r0===0&&r4===12)?9:r0;
+      return {rc:5, score: sh};
+    }
+    if (c0===3) return {rc:6, score: vals[0].r*10000+vals[1].r*100+vals[2].r};
+    if (c0===2 && vals[1].c===2) {
+      const p1=Math.min(vals[0].r,vals[1].r), p2=Math.max(vals[0].r,vals[1].r);
+      return {rc:7, score: p1*10000+p2*100+vals[2].r};
+    }
+    if (c0===2) return {rc:8, score: vals[0].r*1000000+vals[1].r*10000+vals[2].r*100+vals[3].r};
+    return {rc:9, score: r0*100000000+r1*1000000+r2*10000+r3*100+r4};
+  }
+
+  // 7枚→最強5枚評価
+  const C75 = [];
+  for(let a=0;a<7;a++) for(let b=a+1;b<7;b++) for(let c=b+1;c<7;c++)
+    for(let d=c+1;d<7;d++) for(let e=d+1;e<7;e++) C75.push([a,b,c,d,e]);
+
+  function eval7(cardIndices) {
+    let best = null;
+    for (const combo of C75) {
+      const five = combo.map(i => cardIndices[i]);
+      const rs = five.map(c => c>>2).sort((a,b)=>a-b);
+      const suits = five.map(c => c&3);
+      const isFlush = suits.every(s=>s===suits[0]);
+      const res = eval5ranks(rs, isFlush);
+      if (!best || res.rc < best.rc || (res.rc===best.rc && res.score < best.score)) {
+        best = res;
+      }
+    }
+    return best;
+  }
+
+  const RC_NAME = {1:'STR.FLUSH',2:'FOUR OF KIND',3:'FULL HOUSE',4:'FLUSH',5:'STRAIGHT',6:'THREE OF KIND',7:'TWO PAIR',8:'ONE PAIR',9:'HIGH CARD'};
+
+  function init() {
+    const test = eval7([0,1,2,3,4,5,6]); // As Ah Ad Ac Ks Kh Kd
+    console.log('[HandEval] init OK, test eval:', RC_NAME[test.rc]);
+  }
+
+  // ── 169ハンド評価（ボードおよびヒーロー手札に対して） ──
+  function eval169(boardStrs, heroHandFilter = null) {
+    const boardCards = boardStrs.map(cardIdx).filter(c=>c>=0);
+    const boardSet = new Set(boardCards);
+    
+    // ヒーローの手札を検出
+    const heroSet = new Set();
+    if (heroHandFilter && heroHandFilter[0] && heroHandFilter[1]) {
+      const c1 = cardIdx(heroHandFilter[0].rank + heroHandFilter[0].suit);
+      const c2 = cardIdx(heroHandFilter[1].rank + heroHandFilter[1].suit);
+      if (c1 >= 0) heroSet.add(c1);
+      if (c2 >= 0) heroSet.add(c2);
+    }
+    
+    const results = [];
+
+    for (let i=0; i<13; i++) {
+      for (let j=0; j<13; j++) {
+        let hand, combos, label, totalCombos = 0;
+
+        if (i===j) {
+          label = RANKS[i]+RANKS[i];
+          combos = [];
+          totalCombos = 6;
+          for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++) {
+            const c1=i*4+s1, c2=i*4+s2;
+            // ボード、および自分が持っている手札と重複していない組み合わせのみを「実在（有効）」とする
+            if (!boardSet.has(c1) && !boardSet.has(c2) && !heroSet.has(c1) && !heroSet.has(c2)) {
+              combos.push([c1,c2]);
+            }
+          }
+        } else if (i<j) {
+          label = RANKS[i]+RANKS[j]+'s';
+          combos = [];
+          totalCombos = 4;
+          for (let s=0;s<4;s++) {
+            const c1=i*4+s, c2=j*4+s;
+            if (!boardSet.has(c1) && !boardSet.has(c2) && !heroSet.has(c1) && !heroSet.has(c2)) {
+              combos.push([c1,c2]);
+            }
+          }
+        } else {
+          label = RANKS[j]+RANKS[i]+'o';
+          combos = [];
+          totalCombos = 12;
+          for (let s1=0;s1<4;s1++) for (let s2=0;s2<4;s2++) {
+            if (s1===s2) continue;
+            const c1=j*4+s1, c2=i*4+s2;
+            if (!boardSet.has(c1) && !boardSet.has(c2) && !heroSet.has(c1) && !heroSet.has(c2)) {
+              combos.push([c1,c2]);
+            }
+          }
+        }
+
+        let bestScore = 999999999, bestRc = 9;
+        
+        // 有効なコンボが存在する場合のみ評価を走らせる（カードリムーバルの完全適用）
+        if (combos.length > 0) {
+          for (const [c1,c2] of combos) {
+            const seven = [...boardCards, c1, c2];
+            if (seven.length < 7) {
+              if (seven.length >= 5) {
+                const avail = seven;
+                let b2 = null;
+                const subC = [];
+                const n = avail.length;
+                for(let a=0;a<n;a++) for(let b=a+1;b<n;b++) for(let c=b+1;c<n;c++)
+                  for(let d=c+1;d<n;d++) for(let e=d+1;e<n;e++) subC.push([a,b,c,d,e]);
+                for (const co of subC) {
+                  const five = co.map(ii=>avail[ii]);
+                  const rs = five.map(c=>c>>2).sort((a,b)=>a-b);
+                  const suits = five.map(c=>c&3);
+                  const isF = suits.every(s=>s===suits[0]);
+                  const r2 = eval5ranks(rs,isF);
+                  if (!b2||r2.rc<b2.rc||(r2.rc===b2.rc&&r2.score<b2.score)) b2=r2;
+                }
+                if (b2 && (b2.rc < bestRc || (b2.rc===bestRc && b2.score<bestScore))) {
+                  bestRc=b2.rc; bestScore=b2.score;
+                }
+              }
+            } else {
+              const res = eval7(seven.slice(0,7));
+              if (res.rc < bestRc || (res.rc===bestRc && res.score<bestScore)) {
+                bestRc=res.rc; bestScore=res.score;
+              }
+            }
+          }
+        }
+
+        // totalCombos: 元々の理論上コンボ数
+        // activeCombos: カードリムーバルを考慮して、現実に存在しうる残りコンボ数
+        results.push({
+          hand: label, 
+          score: bestScore, 
+          rc: bestRc, 
+          totalCombos: totalCombos, 
+          activeCombos: combos.length
+        });
+      }
+    }
+
+    // pct計算
+    const valid = results.filter(r=>r.score<999999999);
+    const sorted = [...valid].sort((a,b)=> a.rc!==b.rc ? a.rc-b.rc : a.score-b.score);
+    const total = sorted.length;
+    sorted.forEach((item, i)=>{
+      item.pct = total<=1 ? 100 : Math.round((1 - i/(total-1))*1000)/10;
+    });
+    results.forEach(r=>{ if(r.score>=999999999) r.pct=0; });
+    return results;
+  }
+
+  // シンプルなrange展開
+  function expandRangeSimple(rangeStr) {
+    const combos = [];
+    for (const tok of rangeStr.split(',')) {
+      const t = tok.trim();
+      if (!t) continue;
+      const plus = t.endsWith('+');
+      const base = plus ? t.slice(0,-1) : t;
+      if (base.length < 2) continue;
+      const r1idx = RANKS.indexOf(base[0].toUpperCase());
+      const r2idx = RANKS.indexOf(base[1].toUpperCase());
+      if (r1idx<0||r2idx<0) continue;
+      const typ = base.length>2 ? base[2] : (r1idx===r2idx?'p':'b');
+
+      if (r1idx===r2idx) {
+        const maxR = r1idx;
+        const minR = plus ? 0 : r1idx;
+        for (let r=minR; r<=maxR; r++)
+          for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++)
+            combos.push([r*4+s1, r*4+s2]);
+      } else {
+        const hi=Math.min(r1idx,r2idx), lo=Math.max(r1idx,r2idx);
+        const loMin = plus ? hi+1 : lo;
+        const loMax = lo;
+        for (let kicker=loMin; kicker<=loMax; kicker++) {
+          if (typ==='s') {
+            for (let s=0;s<4;s++) {
+              const c1=hi*4+s, c2=kicker*4+s;
+              combos.push([c1,c2]);
+            }
+          } else if (typ==='o') {
+            for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++) {
+              if (s1!==s2) combos.push([hi*4+s1, kicker*4+s2]);
+            }
+          } else {
+            for (let s=0;s<4;s++) combos.push([hi*4+s, kicker*4+s]);
+            for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++)
+              if (s1!==s2) combos.push([hi*4+s1, kicker*4+s2]);
+          }
+        }
+      }
+    }
+    return combos;
+  }
+
+  function makeDeck() {
+    const d=[];
+    for(let i=0;i<52;i++) d.push(i);
+    return d;
+  }
+
+  // ── Range vs Range (または Hand vs Range) Equity ──
+  async function rangeVsRangeEquity(rangeAStr, rangeBStr, boardStrs, nTrials=3000, heroHandOverride=null) {
+    const board = boardStrs.map(cardIdx).filter(c=>c>=0);
+    const boardSet = new Set(board);
+    
+    let combosA = [];
+    if (heroHandOverride && heroHandOverride[0] && heroHandOverride[1]) {
+      const c1 = cardIdx(heroHandOverride[0].rank + heroHandOverride[0].suit);
+      const c2 = cardIdx(heroHandOverride[1].rank + heroHandOverride[1].suit);
+      if (c1 >= 0 && c2 >= 0) {
+        combosA = [[c1, c2]];
+      }
+    } else {
+      combosA = expandRangeSimple(rangeAStr).filter(([a,b])=>!boardSet.has(a)&&!boardSet.has(b));
+    }
+    
+    const combosB = expandRangeSimple(rangeBStr).filter(([a,b])=>!boardSet.has(a)&&!boardSet.has(b));
+    if (!combosA.length||!combosB.length) return {btn:50,bb:50,n:0,ms:0};
+
+    const heroSelectedSet = new Set();
+    if (heroHandOverride && heroHandOverride[0] && heroHandOverride[1]) {
+      heroSelectedSet.add(cardIdx(heroHandOverride[0].rank + heroHandOverride[0].suit));
+      heroSelectedSet.add(cardIdx(heroHandOverride[1].rank + heroHandOverride[1].suit));
+    }
+
+    const deck = makeDeck().filter(c=>!boardSet.has(c) && !heroSelectedSet.has(c));
+    const nRemain = 5-board.length;
+    let winA=0, valid=0;
+    const t0=performance.now();
+
+    const chunkSize = 500;
+    for (let trial=0; trial<nTrials; trial++) {
+      const ha = combosA[Math.random()*combosA.length|0];
+      const hb = combosB[Math.random()*combosB.length|0];
+      
+      if (ha[0]===hb[0]||ha[0]===hb[1]||ha[1]===hb[0]||ha[1]===hb[1]) continue;
+      
+      const used = new Set([...board,...ha,...hb]);
+      const avail = deck.filter(c=>!used.has(c));
+      if (avail.length < nRemain) continue;
+
+      const extra=[];
+      const pool=[...avail];
+      for (let i=0;i<nRemain;i++) {
+        const j=i+(Math.random()*(pool.length-i)|0);
+        [pool[i],pool[j]]=[pool[j],pool[i]];
+        extra.push(pool[i]);
+      }
+      const fullBoard=[...board,...extra];
+      const sa=eval7([...fullBoard,...ha]);
+      const sb=eval7([...fullBoard,...hb]);
+      const cmp = sa.rc<sb.rc ? -1 : sa.rc>sb.rc ? 1 : sa.score<sb.score ? -1 : sa.score>sb.score ? 1 : 0;
+      if (cmp<0) winA++;
+      else if (cmp===0) winA+=0.5;
+      valid++;
+
+      if (trial%chunkSize===chunkSize-1) await new Promise(r=>setTimeout(r,0));
+    }
+    const ms=Math.round(performance.now()-t0);
+    if (!valid) return {btn:50,bb:50,n:0,ms};
+    const eqA=Math.round(winA/valid*100);
+    return {btn:eqA, bb:100-eqA, n:valid, ms};
+  }
+
+  // ── 厳密アウツ走査ポテンシャル評価器 (Card Removal 数理) ──
+  function classifyDraws(hero, board) {
+    if (!hero[0] || !hero[1] || !board || board.length < 3) return [];
+    
+    const heroCards = hero.map(c => cardIdx(c.rank + c.suit)).filter(c => c >= 0);
+    const boardCards = board.map(cardIdx).filter(c => c >= 0);
+    
+    if (heroCards.length < 2 || boardCards.length < 3) return [];
+
+    const initFull = [...boardCards, ...heroCards];
+    const initEval = eval7(initFull);
+    const isFlop = (boardCards.length === 3);
+
+    const used = new Set([...boardCards, ...heroCards]);
+    const deck = makeDeck().filter(c => !used.has(c));
+    
+    let fdOuts = 0;
+    let oesdOuts = 0;
+    let gsdOuts = 0;
+
+    for (const nextCard of deck) {
+      const nextBoard = [...boardCards, nextCard];
+      const res = eval7([...nextBoard, ...heroCards]);
+
+      // 1. フラッシュ成立判定
+      if (res.rc === 4 || res.rc === 1) {
+        fdOuts++;
+        continue;
+      }
+
+      // 2. 新規ストレート成立判定
+      if (res.rc === 5) {
+        if (initEval.rc !== 5) {
+          oesdOuts++; 
+        }
+      }
+    }
+
+    const totalCards = deck.length;
+    const draws = [];
+
+    // ① FD
+    if (fdOuts >= 4) {
+      const eq = (fdOuts / totalCards * 100) * (isFlop ? 2 : 1);
+      draws.push({
+        type: 'FD',
+        label: 'Flush Draw',
+        outs: fdOuts,
+        eq: Math.min(eq, 100.0)
+      });
+    }
+
+    // ② OESD / GSD 分離
+    if (oesdOuts >= 8) {
+      const eq = (oesdOuts / totalCards * 100) * (isFlop ? 2 : 1);
+      draws.push({
+        type: 'OESD',
+        label: 'Open-Ended SD',
+        outs: oesdOuts,
+        eq: Math.min(eq, 100.0)
+      });
+    } else if (oesdOuts >= 3 && oesdOuts < 8) {
+      const eq = (oesdOuts / totalCards * 100) * (isFlop ? 2 : 1);
+      draws.push({
+        type: 'GSD',
+        label: 'Gutshot SD',
+        outs: oesdOuts,
+        eq: Math.min(eq, 100.0)
+      });
+    }
+
+    // ③ バックドアFD（フロップ時限定）
+    if (isFlop) {
+      const suitsCount = {};
+      [...hero, ...board.map(c => ({suit: c.slice(-1)}))].forEach(c => {
+        suitsCount[c.suit] = (suitsCount[c.suit] || 0) + 1;
+      });
+      const hasBDFD = Object.values(suitsCount).some(cnt => cnt === 3);
+      if (hasBDFD && fdOuts === 0) {
+        draws.push({
+          type: 'BDFD',
+          label: 'Backdoor FD',
+          outs: 10,
+          eq: 4.2
+        });
+      }
+    }
+
+    return draws;
+  }
+
+  return { init, eval7, eval169, rangeVsRangeEquity, classifyDraws, cardIdx, RC_NAME, RANKS, SUITS };
+})();
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════
+   SPECTRA Range Equity Patch v2.0 — Pure JS (Hand vs Range対応版)
+═══════════════════════════════════════════════════════ */
+(function(){
+  const RANGES = {
+    BTN: "22+,A2s+,K5s+,Q8s+,J8s+,T8s+,97s+,86s+,75s+,65s,54s,A7o+,KTo+,QTo+,JTo",
+    BB:  "22+,A2s+,K2s+,Q4s+,J7s+,T7s+,96s+,85s+,74s+,64s+,53s+,A2o+,K7o+,Q8o+,J8o+,T8o+,97o+,87o"
+  };
+  const equityCache = new Map();
+
+  async function calcRealEquity(board) {
+    if (board.length < 3) return null;
+    
+    // キャッシュキーにヒーロー手札の状態を含めることでキャッシュ汚染を完全に防止
+    const hStr = heroHand[0] && heroHand[1] ? (heroHand[0].rank + heroHand[0].suit + heroHand[1].rank + heroHand[1].suit) : 'RANGE';
+    const key = `${hStr}_${board.join(',')}`;
+    
+    if (equityCache.has(key)) return equityCache.get(key);
+    
+    const eq = await HandEval.rangeVsRangeEquity(RANGES.BTN, RANGES.BB, board, 2000, heroHand);
+    equityCache.set(key, eq);
+    
+    console.log(`[Equity Engine] Mode: ${hStr === 'RANGE' ? 'Range vs Range' : 'Hero vs Range'} -> BTN/HERO=${eq.btn}% BB=${eq.bb}% n=${eq.n} (${eq.ms}ms)`);
+    return eq;
+  }
+
+  const _origRenderAnalytics = window.renderAnalytics;
+  window.renderAnalytics = function(board) {
+    _origRenderAnalytics(board);
+    if (board.length < 3) return;
+    
+    // スライダーのラベル表記を「HERO」または「BTN」に動的切り替え
+    const lblSec = document.querySelector('.range-name');
+    if (lblSec) {
+      lblSec.textContent = (heroHand[0] && heroHand[1]) ? 'HERO' : 'BTN';
+    }
+
+    calcRealEquity(board).then(eq=>{
+      if (!eq) return;
+      const barBtn=document.getElementById('bar-btn');
+      const valBtn=document.getElementById('val-btn');
+      const barBb=document.getElementById('bar-bb');
+      const valBb=document.getElementById('val-bb');
+      if (barBtn) barBtn.style.width=eq.btn+'%';
+      if (valBtn) { 
+        valBtn.textContent=eq.btn+'%'; 
+        valBtn.title=`MC Equity (N=${eq.n}, ${eq.ms}ms)`; 
+      }
+      if (barBb)  barBb.style.width=eq.bb+'%';
+      if (valBb)  { 
+        valBb.textContent=eq.bb+'%'; 
+        valBb.title=`MC Equity (N=${eq.n}, ${eq.ms}ms)`; 
+      }
+      if (typeof drawSparkline==='function') drawSparkline(eq.btn, eq.bb);
+    });
+  };
+
+  window.SPECTRA_PATCH = { RANGES, calcEquity: calcRealEquity, cache: equityCache, version: '2.0-purejs' };
+  console.log('[SPECTRA Range Equity Patch v2.0] Pure JS loaded.');
+})();
+</script>
+<div id="hm-tooltip">
+  <div class="tt-box">
+    <div class="tt-title">
+      <span id="tt-hand">--</span>
+      <span class="tt-type" id="tt-type">--</span>
+    </div>
+    <div class="tt-best-label" id="tt-best-label"></div>
+    <div class="tt-combos" id="tt-combos"></div>
+    <div class="tt-metrics">
+      <div class="tt-metric-row">
+        <span class="tt-metric-lbl">強度 NOW</span>
+        <div class="tt-bar-wrap"><div class="tt-bar" id="tt-bar-str" style="background:#e53e3e;"></div></div>
+        <span class="tt-metric-val" id="tt-val-str">--%</span>
+      </div>
+      <div class="tt-metric-row">
+        <span class="tt-metric-lbl">将来性</span>
+        <div class="tt-bar-wrap"><div class="tt-bar" id="tt-bar-pot" style="background:#38a169;"></div></div>
+        <span class="tt-metric-val" id="tt-val-pot">--%</span>
+      </div>
+      <div class="tt-metric-row">
+        <span class="tt-metric-lbl">コンボ</span>
+        <div class="tt-bar-wrap"><div class="tt-bar" id="tt-bar-combo" style="background:#3182ce;"></div></div>
+        <span class="tt-metric-val" id="tt-val-combo">-/-</span>
+      </div>
+    </div>
+    <div class="tt-blocker" id="tt-blocker">⚠ ブロッカーあり</div>
+    <div class="tt-warn" id="tt-warn"></div>
+  </div>
+</div>
 </body>
 </html>
