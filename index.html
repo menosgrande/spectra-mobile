@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang=\"ja\">
+<html lang="ja">
 <head>
-<meta charset=\"UTF-8\"/>
-<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=1.0\"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>SPECTRA v3.0 — Web Worker Architecture</title>
-<link href=\"https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&display=swap\" rel=\"stylesheet\">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════════
    SPECTRA v3.0 — NEW ARCHITECTURE CSS
@@ -258,75 +258,75 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 <body>
 
 <!-- Brain Overlay -->
-<div id=\"brain-overlay\">
-  <div class=\"brain-title\">SPECTRA v3.0</div>
-  <div class=\"brain-msg\">INITIALIZING WORKER ENGINE...</div>
-  <div class=\"brain-prog-wrap\">
-    <div class=\"brain-prog\" id=\"brain-prog\" style=\"width:0%\"></div>
+<div id="brain-overlay">
+  <div class="brain-title">SPECTRA v3.0</div>
+  <div class="brain-msg">INITIALIZING WORKER ENGINE...</div>
+  <div class="brain-prog-wrap">
+    <div class="brain-prog" id="brain-prog" style="width:0%"></div>
   </div>
 </div>
 
 <!-- Header -->
-<div id=\"hdr\">
+<div id="hdr">
   <div>
-    <div class=\"logo-t\">SPECTRA</div>
-    <div class=\"logo-s\">TACTICAL POKER OS v3.0</div>
+    <div class="logo-t">SPECTRA</div>
+    <div class="logo-s">TACTICAL POKER OS v3.0</div>
   </div>
-  <div class=\"hdr-mid\">WORKER ARCHITECTURE</div>
-  <div class=\"hdr-r\">
-    <div id=\"worker-status\">
-      <div id=\"worker-dot\"></div>
-      <span id=\"worker-txt\">INIT</span>
+  <div class="hdr-mid">WORKER ARCHITECTURE</div>
+  <div class="hdr-r">
+    <div id="worker-status">
+      <div id="worker-dot"></div>
+      <span id="worker-txt">INIT</span>
     </div>
-    <div id=\"calc-time\" style=\"color:var(--accent-cyan)\"></div>
-    <div class=\"conn-dot\"></div>
+    <div id="calc-time" style="color:var(--accent-cyan)"></div>
+    <div class="conn-dot"></div>
   </div>
 </div>
 
 <!-- Mode Toggle -->
-<div id=\"mode-toggle\">
-  <button class=\"mode-btn active\" onclick=\"setMode('MANUAL')\">MANUAL</button>
-  <div style=\"width:1px;background:rgba(0,180,255,.3);\"></div>
-  <button class=\"mode-btn\" onclick=\"setMode('CAMERA')\">CAMERA</button>
+<div id="mode-toggle">
+  <button class="mode-btn active" onclick="setMode('MANUAL')">MANUAL</button>
+  <div style="width:1px;background:rgba(0,180,255,.3);"></div>
+  <button class="mode-btn" onclick="setMode('CAMERA')">CAMERA</button>
 </div>
 
 <!-- Mobile Tabs -->
-<div id=\"mob-tabs\">
-  <button class=\"mob-tab active\" onclick=\"switchTab('left')\">NUTS</button>
-  <button class=\"mob-tab\" onclick=\"switchTab('center')\">BOARD</button>
-  <button class=\"mob-tab\" onclick=\"switchTab('right')\">EQUITY</button>
+<div id="mob-tabs">
+  <button class="mob-tab active" onclick="switchTab('left')">NUTS</button>
+  <button class="mob-tab" onclick="switchTab('center')">BOARD</button>
+  <button class="mob-tab" onclick="switchTab('right')">EQUITY</button>
 </div>
 
 <!-- Main Grid -->
-<div id=\"main\">
+<div id="main">
 
   <!-- LEFT PANEL -->
-  <div class=\"pnl mob-active\" id=\"left-pnl\">
-    <div class=\"sec\">STREET</div>
+  <div class="pnl mob-active" id="left-pnl">
+    <div class="sec">STREET</div>
     
     <!-- Street Indicator -->
-    <div id=\"street-box\">
-      <div id=\"street-name\">FLOP</div>
-      <div id=\"street-cnt\">3 cards on board</div>
+    <div id="street-box">
+      <div id="street-name">FLOP</div>
+      <div id="street-cnt">3 cards on board</div>
     </div>
     
     <!-- NEW: Nuts 2-Column Layout -->
-    <div class=\"sec\">NUTS RANKING</div>
-    <div id=\"nuts-container\">
+    <div class="sec">NUTS RANKING</div>
+    <div id="nuts-container">
       
       <!-- MADE HANDS Column -->
-      <div class=\"nuts-col\">
-        <div class=\"nuts-col-header made\">MADE</div>
-        <div class=\"nuts-list\" id=\"nuts-made-list\">
-          <div class=\"nuts-empty\">NO MADE HANDS</div>
+      <div class="nuts-col">
+        <div class="nuts-col-header made">MADE</div>
+        <div class="nuts-list" id="nuts-made-list">
+          <div class="nuts-empty">NO MADE HANDS</div>
         </div>
       </div>
       
       <!-- DRAWS Column -->
-      <div class=\"nuts-col\">
-        <div class=\"nuts-col-header draw\">DRAWS</div>
-        <div class=\"nuts-list\" id=\"nuts-draw-list\">
-          <div class=\"nuts-empty\">NO DRAWS</div>
+      <div class="nuts-col">
+        <div class="nuts-col-header draw">DRAWS</div>
+        <div class="nuts-list" id="nuts-draw-list">
+          <div class="nuts-empty">NO DRAWS</div>
         </div>
       </div>
       
@@ -334,140 +334,140 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 
   <!-- CENTER PANEL -->
-  <div class=\"pnl\" id=\"center-pnl\">
-    <div class=\"cam-hdr\">
-      <span class=\"cam-lbl\">BOARD / HERO <span>CAM</span></span>
-      <button onclick=\"toggleCamera()\" style=\"background:none;border:1px solid rgba(0,180,255,.3);color:var(--accent-cyan);font-family:'Share Tech Mono',monospace;font-size:9px;padding:3px 8px;cursor:pointer;\">CAM</button>
+  <div class="pnl" id="center-pnl">
+    <div class="cam-hdr">
+      <span class="cam-lbl">BOARD / HERO <span>CAM</span></span>
+      <button onclick="toggleCamera()" style="background:none;border:1px solid rgba(0,180,255,.3);color:var(--accent-cyan);font-family:'Share Tech Mono',monospace;font-size:9px;padding:3px 8px;cursor:pointer;">CAM</button>
     </div>
     
     <!-- Camera Area -->
-    <div id=\"cam-wrap\">
-      <video id=\"cam-video\" autoplay playsinline></video>
-      <canvas id=\"cam-canvas\"></canvas>
-      <div id=\"cam-placeholder\">
-        <div id=\"table-oval\">
-          <div style=\"font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(0,180,255,.4);letter-spacing:2px;\">CAMERA MODE</div>
+    <div id="cam-wrap">
+      <video id="cam-video" autoplay playsinline></video>
+      <canvas id="cam-canvas"></canvas>
+      <div id="cam-placeholder">
+        <div id="table-oval">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(0,180,255,.4);letter-spacing:2px;">CAMERA MODE</div>
         </div>
       </div>
     </div>
     
     <!-- Board Cards -->
-    <div id=\"board-area\">
-      <div class=\"board-slot\" data-index=\"0\">
-        <div class=\"slot-inputs\">
-          <select id=\"rank0\" onchange=\"onBoardChange(0)\"><option value=\"\">--</option></select>
-          <select id=\"suit0\" onchange=\"onBoardChange(0)\"><option value=\"\">--</option></select>
-          <button class=\"slot-clr\" onclick=\"clearSlot(0)\">×</button>
+    <div id="board-area">
+      <div class="board-slot" data-index="0">
+        <div class="slot-inputs">
+          <select id="rank0" onchange="onBoardChange(0)"><option value="">--</option></select>
+          <select id="suit0" onchange="onBoardChange(0)"><option value="">--</option></select>
+          <button class="slot-clr" onclick="clearSlot(0)">×</button>
         </div>
-        <div class=\"board-card waiting\" id=\"card0\"><span class=\"wait-txt\">FLOP</span></div>
+        <div class="board-card waiting" id="card0"><span class="wait-txt">FLOP</span></div>
       </div>
-      <div class=\"board-slot\" data-index=\"1\">
-        <div class=\"slot-inputs\">
-          <select id=\"rank1\" onchange=\"onBoardChange(1)\"><option value=\"\">--</option></select>
-          <select id=\"suit1\" onchange=\"onBoardChange(1)\"><option value=\"\">--</option></select>
-          <button class=\"slot-clr\" onclick=\"clearSlot(1)\">×</button>
+      <div class="board-slot" data-index="1">
+        <div class="slot-inputs">
+          <select id="rank1" onchange="onBoardChange(1)"><option value="">--</option></select>
+          <select id="suit1" onchange="onBoardChange(1)"><option value="">--</option></select>
+          <button class="slot-clr" onclick="clearSlot(1)">×</button>
         </div>
-        <div class=\"board-card waiting\" id=\"card1\"><span class=\"wait-txt\">FLOP</span></div>
+        <div class="board-card waiting" id="card1"><span class="wait-txt">FLOP</span></div>
       </div>
-      <div class=\"board-slot\" data-index=\"2\">
-        <div class=\"slot-inputs\">
-          <select id=\"rank2\" onchange=\"onBoardChange(2)\"><option value=\"\">--</option></select>
-          <select id=\"suit2\" onchange=\"onBoardChange(2)\"><option value=\"\">--</option></select>
-          <button class=\"slot-clr\" onclick=\"clearSlot(2)\">×</button>
+      <div class="board-slot" data-index="2">
+        <div class="slot-inputs">
+          <select id="rank2" onchange="onBoardChange(2)"><option value="">--</option></select>
+          <select id="suit2" onchange="onBoardChange(2)"><option value="">--</option></select>
+          <button class="slot-clr" onclick="clearSlot(2)">×</button>
         </div>
-        <div class=\"board-card waiting\" id=\"card2\"><span class=\"wait-txt\">FLOP</span></div>
+        <div class="board-card waiting" id="card2"><span class="wait-txt">FLOP</span></div>
       </div>
-      <div class=\"board-slot\" data-index=\"3\">
-        <div class=\"slot-inputs\">
-          <select id=\"rank3\" onchange=\"onBoardChange(3)\"><option value=\"\">--</option></select>
-          <select id=\"suit3\" onchange=\"onBoardChange(3)\"><option value=\"\">--</option></select>
-          <button class=\"slot-clr\" onclick=\"clearSlot(3)\">×</button>
+      <div class="board-slot" data-index="3">
+        <div class="slot-inputs">
+          <select id="rank3" onchange="onBoardChange(3)"><option value="">--</option></select>
+          <select id="suit3" onchange="onBoardChange(3)"><option value="">--</option></select>
+          <button class="slot-clr" onclick="clearSlot(3)">×</button>
         </div>
-        <div class=\"board-card waiting\" id=\"card3\"><span class=\"wait-txt\">TURN</span></div>
+        <div class="board-card waiting" id="card3"><span class="wait-txt">TURN</span></div>
       </div>
-      <div class=\"board-slot\" data-index=\"4\">
-        <div class=\"slot-inputs\">
-          <select id=\"rank4\" onchange=\"onBoardChange(4)\"><option value=\"\">--</option></select>
-          <select id=\"suit4\" onchange=\"onBoardChange(4)\"><option value=\"\">--</option></select>
-          <button class=\"slot-clr\" onclick=\"clearSlot(4)\">×</button>
+      <div class="board-slot" data-index="4">
+        <div class="slot-inputs">
+          <select id="rank4" onchange="onBoardChange(4)"><option value="">--</option></select>
+          <select id="suit4" onchange="onBoardChange(4)"><option value="">--</option></select>
+          <button class="slot-clr" onclick="clearSlot(4)">×</button>
         </div>
-        <div class=\"board-card waiting\" id=\"card4\"><span class=\"wait-txt\">RIVER</span></div>
+        <div class="board-card waiting" id="card4"><span class="wait-txt">RIVER</span></div>
       </div>
     </div>
     
     <!-- Hero Cards -->
-    <div id=\"hero-area\">
-      <div class=\"hero-slot\">
-        <select id=\"hero-rank0\" onchange=\"onHeroChange(0)\"><option value=\"\">--</option></select>
-        <select id=\"hero-suit0\" onchange=\"onHeroChange(0)\"><option value=\"\">--</option></select>
+    <div id="hero-area">
+      <div class="hero-slot">
+        <select id="hero-rank0" onchange="onHeroChange(0)"><option value="">--</option></select>
+        <select id="hero-suit0" onchange="onHeroChange(0)"><option value="">--</option></select>
       </div>
-      <div class=\"hero-slot\">
-        <select id=\"hero-rank1\" onchange=\"onHeroChange(1)\"><option value=\"\">--</option></select>
-        <select id=\"hero-suit1\" onchange=\"onHeroChange(1)\"><option value=\"\">--</option></select>
+      <div class="hero-slot">
+        <select id="hero-rank1" onchange="onHeroChange(1)"><option value="">--</option></select>
+        <select id="hero-suit1" onchange="onHeroChange(1)"><option value="">--</option></select>
       </div>
     </div>
     
     <!-- Stabilizer -->
-    <div id=\"stab-bar\">
-      <div id=\"stab-dot\" style=\"background:#666;\"></div>
-      <span id=\"stab-txt\">TEXTURE:</span>
-      <span id=\"stab-conf\" style=\"color:var(--text-secondary)\">PREFLOP</span>
+    <div id="stab-bar">
+      <div id="stab-dot" style="background:#666;"></div>
+      <span id="stab-txt">TEXTURE:</span>
+      <span id="stab-conf" style="color:var(--text-secondary)">PREFLOP</span>
     </div>
   </div>
 
   <!-- RIGHT PANEL -->
-  <div class=\"pnl\" id=\"right-pnl\">
-    <div class=\"sec\">EQUITY</div>
+  <div class="pnl" id="right-pnl">
+    <div class="sec">EQUITY</div>
     
     <div>
-      <div class=\"wet-big\" id=\"wet-value\">--</div>
-      <div class=\"wet-sub\">vs RANGE</div>
+      <div class="wet-big" id="wet-value">--</div>
+      <div class="wet-sub">vs RANGE</div>
     </div>
     
-    <div class=\"metric\">
-      <div class=\"metric-lbl\">CONNECTED</div>
-      <div class=\"bar-wrap\"><div class=\"bar-fill\" id=\"connected-bar\" style=\"width:0%;background:linear-gradient(90deg,#00d4ff,#00ff9d);\"></div></div>
-      <div class=\"metric-val\" id=\"connected-val\">0%</div>
+    <div class="metric">
+      <div class="metric-lbl">CONNECTED</div>
+      <div class="bar-wrap"><div class="bar-fill" id="connected-bar" style="width:0%;background:linear-gradient(90deg,#00d4ff,#00ff9d);"></div></div>
+      <div class="metric-val" id="connected-val">0%</div>
     </div>
     
-    <div class=\"metric\">
-      <div class=\"metric-lbl\">SUITED</div>
-      <div class=\"bar-wrap\"><div class=\"bar-fill\" id=\"suited-bar\" style=\"width:0%;background:#4895ef;\"></div></div>
-      <div class=\"metric-val\" id=\"suited-val\">0%</div>
+    <div class="metric">
+      <div class="metric-lbl">SUITED</div>
+      <div class="bar-wrap"><div class="bar-fill" id="suited-bar" style="width:0%;background:#4895ef;"></div></div>
+      <div class="metric-val" id="suited-val">0%</div>
     </div>
     
-    <div class=\"metric\">
-      <div class=\"metric-lbl\">PAIRED</div>
-      <div class=\"bar-wrap\"><div class=\"bar-fill\" id=\"paired-bar\" style=\"width:0%;background:var(--accent-gold);\"></div></div>
-      <div class=\"metric-val\" id=\"paired-val\">0%</div>
+    <div class="metric">
+      <div class="metric-lbl">PAIRED</div>
+      <div class="bar-wrap"><div class="bar-fill" id="paired-bar" style="width:0%;background:var(--accent-gold);"></div></div>
+      <div class="metric-val" id="paired-val">0%</div>
     </div>
     
-    <div class=\"sec\" style=\"margin-top:6px;\">RANGES</div>
-    <div class=\"range-grid\">
+    <div class="sec" style="margin-top:6px;">RANGES</div>
+    <div class="range-grid">
       <div>
-        <div class=\"range-name\">HERO</div>
-        <div class=\"range-val\" id=\"hero-range-val\">--</div>
+        <div class="range-name">HERO</div>
+        <div class="range-val" id="hero-range-val">--</div>
       </div>
       <div>
-        <div class=\"range-name\">VILLAIN</div>
-        <div class=\"range-val\" id=\"villain-range-val\">ALL</div>
+        <div class="range-name">VILLAIN</div>
+        <div class="range-val" id="villain-range-val">ALL</div>
       </div>
     </div>
     
-    <div class=\"sec\" style=\"margin-top:6px;\">HEATMAP LEGEND</div>
-    <div id=\"hm-legend\">
-      <div class=\"legend-item\"><div class=\"legend-dot\" style=\"background:hsl(0,90%,45%);\"></div><span>STRONG</span></div>
-      <div class=\"legend-item\"><div class=\"legend-dot\" style=\"background:hsl(120,90%,45%);\"></div><span>WEAK</span></div>
+    <div class="sec" style="margin-top:6px;">HEATMAP LEGEND</div>
+    <div id="hm-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:hsl(0,90%,45%);"></div><span>STRONG</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:hsl(120,90%,45%);"></div><span>WEAK</span></div>
     </div>
   </div>
   
 </div>
 
 <!-- Footer -->
-<div id=\"ftr\">
-  <span id=\"status-txt\">SYSTEM READY</span>
-  <span class=\"analyzing\" id=\"analyzing-txt\" style=\"display:none\">CALCULATING...</span>
-  <span id=\"fps-d\"></span>
+<div id="ftr">
+  <span id="status-txt">SYSTEM READY</span>
+  <span class="analyzing" id="analyzing-txt" style="display:none">CALCULATING...</span>
+  <span id="fps-d"></span>
 </div>
 
 <script>
@@ -663,19 +663,19 @@ function updateCardDisplay(index) {
   
   if (!card) {
     cardEl.className = 'board-card waiting';
-    cardEl.innerHTML = `<span class=\"wait-txt\">${['FLOP','FLOP','FLOP','TURN','RIVER'][index]}</span>`;
+    cardEl.innerHTML = `<span class="wait-txt">${['FLOP','FLOP','FLOP','TURN','RIVER'][index]}</span>`;
     el(`slot-clr${index}`)?.classList.remove('has-card');
   } else {
     const rank = card[0];
     const suit = card[1];
     cardEl.className = `board-card active bg-${suit}`;
     cardEl.innerHTML = `
-      <div class=\"card-inner\">
-        <div class=\"card-corner-tl\">
-          <span class=\"corner-rank\">${rank}</span>
-          <span class=\"corner-suit\">${suitSymbol(suit)}</span>
+      <div class="card-inner">
+        <div class="card-corner-tl">
+          <span class="corner-rank">${rank}</span>
+          <span class="corner-suit">${suitSymbol(suit)}</span>
         </div>
-        <span class=\"card-rank-center\">${rank}</span>
+        <span class="card-rank-center">${rank}</span>
       </div>
     `;
     el(`slot-clr${index}`)?.classList.add('has-card');
@@ -1297,10 +1297,10 @@ function populateSelects() {
     const suitSel = el(`suit${i}`);
     
     if (rankSel) {
-      rankSel.innerHTML = '<option value=\"\">--</option>' + ranks.map(r => `<option value=\"${r}\">${r}</option>`).join('');
+      rankSel.innerHTML = '<option value="">--</option>' + ranks.map(r => `<option value="${r}">${r}</option>`).join('');
     }
     if (suitSel) {
-      suitSel.innerHTML = '<option value=\"\">--</option>' + suits.map(s => `<option value=\"${s.v}\">${s.t}</option>`).join('');
+      suitSel.innerHTML = '<option value="">--</option>' + suits.map(s => `<option value="${s.v}">${s.t}</option>`).join('');
     }
   }
   
@@ -1310,10 +1310,10 @@ function populateSelects() {
     const suitSel = el(`hero-suit${i}`);
     
     if (rankSel) {
-      rankSel.innerHTML = '<option value=\"\">--</option>' + ranks.map(r => `<option value=\"${r}\">${r}</option>`).join('');
+      rankSel.innerHTML = '<option value="">--</option>' + ranks.map(r => `<option value="${r}">${r}</option>`).join('');
     }
     if (suitSel) {
-      suitSel.innerHTML = '<option value=\"\">--</option>' + suits.map(s => `<option value=\"${s.v}\">${s.t}</option>`).join('');
+      suitSel.innerHTML = '<option value="">--</option>' + suits.map(s => `<option value="${s.v}">${s.t}</option>`).join('');
     }
   }
 }
