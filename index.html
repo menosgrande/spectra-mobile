@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>SPECTRA v2.0</title>
+<title>SPECTRA v2.0 — Premium Tactical OS</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/pyodide/v0.26.0/full/pyodide.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{width:100%;height:100%;overflow:hidden;background:#04080f;color:#c8dff0;font-family:'Rajdhani',sans-serif;}
@@ -92,7 +91,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 }
 .rank-sel{color:#e0f0ff;}
 
-/* Card display */
+/* Card display - Premium Custom Solid 4-Color deck */
 .board-card{
   width:100%;aspect-ratio:2.2/3.2;
   border:2px solid rgba(0,255,157,.5);border-radius:6px;
@@ -102,41 +101,30 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   overflow:hidden;
 }
 .board-card.waiting{border-color:rgba(0,180,255,.15);box-shadow:none;background:transparent;}
-.board-card.active{border-color:rgba(255,255,255,.25);box-shadow:0 0 18px rgba(0,255,157,.2);}
+.board-card.active{border-color:rgba(255,255,255,.25);box-shadow:0 0 18px rgba(0,255,157,.2);border:none;}
 .card-inner{
   width:100%;height:100%;border-radius:5px;
   display:flex;align-items:center;justify-content:center;
   position:relative;overflow:hidden;
 }
-/* Card backgrounds — light solid */
-.bg-s{background:#b0b8c8;}
-.bg-h{background:#f0a0a8;}
-.bg-d{background:#90b0e8;}
-.bg-c{background:#90c8a0;}
-/* suit symbol — max size, dark, fills card */
-.card-suit-bg{
-  font-size:clamp(80px,13vw,140px);
-  line-height:1;
-  position:absolute;top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  pointer-events:none;user-select:none;
-}
-.card-suit-bg.sym-s{color:#1a1a22;}
-.card-suit-bg.sym-h{color:#8b0010;}
-.card-suit-bg.sym-d{color:#0a2080;}
-.card-suit-bg.sym-c{color:#0a4010;}
-/* RANK — white, huge, on top */
+
+/* 4-Color Deck Solid Premium Colors */
+.bg-s{background:#1c1c1e;} /* Spades: Premium Deep Charcoal Black */
+.bg-h{background:#d92b43;} /* Hearts: Ruby Red */
+.bg-d{background:#0052cc;} /* Diamonds: Royal Blue */
+.bg-c{background:#00875a;} /* Clubs: Emerald Green */
+
+/* Central big rank - White, bold */
 .card-rank-center{
-  font-size:clamp(30px,4.5vw,52px);
+  font-size:clamp(32px, 4.8vw, 56px);
   font-weight:900;line-height:1;
   font-family:Georgia,'Times New Roman',serif;
   color:#fff;
   text-shadow:0 2px 8px rgba(0,0,0,.5);
   position:relative;z-index:2;
 }
-/* corner */
-.card-corner-tl{position:absolute;top:4px;left:5px;display:flex;flex-direction:column;align-items:center;z-index:3;line-height:1.1;}
-.card-corner-br{position:absolute;bottom:4px;right:5px;display:flex;flex-direction:column;align-items:center;transform:rotate(180deg);z-index:3;line-height:1.1;}
+/* Corner suit & rank: Left-top only for clean observer layout */
+.card-corner-tl{position:absolute;top:4px;left:6px;display:flex;flex-direction:column;align-items:center;z-index:3;line-height:1.0;}
 .corner-rank{font-size:11px;font-weight:700;font-family:Georgia,serif;color:#fff;line-height:1;text-shadow:0 1px 3px rgba(0,0,0,.4);}
 .corner-suit{font-size:9px;line-height:1;color:rgba(255,255,255,.9);}
 .wait-txt{font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,180,255,.35);letter-spacing:1px;animation:blink2 1.4s step-end infinite;}
@@ -174,7 +162,17 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   gap:1px;flex:1;min-height:0;align-content:start;
 }
 .hm-hdr{font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(0,212,255,.55);display:flex;align-items:center;justify-content:center;}
-.hm-c{font-family:'Share Tech Mono',monospace;font-size:6px;display:flex;align-items:center;justify-content:center;border-radius:1px;aspect-ratio:1/1;transition:background-color .3s ease;cursor:default;color:rgba(255,255,255,.75);}
+.hm-c{font-family:'Share Tech Mono',monospace;font-size:6px;display:flex;align-items:center;justify-content:center;border-radius:1px;aspect-ratio:1/1;transition:all 0.3s ease;cursor:default;color:rgba(255,255,255,.75);position:relative;}
+.hm-c.hero-active-cell{
+  border: 1.5px solid #ffb800 !important;
+  box-shadow: 0 0 12px #ffb800;
+  z-index: 10;
+  animation: pulse-gold 2s infinite ease-in-out;
+}
+@keyframes pulse-gold {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); box-shadow: 0 0 18px #ffb800; }
+}
 #hm-spin{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(4,8,15,.75);border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#00d4ff;letter-spacing:2px;}
 #hm-spin.active{display:flex;}
 
@@ -305,6 +303,199 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   /* テーブル楕円を縮小 */
   #table-oval{width:90%;height:70%;}
 }
+
+/* ═══════════════════════════════════════════
+   STEP 2: 2本立てNUTS + ヒーローUI
+═══════════════════════════════════════════ */
+/* nuts-secヘッダーv2 */
+#nuts-sec-v2{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:rgba(0,212,255,.6);text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid rgba(0,180,255,.12);flex-shrink:0;margin-top:3px;display:flex;align-items:center;justify-content:space-between;}
+#nuts-sec-v2 .ns-ll{color:rgba(0,255,157,.7);}
+#nuts-sec-v2 .ns-rl{color:rgba(80,160,255,.7);}
+#nuts-sec-v2 .ns-badge{font-size:7px;padding:1px 5px;border-radius:2px;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.2);color:rgba(0,212,255,.5);letter-spacing:1px;}
+#nuts-sec-v2 .ns-badge.hero{background:rgba(255,184,0,.07);border-color:rgba(255,184,0,.25);color:rgba(255,184,0,.8);}
+
+/* ヒーローストリップ */
+#hero-strip{display:flex;align-items:center;gap:5px;padding:5px 4px;background:rgba(255,184,0,.04);border:1px solid rgba(255,184,0,.12);border-radius:2px;flex-shrink:0;min-height:40px;}
+#hero-strip .hs-lbl{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1.5px;color:rgba(255,184,0,.4);flex-shrink:0;}
+#hero-strip .hs-cards{display:flex;gap:4px;flex:1;align-items:center;}
+.hs-slot{display:flex;align-items:center;gap:2px;}
+.hs-slot select{background:#0c1828;border:1px solid rgba(255,184,0,.25);border-radius:2px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;padding:2px 1px;cursor:pointer;outline:none;text-align:center;color:#e0f0ff;transition:border-color .2s,background .2s;}
+.hs-slot select:focus{border-color:rgba(255,184,0,.7);background:#1a1200;}
+.hs-slot select.has-v{border-color:rgba(255,184,0,.5);}
+.hs-rsel{width:34px;}
+.hs-ssel{width:30px;}
+.hs-sep{font-size:8px;color:rgba(255,255,255,.12);}
+.hs-clr{font-size:8px;padding:1px 5px;border:1px solid rgba(255,59,59,.25);border-radius:2px;background:rgba(255,59,59,.05);color:rgba(255,100,100,.5);cursor:pointer;transition:all .15s;}
+.hs-clr:hover{border-color:rgba(255,59,59,.6);color:rgba(255,130,130,.9);background:rgba(255,59,59,.15);}
+.hs-empty{font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(255,184,0,.2);letter-spacing:.5px;}
+
+/* 2本立てスプリット */
+#nuts-split{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;min-height:0;}
+#nuts-made-col{border-right:1px solid rgba(255,255,255,.05);display:flex;flex-direction:column;overflow:hidden;}
+#nuts-draw-col{display:flex;flex-direction:column;overflow:hidden;}
+.nc-hdr{font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1.5px;padding:4px 5px 3px;border-bottom:1px solid rgba(255,255,255,.05);flex-shrink:0;}
+#nuts-made-col .nc-hdr{color:rgba(0,255,157,.5);}
+#nuts-draw-col .nc-hdr{color:rgba(80,160,255,.5);}
+#nuts-made-list,#nuts-draw-list{flex:1;overflow-y:auto;overflow-x:hidden;}
+
+/* Made行 */
+.nm-row{display:flex;align-items:center;gap:4px;padding:3px 5px;border-bottom:1px solid rgba(255,255,255,.03);transition:background .1s;}
+.nm-row:hover{background:rgba(255,255,255,.03);}
+.nm-rank{font-family:'Orbitron',monospace;font-size:9px;color:rgba(255,184,0,.45);min-width:12px;flex-shrink:0;}
+.nm-eq{font-family:'Share Tech Mono',monospace;font-size:8px;color:#00d4ff;min-width:30px;text-align:right;flex-shrink:0;}
+.nm-hand{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#c8dff0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nm-type{font-size:7px;color:rgba(160,200,230,.3);text-align:right;line-height:1.2;flex-shrink:0;max-width:38px;}
+.nm-row.hm{background:rgba(255,184,0,.07);}
+.nm-row.hm .nm-hand{color:#f0c040;}
+.nm-row.hm .nm-rank{color:#f0c040;}
+
+/* Draw行 */
+.nd-row{display:flex;flex-direction:column;padding:4px 5px;border-bottom:1px solid rgba(255,255,255,.03);gap:1px;transition:background .1s;}
+.nd-row:hover{background:rgba(255,255,255,.03);}
+.nd-top{display:flex;align-items:center;gap:3px;}
+.nd-type{font-family:'Orbitron',monospace;font-size:8px;font-weight:700;letter-spacing:.5px;flex-shrink:0;}
+.nd-type.fd{color:#4090d0;}.nd-type.oesd{color:#40a060;}.nd-type.gsd{color:#c09030;}.nd-type.bdfd{color:#606880;}.nd-type.bdsd{color:#506060;}
+.nd-eq{font-family:'Share Tech Mono',monospace;font-size:9px;color:#4090d0;font-weight:700;margin-left:auto;flex-shrink:0;}
+.nd-detail{font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(160,200,230,.3);display:flex;justify-content:space-between;}
+.nd-outs{color:rgba(0,255,157,.5);}
+
+/* 空表示 */
+.nc-empty{font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.18);padding:12px 6px;text-align:center;line-height:1.7;letter-spacing:.5px;}
+.nc-scan{height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.35),transparent);animation:ncscan 1.4s linear infinite;flex-shrink:0;}
+@keyframes ncscan{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/* モバイル: nuts-splitを縦積みに */
+@media(max-width:480px){
+  #nuts-split{grid-template-columns:1fr;grid-template-rows:auto auto;}
+  #nuts-made-col{border-right:none;border-bottom:1px solid rgba(255,255,255,.06);max-height:180px;}
+}
+
+/* ═══════════════════════════════════════════
+   HEATMAP TOOLTIP v1.0
+   hover(desktop) / tap(mobile) で表示
+═══════════════════════════════════════════ */
+#hm-tooltip {
+  position: fixed;
+  z-index: 9000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s;
+  width: 220px;
+}
+#hm-tooltip.visible { opacity: 1; }
+
+.tt-box {
+  background: rgba(4,8,15,.97);
+  border: 1px solid rgba(0,212,255,.3);
+  border-radius: 4px;
+  padding: 8px 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.7), 0 0 0 1px rgba(0,212,255,.08);
+  font-family: 'Share Tech Mono', monospace;
+}
+.tt-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0f0ff;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.tt-title .tt-type {
+  font-size: 8px;
+  color: rgba(0,212,255,.6);
+  letter-spacing: 1.5px;
+  font-weight: 400;
+}
+/* コンボ行 */
+.tt-combos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 7px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.tt-combo {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  font-size: 11px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.03);
+  transition: opacity .1s;
+}
+.tt-combo.blocked {
+  opacity: 0.2;
+  text-decoration: line-through;
+  filter: grayscale(1);
+}
+.tt-combo.best {
+  border-color: rgba(255,184,0,.5);
+  background: rgba(255,184,0,.08);
+  box-shadow: 0 0 6px rgba(255,184,0,.2);
+}
+/* スートカラー */
+.cs { color: #a0a8b8; }
+.ch { color: #e03040; }
+.cd { color: #4090e0; }
+.cc { color: #30b050; }
+
+/* 強度バー */
+.tt-metrics { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.tt-metric-row { display: flex; align-items: center; gap: 5px; }
+.tt-metric-lbl {
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: rgba(160,200,230,.4);
+  width: 52px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+.tt-bar-wrap {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.tt-bar { height: 100%; border-radius: 2px; transition: width .4s; }
+.tt-metric-val {
+  font-size: 9px;
+  color: #00d4ff;
+  width: 30px;
+  text-align: right;
+  flex-shrink: 0;
+}
+/* 最強コンボ注釈 */
+.tt-best-label {
+  font-size: 7.5px;
+  color: rgba(255,184,0,.6);
+  letter-spacing: .5px;
+  margin-bottom: 4px;
+}
+/* ブロッカー警告 */
+.tt-blocker {
+  font-size: 7.5px;
+  color: rgba(255,100,100,.6);
+  margin-top: 4px;
+  letter-spacing: .5px;
+  display: none;
+}
+.tt-blocker.active { display: block; }
+/* FD不可警告 */
+.tt-warn {
+  font-size: 7.5px;
+  color: rgba(255,184,0,.5);
+  margin-top: 3px;
+  letter-spacing: .5px;
+}
 </style>
 </head>
 <body>
@@ -313,9 +504,9 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 <!-- BRAIN OVERLAY -->
 <div id="brain-overlay">
   <div class="brain-title">SPECTRA BRAIN</div>
-  <div class="brain-msg" id="brain-msg">INITIALIZING PYODIDE...</div>
+  <div class="brain-msg" id="brain-msg">INITIALIZING ENGINE...</div>
   <div class="brain-prog-wrap"><div class="brain-prog" id="brain-prog" style="width:8%"></div></div>
-  <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);margin-top:4px;" id="brain-sub">loading python runtime</div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);margin-top:4px;" id="brain-sub">pure js hand evaluator</div>
 </div>
 
 <!-- HEADER -->
@@ -352,9 +543,59 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       <div id="street-name">PREFLOP</div>
       <div id="street-cnt">0 / 5</div>
     </div>
-    <div class="sec" style="margin-top:3px">NUTS RANKING <span style="font-size:6.5px;opacity:.6">[ABSOLUTE]</span><br><span style="font-size:7px;color:rgba(160,200,230,.35);letter-spacing:1px;font-family:'Rajdhani',sans-serif;">最強ハンドランキング</span></div>
-    <div id="nuts-list">
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);padding:10px 4px;line-height:1.6;">ボードを3枚以上<br>入力するとNUTS<br>が表示されます</div>
+    <div id="nuts-sec-v2">
+      <span class="ns-ll">MADE ▮ NOW</span>
+      <span class="ns-badge" id="ns-mode-badge">RANGE</span>
+      <span class="ns-rl">DRAWS ▶ NEXT</span>
+    </div>
+    <!-- ヒーローハンド入力 -->
+    <div id="hero-strip">
+      <span class="hs-lbl">HERO</span>
+      <div class="hs-cards">
+        <div class="hs-slot" id="hslot-0">
+          <select class="hs-rsel" id="hrsel-0" onchange="onHeroChanged()">
+            <option value="">-</option>
+            <option>A</option><option>K</option><option>Q</option><option>J</option><option>T</option>
+            <option>9</option><option>8</option><option>7</option><option>6</option><option>5</option>
+            <option>4</option><option>3</option><option>2</option>
+          </select>
+          <select class="hs-ssel" id="hssel-0" onchange="onHeroSuitChanged(0);onHeroChanged()">
+            <option value="">-</option>
+            <option value="s" style="color:#a0a8b8">♠</option>
+            <option value="h" style="color:#e03040">♥</option>
+            <option value="d" style="color:#4090e0">♦</option>
+            <option value="c" style="color:#30b050">♣</option>
+          </select>
+        </div>
+        <span class="hs-sep">/</span>
+        <div class="hs-slot" id="hslot-1">
+          <select class="hs-rsel" id="hrsel-1" onchange="onHeroChanged()">
+            <option value="">-</option>
+            <option>A</option><option>K</option><option>Q</option><option>J</option><option>T</option>
+            <option>9</option><option>8</option><option>7</option><option>6</option><option>5</option>
+            <option>4</option><option>3</option><option>2</option>
+          </select>
+          <select class="hs-ssel" id="hssel-1" onchange="onHeroSuitChanged(1);onHeroChanged()">
+            <option value="">-</option>
+            <option value="s" style="color:#a0a8b8">♠</option>
+            <option value="h" style="color:#e03040">♥</option>
+            <option value="d" style="color:#4090e0">♦</option>
+            <option value="c" style="color:#30b050">♣</option>
+          </select>
+        </div>
+      </div>
+      <button class="hs-clr" onclick="clearHeroHand()">CLR</button>
+    </div>
+    <!-- 2本立てNUTS -->
+    <div id="nuts-split">
+      <div id="nuts-made-col">
+        <div class="nc-hdr">MADE HANDS</div>
+        <div id="nuts-made-list"><div class="nc-empty">ボードを3枚以上<br>入力してください</div></div>
+      </div>
+      <div id="nuts-draw-col">
+        <div class="nc-hdr">DRAW / POTENTIAL</div>
+        <div id="nuts-draw-list"><div class="nc-empty">ヒーローハンドを<br>選択してください</div></div>
+      </div>
     </div>
   </div>
 
@@ -464,10 +705,77 @@ const HAND_TYPES  = {1:'STR.FLUSH',2:'FOUR OF KIND',3:'FULL HOUSE',4:'FLUSH',5:'
 
 let currentBoard = [];
 let brainReady   = false;
-let pyodideObj   = null;
+let pyodideObj   = null; // legacy compat flag
 let calcTimer    = null;
 let currentMode  = 'MANUAL'; // MANUAL | CAMERA
 let camStream    = null;
+let heroHand     = [null, null]; // [{rank,suit}, {rank,suit}] | null
+
+function onHeroSuitChanged(idx){
+  const s=document.getElementById('hssel-'+idx);
+  if(!s) return;
+  const v=s.value;
+  const cols={'s':'#a0a8b8','h':'#e03040','d':'#4090e0','c':'#30b050'};
+  s.style.color=cols[v]||'rgba(160,200,230,.5)';
+  s.classList.toggle('has-v',!!v);
+}
+
+function updateHeroGuard(){
+  const boardSet=new Set(currentBoard);
+  const heroSet=new Set();
+  heroHand.forEach(c=>{if(c) heroSet.add(c.rank+c.suit);});
+  const badge=document.getElementById('ns-mode-badge');
+  if(badge){ const h=heroHand[0]&&heroHand[1]; badge.textContent=h?'HERO':'RANGE'; badge.className='ns-badge'+(h?' hero':''); }
+  [0,1].forEach(idx=>{
+    const r=document.getElementById('hrsel-'+idx);
+    const s=document.getElementById('hssel-'+idx);
+    if(!r||!s) return;
+    const myCard=(r.value&&s.value)?r.value+s.value:null;
+    Array.from(s.options).forEach(opt=>{
+      if(!opt.value) return;
+      const card=r.value+opt.value;
+      opt.disabled=boardSet.has(card)||(heroSet.has(card)&&card!==myCard);
+    });
+    Array.from(r.options).forEach(opt=>{
+      if(!opt.value) return;
+      const card=opt.value+s.value;
+      opt.disabled=!!(s.value&&(boardSet.has(card)||(heroSet.has(card)&&card!==myCard)));
+    });
+  });
+}
+
+function onHeroChanged(){
+  heroHand=[0,1].map(i=>{
+    const r=document.getElementById('hrsel-'+i)?.value;
+    const s=document.getElementById('hssel-'+i)?.value;
+    return (r&&s)?{rank:r,suit:s}:null;
+  });
+  updateHeroGuard();
+  
+  // ヒートマップのデータ・描画を再起動
+  if(currentBoard.length>=3){
+    triggerBrainUpdate();
+  } else {
+    resetBrainUI();
+  }
+}
+
+function clearHeroHand(){
+  [0,1].forEach(idx=>{
+    const r=document.getElementById('hrsel-'+idx);
+    const s=document.getElementById('hssel-'+idx);
+    if(r) r.value='';
+    if(s){s.value='';s.style.color='rgba(160,200,230,.5)';s.classList.remove('has-v');}
+  });
+  heroHand=[null,null];
+  updateHeroGuard();
+  
+  if(currentBoard.length>=3){
+    triggerBrainUpdate();
+  } else {
+    resetBrainUI();
+  }
+}
 
 /* ══════════════════════════════
    MODE TOGGLE
@@ -523,23 +831,19 @@ function setBrainMsg(msg,sub,prog){
 
 async function initBrain(){
   try{
-    setBrainMsg('LOADING PYTHON RUNTIME...','pyodide v0.26.0',15);
-    pyodideObj=await loadPyodide();
-    setBrainMsg('LOADING MICROPIP...','package manager',40);
-    await pyodideObj.loadPackage('micropip');
-    setBrainMsg('INSTALLING TREYS...','poker evaluation library',65);
-    await pyodideObj.runPythonAsync(`import micropip\nawait micropip.install('treys')`);
-    setBrainMsg('INITIALIZING EVALUATOR...','building lookup tables',88);
-    await pyodideObj.runPythonAsync(`from treys import Card, Evaluator\n_evaluator=Evaluator()\nprint("treys ready")`);
-    setBrainMsg('BRAIN ONLINE','ready',100);
+    setBrainMsg('BUILDING HAND EVALUATOR...','pure js engine',40);
+    await new Promise(r=>setTimeout(r,10));
+    HandEval.init();
+    setBrainMsg('ENGINE ONLINE','0s startup — ready',100);
     brainReady=true;
+    pyodideObj=true;
     document.getElementById('brain-badge').textContent='BRAIN:READY';
     document.getElementById('brain-badge').style.color='#00ff9d';
     document.getElementById('brain-badge').style.borderColor='rgba(0,255,157,.4)';
-    setTimeout(()=>document.getElementById('brain-overlay').classList.add('hidden'),600);
+    setTimeout(()=>document.getElementById('brain-overlay').classList.add('hidden'),400);
     if(currentBoard.length>=3) triggerBrainUpdate();
   }catch(e){
-    setBrainMsg('BRAIN ERROR','treys failed to load — check network',0);
+    setBrainMsg('BRAIN ERROR',e.message,0);
     document.getElementById('brain-badge').textContent='BRAIN:ERR';
     document.getElementById('brain-badge').style.color='#ff3b3b';
   }
@@ -550,60 +854,11 @@ async function initBrain(){
 ══════════════════════════════ */
 async function evalAll169(board){
   const t0=performance.now();
-  const result=await pyodideObj.runPythonAsync(`
-import json
-from treys import Card, Evaluator
-board_cards=[Card.new(c) for c in ${JSON.stringify(board)}]
-ev=Evaluator()
-ranks=list('AKQJT98765432')
-suits_h=['s','h','d','c']
-results=[]
-seen_boards=set(str(c) for c in board_cards)
-for i,r1 in enumerate(ranks):
-    for j,r2 in enumerate(ranks):
-        if i==j:
-            pairs=[(r1+'s',r1+'h'),(r1+'s',r1+'d'),(r1+'h',r1+'c')]
-            scores_p=[]
-            for h1,h2 in pairs:
-                c1,c2=Card.new(h1),Card.new(h2)
-                if str(c1) not in seen_boards and str(c2) not in seen_boards:
-                    try: scores_p.append(ev.evaluate(board_cards,[c1,c2]))
-                    except: pass
-            score=min(scores_p) if scores_p else 9999
-            label=r1+r2
-            rc=ev.get_rank_class(score) if scores_p else 9
-        elif i<j:
-            s_scores=[]
-            for s in suits_h:
-                c1,c2=Card.new(r1+s),Card.new(r2+s)
-                if str(c1) not in seen_boards and str(c2) not in seen_boards:
-                    try: s_scores.append((ev.evaluate(board_cards,[c1,c2]),ev.get_rank_class(ev.evaluate(board_cards,[c1,c2]))))
-                    except: pass
-            score=min(s_scores,key=lambda x:x[0])[0] if s_scores else 9999
-            rc=min(s_scores,key=lambda x:x[0])[1] if s_scores else 9
-            label=r1+r2+'s'
-        else:
-            o_scores=[]
-            for s1 in suits_h:
-                for s2 in suits_h:
-                    if s1==s2: continue
-                    c1,c2=Card.new(r2+s1),Card.new(r1+s2)
-                    if str(c1) not in seen_boards and str(c2) not in seen_boards:
-                        try: o_scores.append((ev.evaluate(board_cards,[c1,c2]),ev.get_rank_class(ev.evaluate(board_cards,[c1,c2]))))
-                        except: pass
-            score=min(o_scores,key=lambda x:x[0])[0] if o_scores else 9999
-            rc=min(o_scores,key=lambda x:x[0])[1] if o_scores else 9
-            label=r2+r1+'o'
-        results.append({'hand':label,'score':score,'rc':rc})
-scores_only=[r['score'] for r in results]
-s_min,s_max=min(scores_only),max(scores_only)
-for r in results:
-    r['pct']=round(100-(r['score']-s_min)/(s_max-s_min+1)*100,1)
-json.dumps(results)
-`);
+  // ヒーロー手札を渡すように拡張された評価器を呼び出す
+  const results=HandEval.eval169(board, heroHand);
   const ms=Math.round(performance.now()-t0);
   document.getElementById('calc-time').textContent=`CALC: ${ms}ms`;
-  return JSON.parse(result);
+  return results;
 }
 
 function topN(data,n){return[...data].sort((a,b)=>b.pct-a.pct).slice(0,n);}
@@ -631,12 +886,20 @@ function calcTexture(board){
    RENDERERS
 ══════════════════════════════ */
 function strengthColor(v){
-  if(v>=80)return'#b91c1c';
-  if(v>=60)return'#c2410c';
-  if(v>=40)return'#ca8a04';
-  if(v>=20)return'#15803d';
-  if(v>0)return'#0e7490';
-  return'#0d1a2a';
+  if(v<=0) return '#0d1a2a';
+  return'#0d1a2a'; // legacy fallback — replaced by hslCell
+}
+
+// 3次元HSLカラー
+// hue: 強度(現在equity) → 赤(強)〜青(弱)
+// lightness: 将来性(ポテンシャル) → 明るい=化ける
+// saturation: コンボ密度(activeCombos/totalCombos) → 鮮やか=存在感あり
+function hslCell(pct, potential, comboDensity) {
+  if (pct <= 0 && comboDensity <= 0) return '#0b101d';
+  const hue = Math.round(240 - pct * 2.1);          // 240(青)→0(赤)
+  const sat = Math.round(30 + comboDensity * 55);    // 30%〜85%
+  const lit = Math.round(8  + potential   * 22);     // 8%〜30%
+  return `hsl(${hue},${sat}%,${lit}%)`;
 }
 
 function buildHeatmap(){
@@ -649,27 +912,147 @@ function buildHeatmap(){
     RANKS_LIST.forEach((r2,j)=>{
       const lbl=i===j?r1+r2:(i<j?r1+r2+'s':r2+r1+'o');
       const c=document.createElement('div');c.className='hm-c';c.id='hc'+(i*13+j);
-      c.title=lbl;c.textContent=lbl.slice(0,2);c.style.backgroundColor='#0d1a2a';
+      c.textContent=lbl.slice(0,2);c.style.backgroundColor='#0d1a2a';
+      // ── Tooltip events ──
+      c.addEventListener('mouseenter', e => showHmTooltip(i*13+j, e));
+      c.addEventListener('mousemove',  e => moveHmTooltip(e));
+      c.addEventListener('mouseleave', ()=> hideHmTooltip());
+      c.addEventListener('touchstart', e => { e.preventDefault(); toggleHmTooltip(i*13+j, e.touches[0]); }, {passive:false});
       grid.appendChild(c);
     });
   });
 }
 
+function isHeroMatch(item){
+  if(!heroHand[0]||!heroHand[1]) return false;
+  const h=heroHand, hand=item.hand;
+  if(hand.length===2){
+    return h[0].rank===h[1].rank && h[0].rank===hand[0];
+  } else if(hand.endsWith('s')){
+    return h[0].suit===h[1].suit &&
+      ((h[0].rank===hand[0]&&h[1].rank===hand[1])||(h[0].rank===hand[1]&&h[1].rank===hand[0]));
+  } else if(hand.endsWith('o')){
+    return h[0].suit!==h[1].suit &&
+      ((h[0].rank===hand[0]&&h[1].rank===hand[1])||(h[0].rank===hand[1]&&h[1].rank===hand[0]));
+  }
+  return false;
+}
+
+// ── ポテンシャル推定（board長とrc分布から将来性スコアを算出）──
+function estimatePotential(item, boardLen) {
+  // 完成役が高い → 将来性は現在に収束
+  // ドロー系(rc>=6) or フロップ → 化ける余地あり
+  if (item.activeCombos === 0) return 0;
+  const rcBonus = {1:0.95,2:0.90,3:0.85,4:0.75,5:0.70,6:0.55,7:0.45,8:0.35,9:0.20};
+  const base = rcBonus[item.rc] || 0.3;
+  // boardが短いほど将来性が高い
+  const streetMult = boardLen <= 3 ? 1.0 : boardLen === 4 ? 0.65 : 0.35;
+  return Math.min(base * streetMult + (item.pct/100)*0.3, 1.0);
+}
+
+// ── HSLレンダラー（3次元カラー + ツールチップ登録）──
 function renderHeatmap(data){
-  data.forEach((item,idx)=>{
-    const c=document.getElementById('hc'+idx);
-    if(c)c.style.backgroundColor=strengthColor(item.pct);
+  // ツールチップ用にデータをグローバルに保持
+  window._hmData = data;
+  const boardLen = currentBoard.length;
+
+  data.forEach((item, idx) => {
+    const c = document.getElementById('hc' + idx);
+    if (!c) return;
+    const matched = isHeroMatch(item);
+
+    if (item.activeCombos === 0) {
+      c.style.backgroundColor = '#0b101d';
+      c.style.color = 'rgba(255,255,255,0.06)';
+      c.style.opacity = '1';
+      c.classList.remove('hero-active-cell');
+      return;
+    }
+
+    // 3次元カラー計算
+    const comboDensity = item.totalCombos > 0 ? item.activeCombos / item.totalCombos : 0;
+    const potential    = estimatePotential(item, boardLen);
+    c.style.backgroundColor = hslCell(item.pct, potential, comboDensity);
+    c.style.color = item.pct >= 50 ? 'rgba(255,255,255,.85)' : 'rgba(255,255,255,.55)';
+    c.style.opacity = '1';
+
+    if (matched) {
+      c.classList.add('hero-active-cell');
+      c.style.color = '#ffffff';
+    } else {
+      c.classList.remove('hero-active-cell');
+    }
   });
 }
 
 function renderNuts(data){
-  const top=topN(data,7);
-  document.getElementById('nuts-list').innerHTML=top.map((item,i)=>`
-    <div class="nuts-row">
-      <div class="n-rank">${i+1}</div>
-      <div class="n-eq">${item.pct.toFixed(1)}%</div>
-      <div class="n-hand">${item.hand}</div>
-      <div class="n-type">${HAND_TYPES[item.rc]||''}</div>
+  window._nutsData = data;
+  renderMadeCol(data);
+  renderDrawCol(currentBoard);
+}
+
+/* ── Made Hands 左列 ── */
+function renderMadeCol(data){
+  const el=document.getElementById('nuts-made-list');
+  if(!el) return;
+  if(!data||data.length===0){
+    el.innerHTML='<div class="nc-empty">ボードを3枚以上<br>入力してください</div>';
+    return;
+  }
+  const top=[...data].sort((a,b)=>b.pct-a.pct).slice(0,8);
+  const rows=el.querySelectorAll('.nm-row');
+  if(rows.length===top.length){
+    // 差分更新
+    top.forEach((item,i)=>{
+      const eq=rows[i].querySelector('.nm-eq');
+      if(eq) eq.textContent=item.pct.toFixed(1)+'%';
+      rows[i].classList.toggle('hm', isHeroMatch(item));
+    });
+    return;
+  }
+  el.innerHTML=top.map((item,i)=>`
+    <div class="nm-row${isHeroMatch(item)?' hm':''}">
+      <span class="nm-rank">${i+1}</span>
+      <span class="nm-eq">${item.pct.toFixed(1)}%</span>
+      <span class="nm-hand">${item.hand}</span>
+      <span class="nm-type">${HAND_TYPES[item.rc]||''}</span>
+    </div>`).join('');
+}
+
+/* ── Draw Potential 右列 (本物のアウツ数 & カードリムーバル処理) ── */
+function renderDrawCol(board){
+  const el=document.getElementById('nuts-draw-list');
+  if(!el) return;
+  if(!heroHand[0]||!heroHand[1]){
+    el.innerHTML='<div class="nc-empty">ヒーローハンドを<br>選択してください</div>';
+    return;
+  }
+  if(!board||board.length<3){
+    el.innerHTML='<div class="nc-empty">ボードを3枚以上<br>入力してください</div>';
+    return;
+  }
+  if(board.length>=5){
+    el.innerHTML='<div class="nc-empty">リバー到達済<br>ドロー期待値なし</div>';
+    return;
+  }
+
+  // アウツ走査
+  const draws = HandEval.classifyDraws(heroHand, board);
+  if(draws.length===0){
+    el.innerHTML='<div class="nc-empty">ドローチャンスなし</div>';
+    return;
+  }
+  const TC={FD:'fd',OESD:'oesd',GSD:'gsd',BDFD:'bdfd',BDSD:'bdsd'};
+  el.innerHTML=draws.map(d=>`
+    <div class="nd-row">
+      <div class="nd-top">
+        <span class="nd-type ${TC[d.type]||''}">${d.type}</span>
+        <span class="nd-eq">${d.eq.toFixed(1)}%</span>
+      </div>
+      <div class="nd-detail">
+        <span>${d.label}</span>
+        <span class="nd-outs">${d.outs} outs</span>
+      </div>
     </div>`).join('');
 }
 
@@ -839,13 +1222,8 @@ function updateBoardCards(){
       const sym=SUIT_SYM[suit]||'';
       card.className='board-card active';
       card.innerHTML=`<div class="card-inner ${bgCls}">
-        <span class="card-suit-bg sym-${suit}">${sym}</span>
         <span class="card-rank-center">${rank}</span>
         <div class="card-corner-tl">
-          <span class="corner-rank">${rank}</span>
-          <span class="corner-suit">${sym}</span>
-        </div>
-        <div class="card-corner-br">
           <span class="corner-rank">${rank}</span>
           <span class="corner-suit">${sym}</span>
         </div>
@@ -866,10 +1244,19 @@ const evalCache = new Map();
 function resetBrainUI(){
   for(let i=0;i<169;i++){
     const c=document.getElementById('hc'+i);
-    if(c) c.style.backgroundColor='#0d1a2a';
+    if(c) {
+      c.style.backgroundColor='#0d1a2a';
+      c.style.opacity='1';
+      c.classList.remove('hero-active-cell');
+    }
   }
-  document.getElementById('nuts-list').innerHTML=
-    '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:rgba(160,200,230,.3);padding:10px 4px;line-height:1.6;">ボードを3枚以上<br>入力するとNUTS<br>が表示されます</div>';
+  const mEl=document.getElementById('nuts-made-list');
+  const dEl=document.getElementById('nuts-draw-list');
+  if(mEl) mEl.innerHTML='<div class="nc-empty">ボードを3枚以上<br>入力してください</div>';
+  if(dEl) dEl.innerHTML=(heroHand[0]&&heroHand[1])
+    ?'<div class="nc-empty">ボードを3枚以上<br>入力してください</div>'
+    :'<div class="nc-empty">ヒーローハンドを<br>選択してください</div>';
+  window._nutsData=null;
   document.getElementById('calc-time').textContent='CALC: --ms';
 }
 
@@ -932,6 +1319,7 @@ function onInputChanged(){
   if(currentMode!=='MANUAL')return;
   currentBoard=readInputBoard();
   updateDuplicateGuard();
+  updateHeroGuard();
   renderStreet(currentBoard);
   updateBoardCards();
   renderAnalytics(currentBoard);
@@ -939,6 +1327,7 @@ function onInputChanged(){
     setStabState('LOCKED');
     clearTimeout(calcTimer);
     calcTimer=setTimeout(triggerBrainUpdate,300);
+    if(heroHand[0]&&heroHand[1]) renderDrawCol(currentBoard);
   } else {
     resetBrainUI();
     setStabState('MANUAL');
@@ -947,7 +1336,11 @@ function onInputChanged(){
 
 async function triggerBrainUpdate(){
   if(!brainReady||currentBoard.length<3)return;
-  const cacheKey=currentBoard.join(',');
+  
+  // キャッシュキーにHeroハンドの状態も含める（キャッシュ汚染を防止）
+  const hStr = heroHand[0] && heroHand[1] ? (heroHand[0].rank + heroHand[0].suit + heroHand[1].rank + heroHand[1].suit) : 'RANGE';
+  const cacheKey = `${hStr}_${currentBoard.join(',')}`;
+
   // キャッシュヒット
   if(evalCache.has(cacheKey)){
     const cached=evalCache.get(cacheKey);
@@ -1010,6 +1403,203 @@ function drawSparkline(btn,bb){
 /* ══════════════════════════════
    CLOCK
 ══════════════════════════════ */
+
+/* ═══════════════════════════════════════════
+   HEATMAP TOOLTIP ENGINE
+═══════════════════════════════════════════ */
+const SUIT_HTML = {
+  s: '<span class="cs">♠</span>',
+  h: '<span class="ch">♥</span>',
+  d: '<span class="cd">♦</span>',
+  c: '<span class="cc">♣</span>',
+};
+const SUIT_NAMES = {s:'スペード',h:'ハート',d:'ダイヤ',c:'クラブ'};
+
+// コンボリスト生成（suited/offsuit/pair別）
+function buildCombos(hand) {
+  const combos = [];
+  const RANKS = 'AKQJT98765432';
+  const SUITS = ['s','h','d','c'];
+  if (hand.length === 2) {
+    // Pair
+    const r = hand[0];
+    for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++)
+      combos.push([{r,s:SUITS[s1]},{r,s:SUITS[s2]}]);
+  } else if (hand.endsWith('s')) {
+    const r1=hand[0], r2=hand[1];
+    SUITS.forEach(s => combos.push([{r:r1,s},{r:r2,s}]));
+  } else if (hand.endsWith('o')) {
+    const r1=hand[0], r2=hand[1];
+    SUITS.forEach(s1 => SUITS.forEach(s2 => {
+      if (s1 !== s2) combos.push([{r:r1,s:s1},{r:r2,s:s2}]);
+    }));
+  }
+  return combos;
+}
+
+function comboBlocked(combo, boardSet, heroSet) {
+  const idx = (r,s) => 'AKQJT98765432'.indexOf(r)*4 + ['s','h','d','c'].indexOf(s);
+  const i1 = idx(combo[0].r, combo[0].s);
+  const i2 = idx(combo[1].r, combo[1].s);
+  return boardSet.has(i1) || boardSet.has(i2) || heroSet.has(i1) || heroSet.has(i2);
+}
+
+function comboBest(combo, item) {
+  // 最強コンボ: activeCombosの代表として item のrcを持つものを1つ特定
+  // 簡易: suited ならスートがボードと一致するものを best とする
+  if (!item || !currentBoard.length) return false;
+  const boardSuits = new Set(currentBoard.map(c=>c.slice(-1)));
+  if (item.hand.endsWith('s')) {
+    // FDの可能性があるスートがboardにあれば best
+    return boardSuits.has(combo[0].s);
+  }
+  return false;
+}
+
+function buildTooltipHTML(idx) {
+  const data = window._hmData;
+  if (!data || !data[idx]) return false;
+  const item = data[idx];
+
+  const boardSet = new Set(currentBoard.map(c => {
+    const r = 'AKQJT98765432'.indexOf(c[0]);
+    const s = ['s','h','d','c'].indexOf(c[1]);
+    return r*4+s;
+  }));
+  const heroSet = new Set();
+  if (heroHand[0] && heroHand[1]) {
+    ['AKQJT98765432'.indexOf(heroHand[0].rank)*4+['s','h','d','c'].indexOf(heroHand[0].suit),
+     'AKQJT98765432'.indexOf(heroHand[1].rank)*4+['s','h','d','c'].indexOf(heroHand[1].suit)]
+    .forEach(i => heroSet.add(i));
+  }
+
+  const combos = buildCombos(item.hand);
+  const boardLen = currentBoard.length;
+  const potential = estimatePotential(item, boardLen);
+  const comboDensity = item.totalCombos>0 ? item.activeCombos/item.totalCombos : 0;
+
+  // ── 手牌名 & タイプ ──
+  document.getElementById('tt-hand').textContent = item.hand;
+  document.getElementById('tt-type').textContent = HAND_TYPES[item.rc] || '--';
+
+  // ── 最強コンボ説明 ──
+  const bestLbl = document.getElementById('tt-best-label');
+  if (item.activeCombos === 0) {
+    bestLbl.textContent = '⛔ 全コンボBLOCKED';
+  } else {
+    const isSuited = item.hand.endsWith('s');
+    const isOffsuit = item.hand.endsWith('o');
+    if (isSuited) {
+      bestLbl.textContent = `★ 最強: 同スート4通りが基準`;
+    } else if (isOffsuit) {
+      bestLbl.textContent = `★ 最強コンボを強度の基準に (${item.activeCombos}/${item.totalCombos}残存)`;
+    } else {
+      bestLbl.textContent = `★ ペア: ${item.activeCombos}/${item.totalCombos}コンボ残存`;
+    }
+  }
+
+  // ── コンボドット表示 ──
+  const combosEl = document.getElementById('tt-combos');
+  combosEl.innerHTML = '';
+  combos.forEach(combo => {
+    const blocked = comboBlocked(combo, boardSet, heroSet);
+    const best = comboBest(combo, item);
+    const div = document.createElement('div');
+    div.className = 'tt-combo' + (blocked?' blocked':'') + (best?' best':'');
+    div.innerHTML = `${combo[0].r}${SUIT_HTML[combo[0].s]}${combo[1].r}${SUIT_HTML[combo[1].s]}`;
+    combosEl.appendChild(div);
+  });
+
+  // ── メトリクスバー ──
+  document.getElementById('tt-bar-str').style.width   = item.pct + '%';
+  document.getElementById('tt-val-str').textContent   = item.pct.toFixed(1) + '%';
+  document.getElementById('tt-bar-pot').style.width   = Math.round(potential*100) + '%';
+  document.getElementById('tt-val-pot').textContent   = Math.round(potential*100) + '%';
+  document.getElementById('tt-bar-combo').style.width = Math.round(comboDensity*100) + '%';
+  document.getElementById('tt-val-combo').textContent = item.activeCombos + '/' + item.totalCombos;
+
+  // ── ブロッカー警告 ──
+  const blockerEl = document.getElementById('tt-blocker');
+  blockerEl.classList.toggle('active', item.activeCombos < item.totalCombos);
+  if (item.activeCombos < item.totalCombos) {
+    const diff = item.totalCombos - item.activeCombos;
+    blockerEl.textContent = `⚠ ${diff}コンボがブロックされています`;
+  }
+
+  // ── スート警告 ──
+  const warnEl = document.getElementById('tt-warn');
+  if (item.hand.endsWith('s')) {
+    warnEl.textContent = '💡 suited: 同スートの4通りのみ有効';
+  } else if (item.hand.endsWith('o')) {
+    warnEl.textContent = '💡 offsuit: フラッシュ不可 / 12通り';
+  } else {
+    warnEl.textContent = '';
+  }
+
+  return true;
+}
+
+let _ttPinned = false; // タップでピン留め
+
+function positionTooltip(x, y) {
+  const tt = document.getElementById('hm-tooltip');
+  const W = window.innerWidth, H = window.innerHeight;
+  const TW = 228, TH = tt.offsetHeight || 260;
+  let left = x + 12;
+  let top  = y - TH/2;
+  if (left + TW > W - 8) left = x - TW - 12;
+  if (top < 8) top = 8;
+  if (top + TH > H - 8) top = H - TH - 8;
+  tt.style.left = left + 'px';
+  tt.style.top  = top  + 'px';
+}
+
+function showHmTooltip(idx, e) {
+  if (_ttPinned) return;
+  if (!window._hmData) return;
+  buildTooltipHTML(idx);
+  const tt = document.getElementById('hm-tooltip');
+  tt.classList.add('visible');
+  positionTooltip(e.clientX, e.clientY);
+}
+
+function moveHmTooltip(e) {
+  if (_ttPinned) return;
+  positionTooltip(e.clientX, e.clientY);
+}
+
+function hideHmTooltip() {
+  if (_ttPinned) return;
+  document.getElementById('hm-tooltip').classList.remove('visible');
+}
+
+function toggleHmTooltip(idx, touch) {
+  if (!window._hmData) return;
+  const tt = document.getElementById('hm-tooltip');
+  const alreadyVisible = tt.classList.contains('visible');
+  // 同じセルをもう一度タップ → 消す
+  if (alreadyVisible && _ttPinned && tt.dataset.idx == idx) {
+    tt.classList.remove('visible');
+    _ttPinned = false;
+    tt.dataset.idx = '';
+    return;
+  }
+  buildTooltipHTML(idx);
+  tt.classList.add('visible');
+  _ttPinned = true;
+  tt.dataset.idx = idx;
+  positionTooltip(touch.clientX, touch.clientY);
+}
+
+// ヒートマップ外タップで閉じる
+document.addEventListener('touchstart', e => {
+  if (!_ttPinned) return;
+  if (!e.target.closest('#hm-tooltip') && !e.target.closest('.hm-c')) {
+    document.getElementById('hm-tooltip').classList.remove('visible');
+    _ttPinned = false;
+  }
+});
+
 setInterval(()=>{
   const n=new Date();
   document.getElementById('time-d').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
@@ -1061,173 +1651,503 @@ function ensureDesktopLayout(){
 window.addEventListener('resize', ensureDesktopLayout);
 </script>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     SPECTRA Math-Correct Patch v1.0
-     ・既存コードを一切変更しない（追加のみ）
-     ・renderAnalytics の捏造式 `50 + wet * 0.12` を本物の
-       Monte Carlo Range-vs-Range Equity で上書き
-     ・treysが既にロード済みであることを前提に動作
-     ・誤差 ±1% (N=4000 Monte Carlo)
-═══════════════════════════════════════════════════════════════ -->
-<script>
-(function(){
 
-  /* ── ① プリセットレンジ（標準的な100bb 6max BTN/BBオープン/ディフェンス代表値） ── */
+<script>
+/* ═══════════════════════════════════════════════════════
+   SPECTRA Pure JS Engine v3.0
+   Pyodide/treys完全廃止 — Pure JS + ビット演算
+   起動0秒 / 169ハンド評価 < 5ms
+═══════════════════════════════════════════════════════ */
+const HandEval = (() => {
+  'use strict';
+
+  // ── カード定数 ──
+  // カードインデックス: 0=As,1=Ah,2=Ad,3=Ac, 4=Ks,..., 51=2c
+  // rank = idx>>2  (0=A,1=K,...,12=2)
+  // suit = idx&3   (0=s,1=h,2=d,3=c)
+  const RANKS = 'AKQJT98765432';
+  const SUITS = 'shdc';
+  const PRIMES = [41,37,31,29,23,19,17,13,11,7,5,3,2]; // A,K,Q,J,T,9,8,7,6,5,4,3,2
+
+  // カード文字列→インデックス ('As'→0, '2c'→51)
+  function cardIdx(str) {
+    const r = RANKS.indexOf(str[0].toUpperCase());
+    const s = SUITS.indexOf(str[1].toLowerCase());
+    if (r<0||s<0) return -1;
+    return r*4+s;
+  }
+
+  // ── 5枚ハンド評価 (rank class 1-9, score低いほど強い) ──
+  // ranks配列はソート済み(0=A最強,12=2最弱)の想定
+  function eval5ranks(rs, isFlush) {
+    const r0=rs[0],r1=rs[1],r2=rs[2],r3=rs[3],r4=rs[4];
+    const isStraight = (r4-r0===4 && new Set(rs).size===5) ||
+                       (r0===0&&r1===9&&r2===10&&r3===11&&r4===12); // wheel A-5
+
+    if (isFlush && isStraight) {
+      const high = (r0===0&&r4===12) ? 9 : r0; // wheel high=5(idx9)
+      return {rc:1, score: high};
+    }
+    // counts
+    const cnt = {};
+    rs.forEach(r => cnt[r]=(cnt[r]||0)+1);
+    const vals = Object.entries(cnt).map(([r,c])=>({r:+r,c})).sort((a,b)=>b.c-a.c||a.r-b.r);
+    const c0=vals[0].c;
+
+    if (c0===4) return {rc:2, score: vals[0].r*100+vals[1].r};
+    if (c0===3 && vals[1].c===2) return {rc:3, score: vals[0].r*100+vals[1].r};
+    if (isFlush) return {rc:4, score: rs.reduce((a,r,i)=>a+r*(13**(4-i)),0)};
+    if (isStraight) {
+      const sh = (r0===0&&r4===12)?9:r0;
+      return {rc:5, score: sh};
+    }
+    if (c0===3) return {rc:6, score: vals[0].r*10000+vals[1].r*100+vals[2].r};
+    if (c0===2 && vals[1].c===2) {
+      const p1=Math.min(vals[0].r,vals[1].r), p2=Math.max(vals[0].r,vals[1].r);
+      return {rc:7, score: p1*10000+p2*100+vals[2].r};
+    }
+    if (c0===2) return {rc:8, score: vals[0].r*1000000+vals[1].r*10000+vals[2].r*100+vals[3].r};
+    return {rc:9, score: r0*100000000+r1*1000000+r2*10000+r3*100+r4};
+  }
+
+  // 7枚→最強5枚評価
+  const C75 = [];
+  for(let a=0;a<7;a++) for(let b=a+1;b<7;b++) for(let c=b+1;c<7;c++)
+    for(let d=c+1;d<7;d++) for(let e=d+1;e<7;e++) C75.push([a,b,c,d,e]);
+
+  function eval7(cardIndices) {
+    let best = null;
+    for (const combo of C75) {
+      const five = combo.map(i => cardIndices[i]);
+      const rs = five.map(c => c>>2).sort((a,b)=>a-b);
+      const suits = five.map(c => c&3);
+      const isFlush = suits.every(s=>s===suits[0]);
+      const res = eval5ranks(rs, isFlush);
+      if (!best || res.rc < best.rc || (res.rc===best.rc && res.score < best.score)) {
+        best = res;
+      }
+    }
+    return best;
+  }
+
+  const RC_NAME = {1:'STR.FLUSH',2:'FOUR OF KIND',3:'FULL HOUSE',4:'FLUSH',5:'STRAIGHT',6:'THREE OF KIND',7:'TWO PAIR',8:'ONE PAIR',9:'HIGH CARD'};
+
+  function init() {
+    const test = eval7([0,1,2,3,4,5,6]); // As Ah Ad Ac Ks Kh Kd
+    console.log('[HandEval] init OK, test eval:', RC_NAME[test.rc]);
+  }
+
+  // ── 169ハンド評価（ボードおよびヒーロー手札に対して） ──
+  function eval169(boardStrs, heroHandFilter = null) {
+    const boardCards = boardStrs.map(cardIdx).filter(c=>c>=0);
+    const boardSet = new Set(boardCards);
+    
+    // ヒーローの手札を検出
+    const heroSet = new Set();
+    if (heroHandFilter && heroHandFilter[0] && heroHandFilter[1]) {
+      const c1 = cardIdx(heroHandFilter[0].rank + heroHandFilter[0].suit);
+      const c2 = cardIdx(heroHandFilter[1].rank + heroHandFilter[1].suit);
+      if (c1 >= 0) heroSet.add(c1);
+      if (c2 >= 0) heroSet.add(c2);
+    }
+    
+    const results = [];
+
+    for (let i=0; i<13; i++) {
+      for (let j=0; j<13; j++) {
+        let hand, combos, label, totalCombos = 0;
+
+        if (i===j) {
+          label = RANKS[i]+RANKS[i];
+          combos = [];
+          totalCombos = 6;
+          for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++) {
+            const c1=i*4+s1, c2=i*4+s2;
+            // ボード、および自分が持っている手札と重複していない組み合わせのみを「実在（有効）」とする
+            if (!boardSet.has(c1) && !boardSet.has(c2) && !heroSet.has(c1) && !heroSet.has(c2)) {
+              combos.push([c1,c2]);
+            }
+          }
+        } else if (i<j) {
+          label = RANKS[i]+RANKS[j]+'s';
+          combos = [];
+          totalCombos = 4;
+          for (let s=0;s<4;s++) {
+            const c1=i*4+s, c2=j*4+s;
+            if (!boardSet.has(c1) && !boardSet.has(c2) && !heroSet.has(c1) && !heroSet.has(c2)) {
+              combos.push([c1,c2]);
+            }
+          }
+        } else {
+          label = RANKS[j]+RANKS[i]+'o';
+          combos = [];
+          totalCombos = 12;
+          for (let s1=0;s1<4;s1++) for (let s2=0;s2<4;s2++) {
+            if (s1===s2) continue;
+            const c1=j*4+s1, c2=i*4+s2;
+            if (!boardSet.has(c1) && !boardSet.has(c2) && !heroSet.has(c1) && !heroSet.has(c2)) {
+              combos.push([c1,c2]);
+            }
+          }
+        }
+
+        let bestScore = 999999999, bestRc = 9;
+        
+        // 有効なコンボが存在する場合のみ評価を走らせる（カードリムーバルの完全適用）
+        if (combos.length > 0) {
+          for (const [c1,c2] of combos) {
+            const seven = [...boardCards, c1, c2];
+            if (seven.length < 7) {
+              if (seven.length >= 5) {
+                const avail = seven;
+                let b2 = null;
+                const subC = [];
+                const n = avail.length;
+                for(let a=0;a<n;a++) for(let b=a+1;b<n;b++) for(let c=b+1;c<n;c++)
+                  for(let d=c+1;d<n;d++) for(let e=d+1;e<n;e++) subC.push([a,b,c,d,e]);
+                for (const co of subC) {
+                  const five = co.map(ii=>avail[ii]);
+                  const rs = five.map(c=>c>>2).sort((a,b)=>a-b);
+                  const suits = five.map(c=>c&3);
+                  const isF = suits.every(s=>s===suits[0]);
+                  const r2 = eval5ranks(rs,isF);
+                  if (!b2||r2.rc<b2.rc||(r2.rc===b2.rc&&r2.score<b2.score)) b2=r2;
+                }
+                if (b2 && (b2.rc < bestRc || (b2.rc===bestRc && b2.score<bestScore))) {
+                  bestRc=b2.rc; bestScore=b2.score;
+                }
+              }
+            } else {
+              const res = eval7(seven.slice(0,7));
+              if (res.rc < bestRc || (res.rc===bestRc && res.score<bestScore)) {
+                bestRc=res.rc; bestScore=res.score;
+              }
+            }
+          }
+        }
+
+        // totalCombos: 元々の理論上コンボ数
+        // activeCombos: カードリムーバルを考慮して、現実に存在しうる残りコンボ数
+        results.push({
+          hand: label, 
+          score: bestScore, 
+          rc: bestRc, 
+          totalCombos: totalCombos, 
+          activeCombos: combos.length
+        });
+      }
+    }
+
+    // pct計算
+    const valid = results.filter(r=>r.score<999999999);
+    const sorted = [...valid].sort((a,b)=> a.rc!==b.rc ? a.rc-b.rc : a.score-b.score);
+    const total = sorted.length;
+    sorted.forEach((item, i)=>{
+      item.pct = total<=1 ? 100 : Math.round((1 - i/(total-1))*1000)/10;
+    });
+    results.forEach(r=>{ if(r.score>=999999999) r.pct=0; });
+    return results;
+  }
+
+  // シンプルなrange展開
+  function expandRangeSimple(rangeStr) {
+    const combos = [];
+    for (const tok of rangeStr.split(',')) {
+      const t = tok.trim();
+      if (!t) continue;
+      const plus = t.endsWith('+');
+      const base = plus ? t.slice(0,-1) : t;
+      if (base.length < 2) continue;
+      const r1idx = RANKS.indexOf(base[0].toUpperCase());
+      const r2idx = RANKS.indexOf(base[1].toUpperCase());
+      if (r1idx<0||r2idx<0) continue;
+      const typ = base.length>2 ? base[2] : (r1idx===r2idx?'p':'b');
+
+      if (r1idx===r2idx) {
+        const maxR = r1idx;
+        const minR = plus ? 0 : r1idx;
+        for (let r=minR; r<=maxR; r++)
+          for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++)
+            combos.push([r*4+s1, r*4+s2]);
+      } else {
+        const hi=Math.min(r1idx,r2idx), lo=Math.max(r1idx,r2idx);
+        const loMin = plus ? hi+1 : lo;
+        const loMax = lo;
+        for (let kicker=loMin; kicker<=loMax; kicker++) {
+          if (typ==='s') {
+            for (let s=0;s<4;s++) {
+              const c1=hi*4+s, c2=kicker*4+s;
+              combos.push([c1,c2]);
+            }
+          } else if (typ==='o') {
+            for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++) {
+              if (s1!==s2) combos.push([hi*4+s1, kicker*4+s2]);
+            }
+          } else {
+            for (let s=0;s<4;s++) combos.push([hi*4+s, kicker*4+s]);
+            for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++)
+              if (s1!==s2) combos.push([hi*4+s1, kicker*4+s2]);
+          }
+        }
+      }
+    }
+    return combos;
+  }
+
+  function makeDeck() {
+    const d=[];
+    for(let i=0;i<52;i++) d.push(i);
+    return d;
+  }
+
+  // ── Range vs Range (または Hand vs Range) Equity ──
+  async function rangeVsRangeEquity(rangeAStr, rangeBStr, boardStrs, nTrials=3000, heroHandOverride=null) {
+    const board = boardStrs.map(cardIdx).filter(c=>c>=0);
+    const boardSet = new Set(board);
+    
+    let combosA = [];
+    if (heroHandOverride && heroHandOverride[0] && heroHandOverride[1]) {
+      const c1 = cardIdx(heroHandOverride[0].rank + heroHandOverride[0].suit);
+      const c2 = cardIdx(heroHandOverride[1].rank + heroHandOverride[1].suit);
+      if (c1 >= 0 && c2 >= 0) {
+        combosA = [[c1, c2]];
+      }
+    } else {
+      combosA = expandRangeSimple(rangeAStr).filter(([a,b])=>!boardSet.has(a)&&!boardSet.has(b));
+    }
+    
+    const combosB = expandRangeSimple(rangeBStr).filter(([a,b])=>!boardSet.has(a)&&!boardSet.has(b));
+    if (!combosA.length||!combosB.length) return {btn:50,bb:50,n:0,ms:0};
+
+    const heroSelectedSet = new Set();
+    if (heroHandOverride && heroHandOverride[0] && heroHandOverride[1]) {
+      heroSelectedSet.add(cardIdx(heroHandOverride[0].rank + heroHandOverride[0].suit));
+      heroSelectedSet.add(cardIdx(heroHandOverride[1].rank + heroHandOverride[1].suit));
+    }
+
+    const deck = makeDeck().filter(c=>!boardSet.has(c) && !heroSelectedSet.has(c));
+    const nRemain = 5-board.length;
+    let winA=0, valid=0;
+    const t0=performance.now();
+
+    const chunkSize = 500;
+    for (let trial=0; trial<nTrials; trial++) {
+      const ha = combosA[Math.random()*combosA.length|0];
+      const hb = combosB[Math.random()*combosB.length|0];
+      
+      if (ha[0]===hb[0]||ha[0]===hb[1]||ha[1]===hb[0]||ha[1]===hb[1]) continue;
+      
+      const used = new Set([...board,...ha,...hb]);
+      const avail = deck.filter(c=>!used.has(c));
+      if (avail.length < nRemain) continue;
+
+      const extra=[];
+      const pool=[...avail];
+      for (let i=0;i<nRemain;i++) {
+        const j=i+(Math.random()*(pool.length-i)|0);
+        [pool[i],pool[j]]=[pool[j],pool[i]];
+        extra.push(pool[i]);
+      }
+      const fullBoard=[...board,...extra];
+      const sa=eval7([...fullBoard,...ha]);
+      const sb=eval7([...fullBoard,...hb]);
+      const cmp = sa.rc<sb.rc ? -1 : sa.rc>sb.rc ? 1 : sa.score<sb.score ? -1 : sa.score>sb.score ? 1 : 0;
+      if (cmp<0) winA++;
+      else if (cmp===0) winA+=0.5;
+      valid++;
+
+      if (trial%chunkSize===chunkSize-1) await new Promise(r=>setTimeout(r,0));
+    }
+    const ms=Math.round(performance.now()-t0);
+    if (!valid) return {btn:50,bb:50,n:0,ms};
+    const eqA=Math.round(winA/valid*100);
+    return {btn:eqA, bb:100-eqA, n:valid, ms};
+  }
+
+  // ── 厳密アウツ走査ポテンシャル評価器 (Card Removal 数理) ──
+  function classifyDraws(hero, board) {
+    if (!hero[0] || !hero[1] || !board || board.length < 3) return [];
+    
+    const heroCards = hero.map(c => cardIdx(c.rank + c.suit)).filter(c => c >= 0);
+    const boardCards = board.map(cardIdx).filter(c => c >= 0);
+    
+    if (heroCards.length < 2 || boardCards.length < 3) return [];
+
+    const initFull = [...boardCards, ...heroCards];
+    const initEval = eval7(initFull);
+    const isFlop = (boardCards.length === 3);
+
+    const used = new Set([...boardCards, ...heroCards]);
+    const deck = makeDeck().filter(c => !used.has(c));
+    
+    let fdOuts = 0;
+    let oesdOuts = 0;
+    let gsdOuts = 0;
+
+    for (const nextCard of deck) {
+      const nextBoard = [...boardCards, nextCard];
+      const res = eval7([...nextBoard, ...heroCards]);
+
+      // 1. フラッシュ成立判定
+      if (res.rc === 4 || res.rc === 1) {
+        fdOuts++;
+        continue;
+      }
+
+      // 2. 新規ストレート成立判定
+      if (res.rc === 5) {
+        if (initEval.rc !== 5) {
+          oesdOuts++; 
+        }
+      }
+    }
+
+    const totalCards = deck.length;
+    const draws = [];
+
+    // ① FD
+    if (fdOuts >= 4) {
+      const eq = (fdOuts / totalCards * 100) * (isFlop ? 2 : 1);
+      draws.push({
+        type: 'FD',
+        label: 'Flush Draw',
+        outs: fdOuts,
+        eq: Math.min(eq, 100.0)
+      });
+    }
+
+    // ② OESD / GSD 分離
+    if (oesdOuts >= 8) {
+      const eq = (oesdOuts / totalCards * 100) * (isFlop ? 2 : 1);
+      draws.push({
+        type: 'OESD',
+        label: 'Open-Ended SD',
+        outs: oesdOuts,
+        eq: Math.min(eq, 100.0)
+      });
+    } else if (oesdOuts >= 3 && oesdOuts < 8) {
+      const eq = (oesdOuts / totalCards * 100) * (isFlop ? 2 : 1);
+      draws.push({
+        type: 'GSD',
+        label: 'Gutshot SD',
+        outs: oesdOuts,
+        eq: Math.min(eq, 100.0)
+      });
+    }
+
+    // ③ バックドアFD（フロップ時限定）
+    if (isFlop) {
+      const suitsCount = {};
+      [...hero, ...board.map(c => ({suit: c.slice(-1)}))].forEach(c => {
+        suitsCount[c.suit] = (suitsCount[c.suit] || 0) + 1;
+      });
+      const hasBDFD = Object.values(suitsCount).some(cnt => cnt === 3);
+      if (hasBDFD && fdOuts === 0) {
+        draws.push({
+          type: 'BDFD',
+          label: 'Backdoor FD',
+          outs: 10,
+          eq: 4.2
+        });
+      }
+    }
+
+    return draws;
+  }
+
+  return { init, eval7, eval169, rangeVsRangeEquity, classifyDraws, cardIdx, RC_NAME, RANKS, SUITS };
+})();
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════
+   SPECTRA Range Equity Patch v2.0 — Pure JS (Hand vs Range対応版)
+═══════════════════════════════════════════════════════ */
+(function(){
   const RANGES = {
     BTN: "22+,A2s+,K5s+,Q8s+,J8s+,T8s+,97s+,86s+,75s+,65s,54s,A7o+,KTo+,QTo+,JTo",
     BB:  "22+,A2s+,K2s+,Q4s+,J7s+,T7s+,96s+,85s+,74s+,64s+,53s+,A2o+,K7o+,Q8o+,J8o+,T8o+,97o+,87o"
   };
-
-  /* ── ② Pyodide内にEquityエンジンを1度だけインストール ── */
-  let pyEquityReady = false;
-
-  async function installPyEquity() {
-    if (pyEquityReady) return;
-    // brainReady（treysロード完了）を待つ
-    while (!window.brainReady) {
-      await new Promise(r => setTimeout(r, 200));
-    }
-    const py = window.pyodideObj;
-    await py.runPythonAsync(`
-import random
-from treys import Card, Evaluator as _Ev
-_EV2 = _Ev()
-_RANKS2 = 'AKQJT98765432'
-_SUITS2 = 'shdc'
-_FULL_DECK2 = [Card.new(r+s) for r in _RANKS2 for s in _SUITS2]
-
-def _expand_range2(range_str):
-    combos = []
-    for tok in range_str.split(','):
-        tok = tok.strip()
-        if not tok: continue
-        plus = tok.endswith('+')
-        base = tok[:-1] if plus else tok
-        r1, r2 = base[0], base[1]
-        typ = base[2] if len(base) > 2 else None
-        i1, i2 = _RANKS2.index(r1), _RANKS2.index(r2)
-        if r1 == r2:  # ペア
-            target = 0 if plus else i1
-            for i in range(target, i1 + 1):
-                r = _RANKS2[i]
-                for a in range(4):
-                    for b in range(a + 1, 4):
-                        combos.append((Card.new(r + _SUITS2[a]), Card.new(r + _SUITS2[b])))
-        else:
-            end_low = i1 - 1 if plus else i2
-            for jj in range(i2, end_low + 1):
-                rL = _RANKS2[jj]
-                if typ == 's':
-                    for a in range(4):
-                        combos.append((Card.new(r1 + _SUITS2[a]), Card.new(rL + _SUITS2[a])))
-                elif typ == 'o':
-                    for a in range(4):
-                        for b in range(4):
-                            if a != b:
-                                combos.append((Card.new(r1 + _SUITS2[a]), Card.new(rL + _SUITS2[b])))
-    return combos
-
-def range_vs_range_equity2(range_a_str, range_b_str, board_strs, n_trials=4000):
-    board = [Card.new(c) for c in board_strs]
-    board_set = set(board)
-    combos_a = [c for c in _expand_range2(range_a_str) if c[0] not in board_set and c[1] not in board_set]
-    combos_b = [c for c in _expand_range2(range_b_str) if c[0] not in board_set and c[1] not in board_set]
-    if not combos_a or not combos_b:
-        return (50.0, 50.0, 0)
-    n_remain = 5 - len(board)
-    win_a = 0.0
-    valid = 0
-    for _ in range(n_trials):
-        ha = random.choice(combos_a)
-        hb = random.choice(combos_b)
-        if ha[0] in (hb[0], hb[1]) or ha[1] in (hb[0], hb[1]):
-            continue
-        used = set(board) | {ha[0], ha[1], hb[0], hb[1]}
-        remaining = [c for c in _FULL_DECK2 if c not in used]
-        extra = random.sample(remaining, n_remain) if n_remain > 0 else []
-        full_board = board + extra
-        sa = _EV2.evaluate(full_board, [ha[0], ha[1]])
-        sb = _EV2.evaluate(full_board, [hb[0], hb[1]])
-        if sa < sb:   win_a += 1
-        elif sa == sb: win_a += 0.5
-        valid += 1
-    if valid == 0:
-        return (50.0, 50.0, 0)
-    eq_a = win_a / valid * 100
-    return (round(eq_a, 1), round(100 - eq_a, 1), valid)
-`);
-    pyEquityReady = true;
-    console.log('[SPECTRA Patch v1.0] Equity engine installed.');
-  }
-
-  /* ── ③ 本物のRange Advantage計算（キャッシュ付き） ── */
   const equityCache = new Map();
 
   async function calcRealEquity(board) {
     if (board.length < 3) return null;
-    const key = board.join(',');
+    
+    // キャッシュキーにヒーロー手札の状態を含めることでキャッシュ汚染を完全に防止
+    const hStr = heroHand[0] && heroHand[1] ? (heroHand[0].rank + heroHand[0].suit + heroHand[1].rank + heroHand[1].suit) : 'RANGE';
+    const key = `${hStr}_${board.join(',')}`;
+    
     if (equityCache.has(key)) return equityCache.get(key);
-    await installPyEquity();
-    const t0 = performance.now();
-    const raw = await window.pyodideObj.runPythonAsync(
-      `range_vs_range_equity2("${RANGES.BTN}", "${RANGES.BB}", ${JSON.stringify(board)}, 4000)`
-    );
-    const arr = raw.toJs();
-    const ms  = Math.round(performance.now() - t0);
-    const out = { btn: Math.round(arr[0]), bb: Math.round(arr[1]), n: arr[2], ms };
-    equityCache.set(key, out);
-    console.log(`[SPECTRA Patch] Equity → BTN=${out.btn}% BB=${out.bb}% n=${out.n} (${out.ms}ms)`);
-    return out;
+    
+    const eq = await HandEval.rangeVsRangeEquity(RANGES.BTN, RANGES.BB, board, 2000, heroHand);
+    equityCache.set(key, eq);
+    
+    console.log(`[Equity Engine] Mode: ${hStr === 'RANGE' ? 'Range vs Range' : 'Hero vs Range'} -> BTN/HERO=${eq.btn}% BB=${eq.bb}% n=${eq.n} (${eq.ms}ms)`);
+    return eq;
   }
 
-  /* ── ④ renderAnalytics をモンキーパッチ ── */
   const _origRenderAnalytics = window.renderAnalytics;
-
   window.renderAnalytics = function(board) {
-    // まず既存の処理をそのまま実行（Texture等は触らない）
     _origRenderAnalytics(board);
     if (board.length < 3) return;
+    
+    // スライダーのラベル表記を「HERO」または「BTN」に動的切り替え
+    const lblSec = document.querySelector('.range-name');
+    if (lblSec) {
+      lblSec.textContent = (heroHand[0] && heroHand[1]) ? 'HERO' : 'BTN';
+    }
 
-    // 非同期でEquityを計算し、捏造値を本物で上書き
-    calcRealEquity(board).then(eq => {
+    calcRealEquity(board).then(eq=>{
       if (!eq) return;
-
-      // BTN/BBバーとテキストを本物で上書き
-      const barBtn = document.getElementById('bar-btn');
-      const valBtn = document.getElementById('val-btn');
-      const barBb  = document.getElementById('bar-bb');
-      const valBb  = document.getElementById('val-bb');
-
-      if (barBtn) barBtn.style.width = eq.btn + '%';
-      if (valBtn) {
-        valBtn.textContent = eq.btn + '%';
-        // ツールチップに誤差と信頼情報を表示
-        valBtn.title = `Monte Carlo Equity ±1% (N=${eq.n}, ${eq.ms}ms)`;
+      const barBtn=document.getElementById('bar-btn');
+      const valBtn=document.getElementById('val-btn');
+      const barBb=document.getElementById('bar-bb');
+      const valBb=document.getElementById('val-bb');
+      if (barBtn) barBtn.style.width=eq.btn+'%';
+      if (valBtn) { 
+        valBtn.textContent=eq.btn+'%'; 
+        valBtn.title=`MC Equity (N=${eq.n}, ${eq.ms}ms)`; 
       }
-      if (barBb)  barBb.style.width = eq.bb + '%';
-      if (valBb)  {
-        valBb.textContent = eq.bb + '%';
-        valBb.title = `Monte Carlo Equity ±1% (N=${eq.n}, ${eq.ms}ms)`;
+      if (barBb)  barBb.style.width=eq.bb+'%';
+      if (valBb)  { 
+        valBb.textContent=eq.bb+'%'; 
+        valBb.title=`MC Equity (N=${eq.n}, ${eq.ms}ms)`; 
       }
-
-      // スパークラインも本物の値で再描画
-      if (typeof window.drawSparkline === 'function') {
-        drawSparkline(eq.btn, eq.bb);
-      }
+      if (typeof drawSparkline==='function') drawSparkline(eq.btn, eq.bb);
     });
   };
 
-  /* ── ⑤ 公開API（デバッグ・将来拡張用） ── */
-  window.SPECTRA_PATCH = {
-    RANGES,
-    calcEquity: calcRealEquity,
-    cache:      equityCache,
-    version:    '1.0'
-  };
-
-  console.log('[SPECTRA Math-Correct Patch v1.0] Loaded. Waiting for BRAIN:READY...');
-
+  window.SPECTRA_PATCH = { RANGES, calcEquity: calcRealEquity, cache: equityCache, version: '2.0-purejs' };
+  console.log('[SPECTRA Range Equity Patch v2.0] Pure JS loaded.');
 })();
 </script>
+<div id="hm-tooltip">
+  <div class="tt-box">
+    <div class="tt-title">
+      <span id="tt-hand">--</span>
+      <span class="tt-type" id="tt-type">--</span>
+    </div>
+    <div class="tt-best-label" id="tt-best-label"></div>
+    <div class="tt-combos" id="tt-combos"></div>
+    <div class="tt-metrics">
+      <div class="tt-metric-row">
+        <span class="tt-metric-lbl">強度 NOW</span>
+        <div class="tt-bar-wrap"><div class="tt-bar" id="tt-bar-str" style="background:#e53e3e;"></div></div>
+        <span class="tt-metric-val" id="tt-val-str">--%</span>
+      </div>
+      <div class="tt-metric-row">
+        <span class="tt-metric-lbl">将来性</span>
+        <div class="tt-bar-wrap"><div class="tt-bar" id="tt-bar-pot" style="background:#38a169;"></div></div>
+        <span class="tt-metric-val" id="tt-val-pot">--%</span>
+      </div>
+      <div class="tt-metric-row">
+        <span class="tt-metric-lbl">コンボ</span>
+        <div class="tt-bar-wrap"><div class="tt-bar" id="tt-bar-combo" style="background:#3182ce;"></div></div>
+        <span class="tt-metric-val" id="tt-val-combo">-/-</span>
+      </div>
+    </div>
+    <div class="tt-blocker" id="tt-blocker">⚠ ブロッカーあり</div>
+    <div class="tt-warn" id="tt-warn"></div>
+  </div>
+</div>
 </body>
 </html>
