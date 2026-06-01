@@ -4,7 +4,7 @@
  * 計算エンジンだけを分離した専用 Worker
  * 
  * 使用方法:
- * const worker = new Worker('spectra-worker.js');
+ * const worker = new Worker('./spectra-worker.js', { type: 'module' });
  * worker.postMessage({ type: 'EVAL_169', payload: { board: ['As', 'Kh', 'Qs'], hero: ['Ah', 'Kd'] } });
  */
 
