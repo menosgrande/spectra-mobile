@@ -1,438 +1,679 @@
-```html
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SPECTRA v3.0 — Phase A (Full)</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SPECTRA v3.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#f7f7f8; --card:#ffffff; --muted:#777; --accent:#00aa66;
-  }
-  body{font-family:system-ui, "Share Tech Mono", -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP"; margin:18px; background:var(--bg); color:#111}
-  header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-  h1{font-size:18px;margin:0}
-  .badge{padding:6px 10px;border-radius:8px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
-  #controls{display:flex;gap:8px;align-items:center;margin-bottom:12px}
-  #heatmap{display:grid;grid-template-columns:repeat(13,36px);gap:6px;padding:8px;background:var(--card);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.04)}
-  .hm-cell{width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;cursor:pointer;user-select:none}
-  .hm-label{font-weight:700}
-  #panels{display:flex;gap:12px;margin-top:12px}
-  #nuts-panel{display:flex;gap:12px;width:100%}
-  .nuts-column{flex:1;background:var(--card);padding:10px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.04)}
-  .nuts-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .nuts-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
-  .nuts-item{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:8px;background:linear-gradient(180deg,rgba(0,0,0,0.02),rgba(0,0,0,0.01));cursor:pointer}
-  .muted{color:var(--muted)}
-  .small{font-size:12px}
-  .btn{padding:6px 10px;border-radius:8px;background:#f3f3f3;cursor:pointer}
-  .btn.primary{background:var(--accent);color:#fff}
-  #manual-controls{display:flex;gap:8px;align-items:center}
-  input.card-input{width:56px;padding:6px;border-radius:6px;border:1px solid #e6e6e6}
-  #status{margin-left:auto;font-size:13px;color:var(--muted)}
-  footer{margin-top:18px;font-size:12px;color:var(--muted)}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:#04080f;color:#c8dff0;font-family:'Rajdhani',sans-serif;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:9999;}
+#root{display:flex;flex-direction:column;width:100vw;height:100vh;}
+
+/* HEADER */
+#hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 14px;border-bottom:1px solid rgba(0,180,255,0.2);background:linear-gradient(90deg,#030810,#060f1e,#030810);flex-shrink:0;height:46px;}
+.logo-t{font-family:'Orbitron',monospace;font-size:17px;font-weight:900;color:#00d4ff;text-shadow:0 0 16px rgba(0,212,255,.6);letter-spacing:3px;}
+.logo-s{font-size:8px;letter-spacing:3px;color:rgba(160,200,230,.4);margin-top:1px;}
+.hdr-mid{font-family:'Orbitron',monospace;font-size:15px;font-weight:700;color:#00d4ff;letter-spacing:4px;text-shadow:0 0 20px rgba(0,212,255,.5);}
+.hdr-r{display:flex;align-items:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(160,200,230,.5);}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#00ff9d;box-shadow:0 0 8px rgba(0,255,157,.6);animation:pulse 1.8s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* MODE TOGGLE */
+#mode-toggle{display:flex;gap:0;border:1px solid rgba(0,180,255,.3);border-radius:3px;overflow:hidden;flex-shrink:0;}
+.mode-btn{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1.5px;padding:4px 10px;cursor:pointer;border:none;background:transparent;color:rgba(160,200,230,.4);transition:all .2s;}
+.mode-btn.active{background:rgba(0,212,255,.15);color:#00d4ff;text-shadow:0 0 8px rgba(0,212,255,.6);}
+.mode-btn:hover:not(.active){background:rgba(0,212,255,.06);color:rgba(0,212,255,.7);}
+#mode-divider{width:1px;background:rgba(0,180,255,.3);}
+
+/* MAIN */
+#main{display:grid;grid-template-columns:200px 1fr 220px;gap:6px;padding:6px;flex:1;min-height:0;}
+
+/* PANEL */
+.pnl{background:#080e1a;border:1px solid rgba(0,180,255,0.15);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow:hidden;}
+.pnl::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.4),transparent);}
+.sec{font-family:'Orbitron',monospace;font-size:7.5px;letter-spacing:2.5px;color:rgba(0,212,255,.7);text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid rgba(0,180,255,.12);flex-shrink:0;}
+
+/* LEFT — STREET + NUTS */
+#street-box{background:rgba(0,180,255,.06);border:1px solid rgba(0,255,157,.2);border-radius:2px;padding:8px;text-align:center;flex-shrink:0;}
+#street-name{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;color:#00ff9d;text-shadow:0 0 20px rgba(0,255,157,.7);letter-spacing:2px;}
+#street-cnt{font-family:'Share Tech Mono',monospace;font-size:12px;color:rgba(160,200,230,.5);margin-top:2px;}
+#nuts-list{display:flex;flex-direction:column;gap:4px;flex:1;overflow:hidden;}
+.nuts-row{display:flex;align-items:center;gap:5px;padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.05);}
+.n-rank{font-family:'Orbitron',monospace;font-size:12px;color:#ffb800;min-width:16px;}
+.n-eq{font-family:'Share Tech Mono',monospace;font-size:8px;color:#00d4ff;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.25);border-radius:2px;padding:2px 4px;min-width:70px;max-width:90px;text-align:center;line-height:1.3;}
+.n-hand{font-size:16px;font-weight:700;flex:1;}
+.n-type{font-size:9px;color:rgba(160,200,230,.5);text-align:right;line-height:1.3;}
+
+/* CENTER */
+#center-pnl{padding:5px;gap:4px;}
+.cam-hdr{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.cam-lbl{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:rgba(0,212,255,.7);}
+.cam-lbl span{color:#00d4ff;}
+
+/* Camera wrap */
+#cam-wrap{flex:1;position:relative;background:#000;border:1px solid rgba(0,180,255,.25);border-radius:3px;overflow:hidden;min-height:0;}
+#cam-video{width:100%;height:100%;object-fit:cover;display:none;}
+#cam-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+#cam-placeholder{position:absolute;inset:0;background:radial-gradient(ellipse at center,#0a1830 0%,#020810 70%);display:flex;align-items:center;justify-content:center;}
+#table-oval{width:80%;height:76%;border:3px solid #1e2d45;border-radius:120px;background:radial-gradient(ellipse,#0d1f35 0%,#070f1c 100%);position:relative;display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(0,0,0,.8),inset 0 0 30px rgba(0,0,0,.6);}
+#table-oval::before{content:'';position:absolute;inset:6px;border:1px solid rgba(0,180,255,.08);border-radius:114px;}
+.pl-chip{width:28px;height:28px;border-radius:50%;background:#0f1e30;border:1px solid #1e2d45;display:flex;align-items:center;justify-content:center;font-size:8px;color:#3a5070;font-family:'Share Tech Mono',monospace;}
+.pl-cards{display:flex;gap:2px;}
+.pl-card-back{width:9px;height:13px;background:#1a2a40;border:1px solid #243550;border-radius:1px;}
+#pl-top{position:absolute;top:-17px;display:flex;flex-direction:column;align-items:center;gap:2px;}
+#pl-left{position:absolute;left:-18px;display:flex;align-items:center;gap:2px;}
+#pl-right{position:absolute;right:-18px;display:flex;align-items:center;gap:2px;}
+#pl-bot{position:absolute;bottom:-17px;display:flex;flex-direction:column;align-items:center;gap:2px;}
+
+/* BOARD CARDS AREA — dropdowns ON TOP of cards */
+#board-area{display:flex;gap:6px;padding:4px 2px;align-items:flex-start;flex-shrink:0;}
+.board-slot{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;}
+
+/* Dropdowns above card */
+.slot-inputs{display:flex;gap:2px;width:100%;}
+.slot-inputs select{
+  flex:1;min-width:0;
+  background:#0c1525;
+  border:1px solid rgba(0,180,255,.3);border-radius:3px;
+  font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;
+  padding:3px 1px;cursor:pointer;outline:none;text-align:center;
+  transition:border-color .2s;
+}
+.slot-inputs select:focus{border-color:rgba(0,212,255,.8);}
+.rank-sel{color:#e0f0ff;}
+
+/* Card display */
+.board-card{
+  width:100%;aspect-ratio:2.2/3.2;
+  border:2px solid rgba(0,255,157,.7);border-radius:5px;
+  background:rgba(0,255,157,.04);box-shadow:0 0 12px rgba(0,255,157,.15);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;transition:border-color .2s,box-shadow .2s;
+}
+.board-card.waiting{border-color:rgba(0,180,255,.18);box-shadow:none;background:transparent;}
+.board-card.active{border-color:rgba(0,255,157,.9);box-shadow:0 0 16px rgba(0,255,157,.3);}
+.card-inner{
+  width:88%;height:88%;background:#fff;border-radius:4px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;
+}
+.card-rank-tl{position:absolute;top:3px;left:4px;font-size:13px;font-weight:900;line-height:1;font-family:'Rajdhani',sans-serif;}
+.card-rank-br{position:absolute;bottom:3px;right:4px;font-size:13px;font-weight:900;line-height:1;font-family:'Rajdhani',sans-serif;transform:rotate(180deg);}
+.card-suit-center{font-size:28px;line-height:1;}
+.suit-s{color:#111;}
+.suit-h{color:#d00020;}
+.suit-d{color:#0055cc;}
+.suit-c{color:#007a2a;}
+.wait-txt{font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,180,255,.35);letter-spacing:1px;animation:blink2 1.4s step-end infinite;}
+.slot-status{font-family:'Share Tech Mono',monospace;font-size:7px;color:#00ff9d;letter-spacing:.5px;text-align:center;}
+
+/* Hide inputs in camera mode */
+.cam-mode .slot-inputs{display:none;}
+
+/* Stabilizer */
+#stab-bar{display:flex;align-items:center;gap:7px;padding:4px 8px;border:1px solid rgba(0,255,157,.2);border-radius:2px;background:rgba(0,255,157,.03);font-family:'Share Tech Mono',monospace;font-size:9px;flex-shrink:0;}
+#stab-dot{width:7px;height:7px;border-radius:50%;}
+#stab-txt{flex:1;}
+#stab-conf{color:#00d4ff;}
+
+/* RIGHT */
+.wet-big{font-family:'Orbitron',monospace;font-size:22px;font-weight:700;color:#ff3b3b;text-shadow:0 0 14px rgba(255,59,59,.5);}
+.wet-sub{font-size:9px;color:#ff3b3b;letter-spacing:2px;margin-top:-2px;}
+.metric{margin-bottom:6px;}
+.metric-lbl{font-size:9px;letter-spacing:1.5px;color:rgba(160,200,230,.45);margin-bottom:2px;}
+.bar-wrap{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;transition:width .7s ease;}
+.metric-val{font-family:'Share Tech Mono',monospace;font-size:11px;margin-top:2px;}
+.range-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:3px;}
+.range-name{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1.5px;margin-bottom:3px;}
+.range-val{font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:700;margin-top:2px;}
+
+/* HEATMAP */
+#hm-wrap{flex:1;display:flex;flex-direction:column;min-height:0;gap:2px;position:relative;}
+#hm-grid{
+  display:grid;
+  grid-template-columns:11px repeat(13,1fr);
+  gap:1px;flex:1;min-height:0;align-content:start;
+}
+.hm-hdr{font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(0,212,255,.55);display:flex;align-items:center;justify-content:center;}
+.hm-c{font-family:'Share Tech Mono',monospace;font-size:6px;display:flex;align-items:center;justify-content:center;border-radius:1px;aspect-ratio:1/1;transition:background-color .3s ease;cursor:default;color:rgba(255,255,255,.75);}
+#hm-spin{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(4,8,15,.75);border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#00d4ff;letter-spacing:2px;}
+#hm-spin.active{display:flex;}
+
+/* FOOTER */
+#ftr{display:flex;justify-content:space-between;align-items:center;padding:3px 14px;border-top:1px solid rgba(0,180,255,.15);font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.4);flex-shrink:0;background:rgba(0,0,0,.5);}
+.analyzing{color:#00ff9d;animation:blink2 1.4s step-end infinite;}
+@keyframes blink2{0%,100%{opacity:1}50%{opacity:.15}}
+
+/* BRAIN OVERLAY */
+#brain-overlay{position:fixed;inset:0;background:rgba(4,8,15,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:1000;transition:opacity .5s;}
+#brain-overlay.hidden{opacity:0;pointer-events:none;}
+.brain-title{font-family:'Orbitron',monospace;font-size:18px;color:#00d4ff;letter-spacing:4px;text-shadow:0 0 20px rgba(0,212,255,.6);}
+.brain-msg{font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(160,200,230,.6);}
+.brain-prog-wrap{width:300px;height:3px;background:rgba(0,180,255,.1);border-radius:2px;overflow:hidden;}
+.brain-prog{height:100%;background:linear-gradient(90deg,#00d4ff,#00ff9d);border-radius:2px;transition:width .4s;}
+@keyframes progpulse{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
 </head>
 <body>
+<div id="root">
 
-<header>
-  <div class="badge">SPECTRA v3.0</div>
-  <h1>Phase A — Worker 化・currentBoard 統一・MANUAL 完全化</h1>
-  <div id="status" class="muted">Initializing...</div>
-</header>
+<!-- BRAIN OVERLAY -->
+<div id="brain-overlay">
+  <div class="brain-title">SPECTRA BRAIN</div>
+  <div class="brain-msg" id="brain-msg">INITIALIZING PYODIDE...</div>
+  <div class="brain-prog-wrap"><div class="brain-prog" id="brain-prog" style="width:8%"></div></div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);margin-top:4px;" id="brain-sub">loading python runtime</div>
+</div>
 
-<div id="controls">
-  <div class="badge" id="brain-badge">BRAIN:INIT</div>
-  <div id="brain-msg" class="muted">Starting engine...</div>
-
-  <div id="manual-controls">
-    <label class="small muted">MANUAL</label>
-    <input id="m0" class="card-input" placeholder="card" maxlength="2">
-    <input id="m1" class="card-input" placeholder="card" maxlength="2">
-    <input id="m2" class="card-input" placeholder="card" maxlength="2">
-    <input id="m3" class="card-input" placeholder="card" maxlength="2">
-    <input id="m4" class="card-input" placeholder="card" maxlength="2">
-    <button id="apply-manual" class="btn primary">Apply</button>
-    <button id="clear-board" class="btn">Clear</button>
+<!-- HEADER -->
+<div id="hdr">
+  <div><div class="logo-t">SPECTRA</div><div class="logo-s">SPECTRA POKER SYSTEM v2.0</div></div>
+  <div class="hdr-mid">SPECTRA</div>
+  <div class="hdr-r">
+    <!-- MODE TOGGLE -->
+    <div id="mode-toggle">
+      <button class="mode-btn active" id="btn-manual" onclick="setMode('MANUAL')">MANUAL</button>
+      <div id="mode-divider"></div>
+      <button class="mode-btn" id="btn-camera" onclick="setMode('CAMERA')">CAMERA</button>
+    </div>
+    <div class="conn-dot"></div>
+    <span>|</span><span id="fps-d">FPS: 29</span>
+    <span id="time-d">--:--:--</span>
+    <span id="brain-badge" style="font-family:'Orbitron',monospace;font-size:8px;padding:2px 6px;border:1px solid rgba(0,180,255,.3);border-radius:2px;color:rgba(0,180,255,.6);letter-spacing:1px;">BRAIN:INIT</span>
   </div>
 </div>
 
-<!-- Heatmap -->
-<div id="heatmap" aria-label="169 hand heatmap"></div>
+<!-- MAIN -->
+<div id="main">
 
-<!-- Panels -->
-<div id="panels">
-  <div id="nuts-panel">
-    <div class="nuts-column" id="nuts-made-column">
-      <div class="nuts-header"><div><strong>MADE</strong><div class="small muted">確定ハンド</div></div><div><button id="made-clear" class="btn">Clear</button></div></div>
-      <div class="nuts-list" id="nuts-made-list"><div class="muted small">No made hands</div></div>
+  <!-- LEFT: STREET + NUTS -->
+  <div class="pnl">
+    <div id="street-box">
+      <div id="street-name">PREFLOP</div>
+      <div id="street-cnt">0 / 5</div>
     </div>
-
-    <div class="nuts-column" id="nuts-draws-column">
-      <div class="nuts-header"><div><strong>DRAWS</strong><div class="small muted">ポテンシャル</div></div><div><button id="draws-clear" class="btn">Clear</button></div></div>
-      <div class="nuts-list" id="nuts-draws-list"><div class="muted small">No draws</div></div>
+    <div class="sec" style="margin-top:3px">NUTS RANKING <span style="font-size:6.5px;opacity:.6">[ABSOLUTE]</span></div>
+    <div id="nuts-list">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);padding:10px 4px;line-height:1.6;">ボードを3枚以上<br>入力するとNUTS<br>が表示されます</div>
     </div>
   </div>
+
+  <!-- CENTER -->
+  <div class="pnl" id="center-pnl">
+    <div class="cam-hdr">
+      <div class="cam-lbl" id="cam-lbl-txt">▐ MANUAL BOARD INPUT <span>[SIMULATOR MODE]</span></div>
+      <div id="board-hash" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,212,255,.6)">BOARD: --</div>
+    </div>
+
+    <!-- Camera/table view -->
+    <div id="cam-wrap">
+      <video id="cam-video" autoplay playsinline muted></video>
+      <canvas id="cam-canvas"></canvas>
+      <div id="cam-placeholder">
+        <div id="table-oval">
+          <div id="pl-top"><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div><div class="pl-chip">D</div></div>
+          <div id="pl-left"><div class="pl-chip">P1</div><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div></div>
+          <div id="pl-right"><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div><div class="pl-chip">P3</div></div>
+          <div id="pl-bot"><div class="pl-chip">P2</div><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Board area: dropdowns on top, cards below -->
+    <div id="board-area"></div>
+
+    <!-- Stabilizer -->
+    <div id="stab-bar">
+      <div id="stab-dot" style="background:rgba(0,255,157,.2);"></div>
+      <div id="stab-txt" style="color:rgba(160,200,230,.4);">MANUAL INPUT MODE — SELECT CARDS ABOVE</div>
+      <div id="stab-conf">CONF: --</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: ANALYTICS + HEATMAP -->
+  <div class="pnl">
+    <div class="sec">ANALYTICS &amp; HUD</div>
+
+    <div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;flex-shrink:0;">
+      <div id="prog-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#00d4ff,#1a6aff);border-radius:2px;transition:width .7s;"></div>
+    </div>
+
+    <div style="background:rgba(0,0,0,.3);border:1px solid rgba(0,180,255,.12);border-radius:3px;padding:7px;flex-shrink:0;">
+      <div class="sec" style="border:none;padding:0;margin-bottom:5px;">▐ BOARD TEXTURE</div>
+      <div class="wet-big" id="wet-val">--%</div>
+      <div class="wet-sub" id="wet-lbl">ANALYZING</div>
+      <div style="margin-top:7px;">
+        <div class="metric">
+          <div class="metric-lbl">CONNECTEDNESS</div>
+          <div class="bar-wrap"><div class="bar-fill" id="bar-con" style="width:0%;background:#00d4ff;"></div></div>
+          <div class="metric-val" id="val-con" style="color:#00d4ff;">--%</div>
+        </div>
+        <div class="metric" style="margin-bottom:0;">
+          <div class="metric-lbl">FLUSH DENSITY</div>
+          <div class="bar-wrap"><div class="bar-fill" id="bar-fls" style="width:0%;background:#a855f7;"></div></div>
+          <div class="metric-val" id="val-fls" style="color:#a855f7;">--%</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:rgba(0,0,0,.3);border:1px solid rgba(0,180,255,.12);border-radius:3px;padding:7px;flex-shrink:0;">
+      <div class="sec" style="border:none;padding:0;margin-bottom:5px;">▐ RANGE ADVANTAGE <span style="font-size:6px;">(BTN vs BB)</span></div>
+      <div class="range-grid">
+        <div>
+          <div class="range-name" style="color:#ff3b3b;">BTN</div>
+          <div class="bar-wrap"><div class="bar-fill" id="bar-btn" style="width:0%;background:#ff3b3b;"></div></div>
+          <div class="range-val" id="val-btn" style="color:#ff3b3b;">--%</div>
+        </div>
+        <div>
+          <div class="range-name" style="color:#3b82f6;">BB</div>
+          <div class="bar-wrap"><div class="bar-fill" id="bar-bb" style="width:0%;background:#3b82f6;"></div></div>
+          <div class="range-val" id="val-bb" style="color:#60a5fa;">--%</div>
+        </div>
+      </div>
+      <canvas id="sparkline" width="200" height="32" style="width:100%;margin-top:5px;opacity:.7;"></canvas>
+    </div>
+
+    <div class="sec">▐ DYNAMIC HEATMAP</div>
+    <div id="hm-wrap">
+      <div id="hm-grid"></div>
+      <div id="hm-spin">CALCULATING...</div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<div id="ftr">
+  <span class="analyzing">● ANALYZING BOARD... LIVE</span>
+  <span id="ftr-hash">HASH: N/A</span>
+  <span id="calc-time" style="color:rgba(0,212,255,.5);">CALC: --ms</span>
+  <span>SPECTRA POKER SYSTEM v2.0</span>
 </div>
 
-<footer>
-  Worker: <span id="worker-ver" class="muted">unknown</span>
-</footer>
-
+</div><!-- /root -->
 <script>
-/* ============================================================
-   Phase A — Full index.html (client-side)
-   - currentBoard を唯一の真実に統一
-   - MANUAL モード（重複防止・CLEAR・ストリート判定）
-   - Worker に完全移行
-   - デバッグログを強化（recalculate / worker messages）
-   ============================================================ */
+/* ═══════════════════════════════════════════════════
+   SPECTRA v2.0 — BRAIN SIMULATOR
+═══════════════════════════════════════════════════ */
+const RANKS_LIST  = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+const SUITS_LIST  = ['s','h','d','c'];
+const SUIT_SYM    = {s:'♠',h:'♥',d:'♦',c:'♣'};
+const SUIT_CLS    = {s:'suit-s',h:'suit-h',d:'suit-d',c:'suit-c'};
+const SUIT_COLORS = {s:'#222',h:'#d00020',d:'#0055cc',c:'#007a2a'};
+const STREET_COL  = {PREFLOP:'#00d4ff',FLOP:'#00ff9d',TURN:'#ffb800',RIVER:'#ff3b3b'};
+const HAND_TYPES  = {1:'STR.FLUSH',2:'FOUR OF KIND',3:'FULL HOUSE',4:'FLUSH',5:'STRAIGHT',6:'THREE OF KIND',7:'TWO PAIR',8:'ONE PAIR',9:'HIGH CARD'};
 
-'use strict';
-
-/* -------------------------
-   グローバル状態
-   ------------------------- */
-const ranks = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
-let currentBoard = ['','','','','']; // flop(0-2), turn(3), river(4)
-let msgId = 0;
+let currentBoard = [];
+let worker       = null;
+let workerReady  = false;
+let msgId        = 0;
 const pendingMsg = new Map();
-let worker = null;
+let calcTimer    = null;
+let currentMode  = 'MANUAL';
+let camStream    = null;
 
-/* expose hero for debug / UI integration */
-window.currentHero = window.currentHero || [];
+/* ══════════════════════════════
+   MODE TOGGLE
+══════════════════════════════ */
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('btn-manual').classList.toggle('active', mode==='MANUAL');
+  document.getElementById('btn-camera').classList.toggle('active', mode==='CAMERA');
 
-/* -------------------------
-   Worker 初期化
-   ------------------------- */
-function initWorker() {
+  const boardArea = document.getElementById('board-area');
+  const lbl = document.getElementById('cam-lbl-txt');
+
+  if (mode === 'MANUAL') {
+    // show dropdowns, hide camera
+    boardArea.classList.remove('cam-mode');
+    lbl.innerHTML = '▐ MANUAL BOARD INPUT <span>[SIMULATOR MODE]</span>';
+    stopCamera();
+    document.getElementById('cam-placeholder').style.display='flex';
+    document.getElementById('cam-video').style.display='none';
+    setStabState('MANUAL');
+  } else {
+    // hide dropdowns, start camera
+    boardArea.classList.add('cam-mode');
+    lbl.innerHTML = '▐ LIVE CAMERA FEED <span>[OVERHEAD MAT]</span>';
+    startCamera();
+    setStabState('CAM');
+  }
+}
+
+async function startCamera() {
   try {
-    worker = new Worker('./spectra-worker.js', { type: 'module' });
+    camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    const v = document.getElementById('cam-video');
+    v.srcObject = camStream; v.style.display='block';
+    document.getElementById('cam-placeholder').style.display='none';
+  } catch(e) {
+    setStabState('CAM_ERR');
+  }
+}
 
-    worker.onmessage = (e) => {
-      // Raw log for debugging
-      console.debug('[Worker->CLIENT] raw', e.data);
+function stopCamera() {
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+}
 
-      const payload = e.data;
-      const { id, type, data, cached, calcTime } = payload;
-
-      // id を伴うレスポンスは pending を解決
-      if (id !== undefined && pendingMsg.has(id)) {
-        pendingMsg.get(id)(payload);
+/* ══════════════════════════════
+   BRAIN INIT
+══════════════════════════════ */
+/* ══════════════════════════════
+   WORKER INIT
+══════════════════════════════ */
+function initWorker(){
+  try{
+    worker=new Worker('spectra-worker.js');
+    worker.onmessage=(e)=>{
+      const{id,type}=e.data;
+      if(id!==undefined&&pendingMsg.has(id)){
+        pendingMsg.get(id)(e.data);
         pendingMsg.delete(id);
         return;
       }
-
-      // 通知系（id を伴わない）を処理
-      if (type === 'HELLO') {
-        document.getElementById('brain-msg').textContent = 'ENGINE WORKER ONLINE';
-        document.getElementById('brain-badge').textContent = 'BRAIN:READY';
-        document.getElementById('brain-badge').style.color = '#00aa66';
-        document.getElementById('status').textContent = 'Ready';
-        if (data && data.version) document.getElementById('worker-ver').textContent = data.version;
-        console.debug('[Worker] HELLO', payload);
-      } else if (type === 'NUTS') {
-        renderNutsPanel(data);
-      } else if (type === 'TEXTURE') {
-        console.debug('[Worker] TEXTURE', data);
-      } else {
-        console.debug('[Worker] notification', payload);
+      if(type==='HELLO'){
+        workerReady=true;
+        document.getElementById('brain-prog').style.width='100%';
+        document.getElementById('brain-msg').textContent='ENGINE WORKER ONLINE';
+        document.getElementById('brain-badge').textContent='BRAIN:READY';
+        document.getElementById('brain-badge').style.color='#00ff9d';
+        document.getElementById('brain-badge').style.borderColor='rgba(0,255,157,.4)';
+        setTimeout(()=>document.getElementById('brain-overlay').classList.add('hidden'),500);
+        if(currentBoard.length>=3) triggerBrainUpdate();
       }
     };
-
-    worker.onerror = (e) => {
-      console.error('[Worker Error]', e);
-      document.getElementById('brain-msg').textContent = 'WORKER ERROR: ' + (e.message || 'unknown');
-      document.getElementById('brain-badge').textContent = 'BRAIN:ERR';
-      document.getElementById('brain-badge').style.color = '#ff3b3b';
-      document.getElementById('status').textContent = 'Worker error';
+    worker.onerror=(e)=>{
+      document.getElementById('brain-msg').textContent='WORKER ERROR: '+e.message;
+      document.getElementById('brain-badge').textContent='BRAIN:ERR';
+      document.getElementById('brain-badge').style.color='#ff3b3b';
     };
-
-    // INIT handshake
-    worker.postMessage({ type: 'INIT' });
-    console.debug('[CLIENT] Worker post INIT');
-  } catch (err) {
-    console.error('[SPECTRA] Worker init failed:', err);
-    document.getElementById('brain-msg').textContent = 'WORKER UNAVAILABLE — CHECK SERVER';
-    document.getElementById('brain-badge').textContent = 'BRAIN:ERR';
-    document.getElementById('brain-badge').style.color = '#ff3b3b';
-    document.getElementById('status').textContent = 'No worker';
+    document.getElementById('brain-msg').textContent='LOADING ENGINE WORKER...';
+    document.getElementById('brain-prog').style.width='40%';
+    worker.postMessage({type:'INIT'});
+  }catch(e){
+    document.getElementById('brain-msg').textContent='WORKER UNAVAILABLE';
+    document.getElementById('brain-badge').textContent='BRAIN:ERR';
+    document.getElementById('brain-badge').style.color='#ff3b3b';
   }
 }
 
-/* Promise ベースの workerRequest */
-function workerRequest(type, payload = {}) {
-  return new Promise((resolve, reject) => {
-    if (!worker) { reject(new Error('Worker not ready')); return; }
-    const id = ++msgId;
-    pendingMsg.set(id, resolve);
-    worker.postMessage({ id, type, payload });
-    // タイムアウト
-    setTimeout(() => {
-      if (pendingMsg.has(id)) {
-        pendingMsg.delete(id);
-        reject(new Error('Worker timeout'));
-      }
-    }, 10000);
+function workerRequest(type,payload){
+  return new Promise((resolve,reject)=>{
+    if(!worker){reject(new Error('Worker not ready'));return;}
+    const id=++msgId;
+    pendingMsg.set(id,resolve);
+    worker.postMessage({id,type,payload});
+    setTimeout(()=>{
+      if(pendingMsg.has(id)){pendingMsg.delete(id);reject(new Error('Worker timeout'));}
+    },15000);
   });
 }
 
-/* -------------------------
-   Heatmap DOM 生成（1回）
-   ------------------------- */
-function createHeatmapGrid() {
-  const container = document.getElementById('heatmap');
-  container.innerHTML = '';
-  for (let r = 0; r < 13; r++) {
-    for (let c = 0; c < 13; c++) {
-      const cell = document.createElement('div');
-      cell.className = 'hm-cell';
-      cell.id = `cell-${r}-${c}`;
-      cell.dataset.r = r;
-      cell.dataset.c = c;
-      cell.innerHTML = `<div class="hm-label"></div>`;
-      cell.addEventListener('click', () => {
-        const hand = cell.dataset.hand || null;
-        if (hand) {
-          console.log('Heatmap click', hand);
-          // Hook: set hero or open quick action
-        }
-      });
-      // 初期色
-      cell.style.background = '#e9e9ea';
-      container.appendChild(cell);
+
+
+/* ══════════════════════════════
+   TEXTURE
+══════════════════════════════ */
+function calcTexture(board){
+  if(board.length<3)return null;
+  const ranks=board.map(c=>'AKQJT98765432'.indexOf(c[0]));
+  const suits=board.map(c=>c[1]);
+  const sorted=[...ranks].sort((a,b)=>a-b);
+  let gaps=0; for(let i=1;i<sorted.length;i++) gaps+=sorted[i]-sorted[i-1];
+  const connect=Math.max(0,Math.round(100-gaps*8));
+  const suitCounts={};
+  suits.forEach(s=>suitCounts[s]=(suitCounts[s]||0)+1);
+  const maxSuit=Math.max(...Object.values(suitCounts));
+  const flush=Math.round(maxSuit/board.length*100);
+  const wet=Math.round((connect+flush)/2);
+  const lbl=wet>=80?'VERY WET':wet>=60?'WET':wet>=40?'SEMI-WET':wet>=20?'DRY':'VERY DRY';
+  return{wet,connect,flush,lbl};
+}
+
+/* ══════════════════════════════
+   RENDERERS
+══════════════════════════════ */
+function strengthColor(v){
+  if(v>=80)return'#b91c1c';
+  if(v>=60)return'#c2410c';
+  if(v>=40)return'#ca8a04';
+  if(v>=20)return'#15803d';
+  if(v>0)return'#0e7490';
+  return'#0d1a2a';
+}
+
+function buildHeatmap(){
+  const grid=document.getElementById('hm-grid');
+  grid.innerHTML='';
+  const corner=document.createElement('div');corner.className='hm-hdr';grid.appendChild(corner);
+  RANKS_LIST.forEach(r=>{const h=document.createElement('div');h.className='hm-hdr';h.textContent=r;grid.appendChild(h);});
+  RANKS_LIST.forEach((r1,i)=>{
+    const rh=document.createElement('div');rh.className='hm-hdr';rh.textContent=r1;grid.appendChild(rh);
+    RANKS_LIST.forEach((r2,j)=>{
+      const lbl=i===j?r1+r2:(i<j?r1+r2+'s':r2+r1+'o');
+      const c=document.createElement('div');c.className='hm-c';c.id='hc'+(i*13+j);
+      c.title=lbl;c.textContent=lbl.slice(0,2);c.style.backgroundColor='#0d1a2a';
+      grid.appendChild(c);
+    });
+  });
+}
+
+function renderHeatmap(data){
+  data.forEach((item,idx)=>{
+    const c=document.getElementById('hc'+idx);
+    if(!c)return;
+    // rc=1(SF)〜9(HC)、pct=0-100 どちらでもカラーリング可能
+    const val=item.pct||item.equity||0;
+    c.style.backgroundColor=strengthColor(val);
+    c.title=(item.hand||'')+(item.handName?' ['+item.handName+']':'');
+  });
+}
+
+function renderNuts(data){
+  // data is from NUTS worker: [{rank,hand,combo,rc,handName,equity}]
+  document.getElementById('nuts-list').innerHTML=data.slice(0,7).map((item,i)=>`
+    <div class="nuts-row">
+      <div class="n-rank">${i+1}</div>
+      <div class="n-eq" style="font-size:9px;">${item.handName||HAND_TYPES[item.rc]||''}</div>
+      <div class="n-hand">${item.hand}</div>
+      <div class="n-type">${item.combo||''}</div>
+    </div>`).join('');
+}
+
+function renderAnalytics(board){
+  const tex=calcTexture(board);
+  if(!tex){
+    document.getElementById('wet-val').textContent='--%';
+    document.getElementById('wet-lbl').textContent='ANALYZING';
+    ['bar-con','bar-fls','bar-btn','bar-bb'].forEach(id=>document.getElementById(id).style.width='0%');
+    ['val-con','val-fls','val-btn','val-bb'].forEach(id=>document.getElementById(id).textContent='--%');
+    return;
+  }
+  document.getElementById('wet-val').textContent=tex.wet+'%';
+  document.getElementById('wet-lbl').textContent=tex.lbl;
+  document.getElementById('bar-con').style.width=tex.connect+'%';
+  document.getElementById('val-con').textContent=tex.connect+'%';
+  document.getElementById('bar-fls').style.width=tex.flush+'%';
+  document.getElementById('val-fls').textContent=tex.flush+'%';
+  const btn=Math.round(50+tex.wet*.12);const bb=100-btn;
+  document.getElementById('bar-btn').style.width=btn+'%';document.getElementById('val-btn').textContent=btn+'%';
+  document.getElementById('bar-bb').style.width=bb+'%';document.getElementById('val-bb').textContent=bb+'%';
+  document.getElementById('prog-bar').style.width=(board.length/5*100)+'%';
+  drawSparkline(btn,bb);
+}
+
+function renderStreet(board){
+  const count=board.length;
+  const street=count<3?'PREFLOP':count===3?'FLOP':count===4?'TURN':'RIVER';
+  const sn=document.getElementById('street-name');
+  sn.textContent=street;sn.style.color=STREET_COL[street];sn.style.textShadow=`0 0 20px ${STREET_COL[street]}`;
+  document.getElementById('street-cnt').textContent=count+' / 5';
+  const hash=board.length?board.join(' ').toUpperCase():'--';
+  document.getElementById('board-hash').textContent='BOARD: '+hash;
+  document.getElementById('ftr-hash').textContent='HASH: '+hash;
+}
+
+/* ══════════════════════════════
+   BOARD AREA BUILD
+══════════════════════════════ */
+function buildBoardArea(){
+  const area=document.getElementById('board-area');
+  area.innerHTML='';
+  for(let i=0;i<5;i++){
+    const slot=document.createElement('div');slot.className='board-slot';slot.id='slot-'+i;
+
+    /* Dropdowns */
+    const inputs=document.createElement('div');inputs.className='slot-inputs';
+
+    const rSel=document.createElement('select');rSel.className='rank-sel';rSel.id='rsel-'+i;
+    rSel.innerHTML='<option value="">-</option>'+RANKS_LIST.map(r=>`<option value="${r}">${r}</option>`).join('');
+
+    const sSel=document.createElement('select');sSel.className='suit-sel';sSel.id='ssel-'+i;
+    sSel.innerHTML='<option value="">-</option>'+SUITS_LIST.map(s=>`<option value="${s}" style="color:${SUIT_COLORS[s]}">${SUIT_SYM[s]}</option>`).join('');
+
+    const updateSuitColor=()=>{sSel.style.color=SUIT_COLORS[sSel.value]||'rgba(160,200,230,.5)';};
+    sSel.addEventListener('change',()=>{updateSuitColor();onInputChanged();});
+    rSel.addEventListener('change',onInputChanged);
+    updateSuitColor();
+
+    inputs.appendChild(rSel);inputs.appendChild(sSel);
+
+    /* Card display */
+    const card=document.createElement('div');card.className='board-card waiting';card.id='bcard-'+i;
+    card.innerHTML=`<div class="wait-txt">CARD ${i+1}</div>`;
+
+    /* Status */
+    const status=document.createElement('div');status.className='slot-status';status.id='bstat-'+i;
+
+    slot.appendChild(inputs);slot.appendChild(card);slot.appendChild(status);
+    area.appendChild(slot);
+  }
+}
+
+function updateBoardCards(board){
+  for(let i=0;i<5;i++){
+    const card=document.getElementById('bcard-'+i);
+    const stat=document.getElementById('bstat-'+i);
+    if(i<board.length){
+      const raw=board[i],rank=raw[0].toUpperCase(),suit=raw[1];
+      const cls=SUIT_CLS[suit]||'';
+      card.className='board-card active';
+      card.innerHTML=`<div class="card-inner">
+        <span class="card-rank-tl ${cls}">${rank}</span>
+        <span class="card-suit-center ${cls}">${SUIT_SYM[suit]||''}</span>
+        <span class="card-rank-br ${cls}">${rank}</span>
+      </div>`;
+      stat.textContent='LOCKED ✓';stat.style.color='#00ff9d';
+    } else {
+      card.className='board-card waiting';
+      card.innerHTML=`<div class="wait-txt">CARD ${i+1}</div>`;
+      stat.textContent='';
     }
   }
 }
 
-/* -------------------------
-   hand <-> coords ヘルパー
-   ------------------------- */
-function coordsToHand(i, j) {
-  if (i === j) return ranks[i] + ranks[j];
-  if (i < j) return ranks[i] + ranks[j] + 's';
-  return ranks[j] + ranks[i] + 'o';
-}
-
-/* HSL 色変換（equity 0..100 -> hsl） */
-function equityToHsl(e, sat = 72, light = 48) {
-  const clamped = Math.max(0, Math.min(100, Number(e) || 0));
-  const hue = Math.round((clamped / 100) * 120); // 0..120
-  return `hsl(${hue}, ${sat}%, ${light}%)`;
-}
-
-/* -------------------------
-   renderHeatmap 差分更新
-   results: [{hand:'AKs', equity:xx, type:'suited', comboCount:4}, ...]
-   ------------------------- */
-function renderHeatmap(results) {
-  if (!Array.isArray(results)) return;
-  const map = new Map();
-  for (const r of results) {
-    if (!r || !r.hand) continue;
-    map.set(r.hand, r);
+function readInputBoard(){
+  const board=[];
+  for(let i=0;i<5;i++){
+    const r=document.getElementById('rsel-'+i)?.value;
+    const s=document.getElementById('ssel-'+i)?.value;
+    if(r&&s) board.push(r+s);
   }
-
-  for (let i = 0; i < ranks.length; i++) {
-    for (let j = 0; j < ranks.length; j++) {
-      const handStr = coordsToHand(i, j);
-      const cell = document.getElementById(`cell-${i}-${j}`);
-      if (!cell) continue;
-      const entry = map.get(handStr);
-      if (!entry) {
-        // clear
-        if (cell.dataset.hand) {
-          cell.dataset.hand = '';
-          cell.dataset.equity = '';
-          cell.querySelector('.hm-label').textContent = '';
-          cell.style.background = '#e9e9ea';
-          cell.style.color = '#333';
-        }
-        continue;
-      }
-      const eq = (entry.equity !== undefined) ? String(entry.equity) : '';
-      if (cell.dataset.equity === eq && cell.dataset.hand === handStr) continue;
-      cell.dataset.hand = handStr;
-      cell.dataset.equity = eq;
-      cell.querySelector('.hm-label').textContent = `${entry.equity}%`;
-      cell.style.background = equityToHsl(entry.equity);
-      cell.style.color = (entry.equity > 55) ? '#072' : '#fff';
-    }
-  }
+  return board;
 }
 
-/* -------------------------
-   NUTS パネル描画
-   ------------------------- */
-const madeListEl = document.getElementById('nuts-made-list');
-const drawsListEl = document.getElementById('nuts-draws-list');
-
-function clearChildren(el) {
-  while (el.firstChild) el.removeChild(el.firstChild);
-}
-
-function renderNutsPanel(nuts) {
-  clearChildren(madeListEl);
-  if (!nuts || !Array.isArray(nuts.made) || nuts.made.length === 0) {
-    const e = document.createElement('div'); e.className = 'muted small'; e.textContent = 'No made hands';
-    madeListEl.appendChild(e);
+function onInputChanged(){
+  if(currentMode!=='MANUAL')return;
+  currentBoard=readInputBoard();
+  renderStreet(currentBoard);
+  updateBoardCards(currentBoard);
+  renderAnalytics(currentBoard);
+  if(currentBoard.length>=3){
+    setStabState('LOCKED');
+    clearTimeout(calcTimer);
+    calcTimer=setTimeout(triggerBrainUpdate,300);
   } else {
-    for (const m of nuts.made) {
-      const row = document.createElement('div'); row.className = 'nuts-item';
-      const left = document.createElement('div'); left.style.display='flex'; left.style.alignItems='center';
-      const hand = document.createElement('div'); hand.className='nuts-hand'; hand.textContent = m.hand || (m.core||'');
-      const meta = document.createElement('div'); meta.className='small muted'; meta.style.marginLeft='8px'; meta.textContent = m.handType || m.type || '';
-      left.appendChild(hand); left.appendChild(meta);
-      const right = document.createElement('div'); right.className='small'; right.textContent = (m.equity!==undefined)?`${Number(m.equity).toFixed(1)}%`:'';
-      row.appendChild(left); row.appendChild(right);
-      row.addEventListener('click', ()=>{ console.log('MADE clicked', m); /* hero 反映フック */ });
-      madeListEl.appendChild(row);
-    }
-  }
-
-  clearChildren(drawsListEl);
-  if (!nuts || !Array.isArray(nuts.draws) || nuts.draws.length === 0) {
-    const e = document.createElement('div'); e.className = 'muted small'; e.textContent = 'No draws';
-    drawsListEl.appendChild(e);
-  } else {
-    for (const d of nuts.draws) {
-      const row = document.createElement('div'); row.className='nuts-item';
-      const left = document.createElement('div'); left.style.display='flex'; left.style.alignItems='center';
-      const hand = document.createElement('div'); hand.className='nuts-hand'; hand.textContent = d.hand || (d.core||'');
-      const meta = document.createElement('div'); meta.className='small muted'; meta.style.marginLeft='8px'; meta.textContent = d.label || d.drawType || '';
-      left.appendChild(hand); left.appendChild(meta);
-      const right = document.createElement('div'); right.className='small'; right.textContent = d.outs ? `outs:${d.outs}` : '';
-      row.appendChild(left); row.appendChild(right);
-      row.addEventListener('click', ()=>{ console.log('DRAW clicked', d); /* hero 反映フック */ });
-      drawsListEl.appendChild(row);
-    }
+    setStabState('MANUAL');
   }
 }
 
-/* -------------------------
-   currentBoard 更新フロー
-   - 正規化、重複チェック、唯一の真実代入、recalculate 呼び出し
-   ------------------------- */
-function normalizeCard(s) {
-  if (!s) return '';
-  const t = String(s).trim().toUpperCase();
-  // Accept only 2-char like "9C","TD","AH" or "As" style; normalize suits to lowercase for worker compatibility
-  if (t.length !== 2) return '';
-  const rank = t[0];
-  const suit = t[1].toLowerCase();
-  if (!'23456789TJQKA'.includes(rank)) return '';
-  if (!'cdhs'.includes(suit)) return '';
-  return rank + suit;
-}
-
-function isDuplicateCard(card, board) {
-  if (!card) return false;
-  return board.filter(Boolean).some(c => c === card);
-}
-
-function getStreet(board) {
-  const filled = board.filter(Boolean).length;
-  if (filled === 0) return 'PREFLOP';
-  if (filled >= 3 && filled < 4) return 'FLOP';
-  if (filled === 4) return 'TURN';
-  if (filled >= 5) return 'RIVER';
-  return 'UNKNOWN';
-}
-
-async function updateBoard(newBoardArray) {
-  // newBoardArray: array of up to 5 card strings ('' for empty)
-  const normalized = Array.from({length:5}, (_,i) => normalizeCard(newBoardArray[i] || ''));
-
-  // 重複チェック
-  const seen = new Set();
-  for (let idx = 0; idx < normalized.length; idx++) {
-    const c = normalized[idx];
-    if (!c) continue;
-    if (seen.has(c)) {
-      console.warn('Duplicate card prevented:', c);
-      normalized[idx] = '';
-      continue;
-    }
-    seen.add(c);
+async function triggerBrainUpdate(){
+  if(!workerReady||currentBoard.length<3)return;
+  setStabState('CALC');
+  document.getElementById('hm-spin').classList.add('active');
+  const t0=performance.now();
+  try{
+    const[evalRes,nutsRes]=await Promise.all([
+      workerRequest('EVAL_169',{board:currentBoard}),
+      workerRequest('NUTS',    {board:currentBoard}),
+    ]);
+    const ms=Math.round(performance.now()-t0);
+    document.getElementById('calc-time').textContent=`CALC: ${ms}ms`+(evalRes.cached?' (cached)':'');
+    if(evalRes.data&&evalRes.data.length) renderHeatmap(evalRes.data);
+    if(nutsRes.data&&nutsRes.data.length) renderNuts(nutsRes.data);
+    setStabState('DONE');
+  }catch(e){
+    console.error('Brain calc failed:',e);
+    setStabState('ERR');
   }
-
-  // 代入（唯一の真実）
-  currentBoard = normalized.slice();
-
-  // UI 表示更新（ストリート）
-  document.getElementById('status').textContent = `Board: ${currentBoard.filter(Boolean).join(',') || 'empty'} — ${getStreet(currentBoard)}`;
-
-  // 再計算
-  await recalculate();
+  document.getElementById('hm-spin').classList.remove('active');
 }
 
-/* recalculate: Worker に EVAL_169 を投げて Heatmap と NUTS を更新 */
-async function recalculate() {
-  try {
-    console.debug('[recalculate] currentBoard=', currentBoard, 'currentHero=', window.currentHero || []);
-    const evalReq = { board: currentBoard, hero: window.currentHero || [] };
-    console.debug('[recalculate] REQ EVAL_169 ->', evalReq);
-    const res = await workerRequest('EVAL_169', evalReq);
-    console.debug('[recalculate] EVAL_169 RES ->', res);
-    if (res && res.data) renderHeatmap(res.data);
-
-    const nutsReq = { board: currentBoard, hero: window.currentHero || [] };
-    console.debug('[recalculate] REQ NUTS ->', nutsReq);
-    const nuts = await workerRequest('NUTS', nutsReq);
-    console.debug('[recalculate] NUTS RES ->', nuts);
-    if (nuts && nuts.data) renderNutsPanel(nuts.data);
-
-    const texture = await workerRequest('TEXTURE', { board: currentBoard });
-    if (texture && texture.data) console.debug('[recalculate] TEXTURE ->', texture.data);
-
-  } catch (err) {
-    console.error('[recalculate] error', err);
-  }
+/* ══════════════════════════════
+   STABILIZER
+══════════════════════════════ */
+function setStabState(state){
+  const dot=document.getElementById('stab-dot');
+  const txt=document.getElementById('stab-txt');
+  const map={
+    MANUAL: {c:'rgba(0,180,255,.4)',t:'rgba(0,180,255,.6)',msg:'MANUAL INPUT MODE — SELECT CARDS ABOVE'},
+    LOCKED: {c:'#00ff9d',t:'#00ff9d',msg:'BOARD LOCKED — BRAIN CALCULATING'},
+    CALC:   {c:'#ffb800',t:'#ffb800',msg:'EVALUATING 169 HANDS WITH TREYS...'},
+    DONE:   {c:'#00ff9d',t:'#00ff9d',msg:'BRAIN COMPLETE — HEATMAP UPDATED'},
+    ERR:    {c:'#ff3b3b',t:'#ff3b3b',msg:'BRAIN ERROR — CHECK CONSOLE'},
+    CAM:    {c:'#00d4ff',t:'#00d4ff',msg:'CAMERA MODE — LIVE FEED ACTIVE'},
+    CAM_ERR:{c:'#ff3b3b',t:'#ff3b3b',msg:'CAMERA ERROR — CHECK PERMISSIONS'},
+  };
+  const s=map[state]||map.MANUAL;
+  dot.style.background=s.c;dot.style.boxShadow=`0 0 8px ${s.c}`;
+  txt.style.color=s.t;txt.textContent=s.msg;
+  document.getElementById('stab-conf').textContent=
+    state==='DONE'?'CONF: 1.00':state==='CALC'?'CONF: ...':state==='CAM'?'CONF: LIVE':'CONF: --';
 }
 
-/* -------------------------
-   MANUAL UI ハンドラ
-   ------------------------- */
-function readManualInputs() {
-  const vals = [];
-  for (let i=0;i<5;i++){
-    const el = document.getElementById('m'+i);
-    vals.push(el ? el.value.trim() : '');
-  }
-  return vals;
+/* ══════════════════════════════
+   SPARKLINE
+══════════════════════════════ */
+function drawSparkline(btn,bb){
+  const cv=document.getElementById('sparkline');
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const line=(pts,col)=>{ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=1.5;pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.stroke();};
+  const pts1=[],pts2=[];
+  for(let x=0;x<=W;x+=4){const t=x/W;pts1.push({x,y:H/2-(btn/100-.5)*H*.6+Math.sin(t*Math.PI*4)*3});pts2.push({x,y:H/2-(bb/100-.5)*H*.6+Math.sin(t*Math.PI*4+2)*3});}
+  line(pts1,'#ff3b3b');line(pts2,'#3b82f6');
 }
 
-document.getElementById('apply-manual').addEventListener('click', () => {
-  const vals = readManualInputs().map(normalizeCard);
-  updateBoard(vals);
-});
+/* ══════════════════════════════
+   CLOCK
+══════════════════════════════ */
+setInterval(()=>{
+  const n=new Date();
+  document.getElementById('time-d').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  document.getElementById('fps-d').textContent='FPS: '+(28+Math.floor(Math.random()*4));
+},1000);
 
-document.getElementById('clear-board').addEventListener('click', () => {
-  for (let i=0;i<5;i++){ const el=document.getElementById('m'+i); if(el) el.value=''; }
-  updateBoard(['','','','','']);
-});
-
-/* CLEAR buttons for NUTS columns */
-document.getElementById('made-clear').addEventListener('click', ()=>{ clearChildren(madeListEl); const e=document.createElement('div'); e.className='muted small'; e.textContent='No made hands'; madeListEl.appendChild(e); });
-document.getElementById('draws-clear').addEventListener('click', ()=>{ clearChildren(drawsListEl); const e=document.createElement('div'); e.className='muted small'; e.textContent='No draws'; drawsListEl.appendChild(e); });
-
-/* -------------------------
-   初期化
-   ------------------------- */
-createHeatmapGrid();
+/* ══════════════════════════════
+   BOOT
+══════════════════════════════ */
+buildHeatmap();
+buildBoardArea();
+setStabState('MANUAL');
+renderStreet([]);
+drawSparkline(50,50);
 initWorker();
-
-// 初回サンプル（flop）で描画（Worker 起動待ちのため少し遅延）
-setTimeout(()=>{ updateBoard(['9c','8c','7d','','']); }, 800);
-
-/* Expose helpers for debugging in console */
-window.updateBoard = updateBoard;
-window.recalculate = recalculate;
-window.renderHeatmap = renderHeatmap;
-window.renderNutsPanel = renderNutsPanel;
-
 </script>
 </body>
 </html>
-```
