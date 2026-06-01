@@ -328,8 +328,8 @@ let worker = null;
 
 function initWorker() {
   try {
-    worker = new Worker('spectra-worker.js');
-
+    worker = new Worker('./spectra-worker.js', { type: 'module' });
+    
     worker.onmessage = (e) => {
       const { id, type, data, cached, calcTime } = e.data;
 
