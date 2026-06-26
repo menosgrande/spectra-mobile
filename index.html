@@ -15,6 +15,11 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{width:100%;height:100%;overflow:hidden;background:#04080f;color:#c8dff0;font-family:'Rajdhani',sans-serif;}
 body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:9999;}
+/* Slim scrollbar for panels */
+.pnl::-webkit-scrollbar,#nuts-list::-webkit-scrollbar,#river-polar::-webkit-scrollbar{width:3px;}
+.pnl::-webkit-scrollbar-track{background:transparent;}
+.pnl::-webkit-scrollbar-thumb{background:rgba(0,180,255,0.25);border-radius:2px;}
+.pnl::-webkit-scrollbar-thumb:hover{background:rgba(0,180,255,0.5);}
 #root{display:flex;flex-direction:column;width:100vw;height:100vh;}
 
 /* ─── HEADER ─── */
@@ -31,7 +36,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 @media(min-width:769px){#main{display:grid !important;grid-template-columns:200px 1fr 220px !important;}}
 
 /* ─── PANEL ─── */
-.pnl{background:#080e1a;border:1px solid rgba(0,180,255,0.15);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow:hidden;}
+.pnl{background:#080e1a;border:1px solid rgba(0,180,255,0.15);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow-y:auto;overflow-x:hidden;}
 .pnl::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.4),transparent);}
 .sec{font-family:'Orbitron',monospace;font-size:7.5px;letter-spacing:2.5px;color:rgba(0,212,255,.7);text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid rgba(0,180,255,.12);flex-shrink:0;}
 
@@ -50,7 +55,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 #street-name{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;color:#00ff9d;text-shadow:0 0 20px rgba(0,255,157,.7);letter-spacing:2px;}
 #street-cnt{font-family:'Share Tech Mono',monospace;font-size:12px;color:rgba(160,200,230,.5);margin-top:2px;}
 
-#nuts-list{display:flex;flex-direction:column;gap:3px;flex:1;overflow:hidden;}
+#nuts-list{display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;}
 .nuts-row{display:flex;align-items:center;gap:5px;padding:4px;border-bottom:1px solid rgba(255,255,255,.05);border-radius:2px;transition:background .2s;}
 .nuts-row:hover{background:rgba(0,180,255,.06);}
 .n-rank{font-family:'Orbitron',monospace;font-size:11px;color:#ffb800;min-width:16px;}
@@ -58,6 +63,67 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .n-hand{font-size:16px;font-weight:700;flex:1;}
 .n-type{font-size:8px;color:rgba(160,200,230,.45);text-align:right;line-height:1.3;}
 .n-draw{font-family:'Share Tech Mono',monospace;font-size:8px;margin-top:1px;}
+
+/* ─── NUTS SUB-ROW: outs cards ─── */
+.nuts-subrow{
+  display:flex;align-items:center;gap:4px;padding:2px 4px 4px 26px;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  flex-wrap:wrap;
+}
+.outs-up{
+  display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;
+  font-size:8px;color:#00ff9d;
+}
+.outs-down{
+  display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;
+  font-size:8px;color:#ff3b3b;
+}
+.outs-arrow{font-size:10px;font-weight:900;}
+.outs-card-tag{
+  display:inline-flex;align-items:center;gap:1px;
+  background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.25);
+  border-radius:2px;padding:1px 4px;font-size:8px;letter-spacing:.5px;
+  white-space:nowrap;
+}
+.outs-card-tag.down{background:rgba(255,59,59,.08);border-color:rgba(255,59,59,.25);}
+.outs-count{
+  font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;
+  color:rgba(160,200,230,.4);margin-left:2px;
+}
+
+/* ─── RIVER POLARIZED VIEW ─── */
+#river-polar{display:none;flex-direction:column;gap:4px;flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;}
+.polar-section{border-radius:3px;padding:5px 6px;flex-shrink:0;}
+.polar-title{
+  font-family:'Orbitron',monospace;font-size:7.5px;letter-spacing:2px;
+  font-weight:700;margin-bottom:4px;
+}
+.polar-hands{
+  display:flex;flex-wrap:wrap;gap:3px;
+}
+.polar-hand{
+  font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;
+  padding:2px 5px;border-radius:2px;cursor:default;
+  transition:opacity .2s;
+}
+.polar-cutoff-line{
+  width:100%;height:2px;border-radius:1px;margin:3px 0;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.3),rgba(255,255,255,.3) 4px,transparent 4px,transparent 8px);
+}
+.polar-section.pure-value{background:rgba(0,40,20,.4);border:1px solid rgba(0,255,157,.2);}
+.polar-section.pure-value .polar-title{color:#00ff9d;}
+.polar-section.pure-value .polar-hand{background:rgba(0,255,157,.12);color:#00ff9d;border:1px solid rgba(0,255,157,.25);}
+.polar-section.check-catch{background:rgba(0,20,50,.4);border:1px solid rgba(0,180,255,.2);}
+.polar-section.check-catch .polar-title{color:#00d4ff;}
+.polar-section.check-catch .polar-hand{background:rgba(0,180,255,.1);color:#60c0ff;border:1px solid rgba(0,180,255,.2);}
+.polar-section.bluff-fold{background:rgba(50,0,0,.4);border:1px solid rgba(255,59,59,.2);}
+.polar-section.bluff-fold .polar-title{color:#ff6060;}
+.polar-section.bluff-fold .polar-hand{background:rgba(255,59,59,.1);color:#ff8080;border:1px solid rgba(255,59,59,.2);}
+
+/* ─── KICKER CUTOFF LINE in heatmap ─── */
+.hm-c.cutoff-above{outline:2px solid rgba(0,255,157,.5);outline-offset:-1px;z-index:2;}
+.hm-c.cutoff-below{opacity:.55;}
+
 
 /* ─── HERO HAND SELECTION ─── */
 #hero-section{flex-shrink:0;padding:5px 0 0;}
@@ -250,7 +316,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   .conn-dot{display:none;}
   #mob-tabs{display:flex;}
   #main{display:flex !important;flex-direction:column !important;padding:0;gap:0;flex:none;}
-  #main>.pnl{display:none;overflow:visible;border-radius:0;border-left:none;border-right:none;min-height:calc(100dvh - 46px - 37px);flex-shrink:0;}
+  #main>.pnl{display:none;overflow-y:auto;overflow-x:hidden;border-radius:0;border-left:none;border-right:none;min-height:calc(100dvh - 46px - 37px);flex-shrink:0;}
   #main>.pnl.mob-active{display:flex;}
   #cam-wrap{min-height:140px;max-height:180px;flex:0 0 160px;}
   .card-suit-bg{font-size:clamp(36px,14vw,64px);}
@@ -281,7 +347,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 <!-- TOOLTIP -->
 <div id="hm-tooltip">
   <div class="tt-hand" id="tt-hand">--</div>
-  <div class="tt-row"><span class="tt-label">EQUITY</span><span class="tt-val" id="tt-eq">--%</span></div>
+  <div class="tt-row"><span class="tt-label">STRENGTH</span><span class="tt-val" id="tt-eq">--%</span></div>
   <div class="tt-row"><span class="tt-label">POTENTIAL</span><span class="tt-val" id="tt-pot">--%</span></div>
   <div class="tt-row"><span class="tt-label">DENSITY</span><span class="tt-val" id="tt-den">--%</span></div>
   <div class="tt-row"><span class="tt-label">DRAW</span><span class="tt-val" id="tt-draw">--</span></div>
@@ -323,6 +389,46 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       <div class="sit-sub" id="sit-sub">--</div>
     </div>
 
+    <!-- SITUATION / ARCHETYPE (非表示・Worker用に保持) -->
+    <div style="display:none;">
+      <select id="situation-select">
+        <option value="BTN_VS_BB" selected>BTN vs BB</option>
+        <option value="3BET_IP">3-Bet IP</option>
+        <option value="SRP_IP">SRP IP</option>
+      </select>
+      <select id="archetype-select" onchange="onInputChanged();">
+        <option value="STANDARD" selected>Standard</option>
+        <option value="TIGHT">Tight</option>
+        <option value="LOOSE">Loose</option>
+        <option value="GTO">GTO</option>
+        <option value="RECREATIONAL">Recreational</option>
+      </select>
+      <div id="fb-archetype"></div>
+    </div>
+
+    <!-- Hero/Villain Pos (非表示セレクタ: POS MATRIXクリックで操作) -->
+    <div style="display:none;">
+      <select id="hero-pos-select" onchange="lastRangeAdv=null;onInputChanged();updateConfigFeedback();buildPosMatrix();">
+        <option value="UTG">UTG</option>
+        <option value="HJ">HJ</option>
+        <option value="CO">CO</option>
+        <option value="BTN" selected>BTN</option>
+        <option value="SB">SB</option>
+      </select>
+      <select id="villain-pos-select" onchange="lastRangeAdv=null;onInputChanged();updateConfigFeedback();buildPosMatrix();">
+        <option value="UTG">UTG</option>
+        <option value="HJ">HJ</option>
+        <option value="CO">CO</option>
+        <option value="BTN">BTN</option>
+        <option value="SB">SB</option>
+        <option value="BB" selected>BB</option>
+      </select>
+    </div>
+    <!-- feedback placeholders (updateConfigFeedback用) -->
+    <div id="fb-hero-pos" style="display:none;"></div>
+    <div id="fb-villain-pos" style="display:none;"></div>
+    <div id="fb-situation" style="display:none;"></div>
+
     <!-- HERO HAND -->
     <div id="hero-section">
       <div class="sec">▐ HERO HAND <span style="font-size:6px;color:rgba(255,215,0,.5);">/ 自分の手札（金枠）</span></div>
@@ -342,9 +448,25 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       </div>
     </div>
 
-    <div class="sec" style="margin-top:3px">NUTS RANKING <span style="font-size:6.5px;opacity:.6">[ABSOLUTE]</span></div>
+    <div class="sec" style="margin-top:3px" id="nuts-sec-label">NUTS RANKING <span style="font-size:6.5px;opacity:.6">[ABSOLUTE]</span></div>
+    <!-- フロップ/ターン: サブ行付きリスト -->
     <div id="nuts-list">
       <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);padding:10px 4px;line-height:1.6;">ボードを3枚以上<br>入力するとNUTS<br>が表示されます</div>
+    </div>
+    <!-- リバー: ポラライズド3分割 -->
+    <div id="river-polar">
+      <div class="polar-section pure-value" id="polar-value">
+        <div class="polar-title">⬆ PURE VALUE</div>
+        <div class="polar-hands" id="polar-value-hands"></div>
+      </div>
+      <div class="polar-section check-catch" id="polar-catch">
+        <div class="polar-title">↔ CHECK-CATCH</div>
+        <div class="polar-hands" id="polar-catch-hands"></div>
+      </div>
+      <div class="polar-section bluff-fold" id="polar-bluff">
+        <div class="polar-title">⬇ BLUFF / FOLD</div>
+        <div class="polar-hands" id="polar-bluff-hands"></div>
+      </div>
     </div>
   </div>
 
@@ -379,12 +501,55 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
   <!-- RIGHT: ANALYTICS + HEATMAP -->
   <div class="pnl" id="mob-pnl-stats">
-    <div class="sec">ANALYTICS &amp; HUD</div>
     <div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;flex-shrink:0;">
       <div id="prog-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#00d4ff,#1a6aff);border-radius:2px;transition:width .7s;"></div>
     </div>
 
-    <!-- BOARD TEXTURE -->
+    <!-- ══ 教科書: POSITION MATRIX（固定・常時表示） ══ -->
+    <div style="padding:6px;border:1px solid rgba(0,180,255,.15);border-radius:3px;background:rgba(0,5,15,.4);flex-shrink:0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+        <span style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.45);">▐ POSITION MATRIX</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:6px;color:rgba(160,200,230,.25);">click to select</span>
+      </div>
+      <div id="pos-matrix-wrap"></div>
+    </div>
+
+    <!-- ══ BOARD SUMMARY ══ -->
+    <div id="conclusion-panel" style="display:none;flex-shrink:0;">
+
+      <!-- 戦況ブロック -->
+      <div id="tactic-badge" style="
+        padding:8px 10px;border-radius:3px;
+        border:1px solid rgba(0,212,255,.25);
+        background:rgba(0,5,15,.6);
+        margin-bottom:4px;transition:all .4s;">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <div id="tactic-dot" style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:rgba(0,180,255,.4);"></div>
+          <div id="tactic-text" style="font-family:'Orbitron',monospace;font-size:13px;font-weight:700;letter-spacing:2px;color:rgba(0,180,255,.6);">WAITING</div>
+        </div>
+        <div id="tactic-sub" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.35);margin-top:3px;padding-left:16px;">ボードを入力してください</div>
+      </div>
+
+      <!-- RANGE PROFILE ブロック -->
+      <div id="range-profile-block" style="
+        padding:6px 10px;border-radius:3px;
+        border:1px solid rgba(0,180,255,.12);
+        background:rgba(0,5,15,.4);
+        margin-bottom:4px;display:none;">
+        <div style="font-family:'Orbitron',monospace;font-size:6px;letter-spacing:1px;color:rgba(0,180,255,.3);margin-bottom:4px;">RANGE PROFILE</div>
+        <div id="range-profile-hud" style="display:flex;flex-direction:column;gap:3px;"></div>
+      </div>
+
+      <!-- Narrative -->
+      <div id="conclusion-narrative" style="
+        font-family:'Share Tech Mono',monospace;font-size:8px;
+        color:rgba(160,200,230,.45);line-height:1.6;
+        border-top:1px solid rgba(0,180,255,.08);padding-top:4px;
+        display:none;">
+      </div>
+    </div>
+
+    <!-- ══ L2: BOARD TEXTURE ══ -->
     <div style="background:rgba(0,0,0,.3);border:1px solid rgba(0,180,255,.12);border-radius:3px;padding:7px;flex-shrink:0;">
       <div class="sec" style="border:none;padding:0;margin-bottom:5px;">▐ BOARD TEXTURE</div>
       <div class="wet-big" id="wet-val">--%</div>
@@ -403,35 +568,49 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       </div>
     </div>
 
-    <!-- OUTS PANEL -->
+    <!-- HERO OUTS -->
     <div id="outs-panel" style="display:none;">
       <div class="sec" style="border:none;padding:0;margin-bottom:5px;">▐ HERO OUTS <span style="font-size:6px;opacity:.5;">/ アウツ解析</span></div>
       <div id="outs-list"></div>
     </div>
 
-    <!-- RANGE ADVANTAGE -->
-    <div style="background:rgba(0,0,0,.3);border:1px solid rgba(0,180,255,.12);border-radius:3px;padding:7px;flex-shrink:0;">
-      <div class="sec" style="border:none;padding:0;margin-bottom:5px;">▐ RANGE ADVANTAGE <span style="font-size:6px;">(BTN vs BB)</span></div>
-      <div class="range-grid">
-        <div>
-          <div class="range-name" style="color:#ff3b3b;">BTN</div>
-          <div class="bar-wrap"><div class="bar-fill" id="bar-btn" style="width:0%;background:#ff3b3b;"></div></div>
-          <div class="range-val" id="val-btn" style="color:#ff3b3b;">--%</div>
-        </div>
-        <div>
-          <div class="range-name" style="color:#3b82f6;">BB</div>
-          <div class="bar-wrap"><div class="bar-fill" id="bar-bb" style="width:0%;background:#3b82f6;"></div></div>
-          <div class="range-val" id="val-bb" style="color:#60a5fa;">--%</div>
-        </div>
+    <!-- ══ L3: BOARD INTELLIGENCE — 折りたたみ（詳細診断） ══ -->
+    <div style="flex-shrink:0;">
+      <div id="bi-toggle" onclick="toggleBiPanel()" style="
+        display:none;cursor:pointer;
+        font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;
+        color:rgba(0,212,255,.4);padding:4px 0;
+        border-top:1px solid rgba(0,180,255,.1);
+        display:flex;align-items:center;justify-content:space-between;">
+        <span>▐ BOARD INTELLIGENCE <span style="font-size:6px;opacity:.5;">/ 詳細診断</span></span>
+        <span id="bi-toggle-icon" style="font-size:9px;">▼</span>
       </div>
-      <canvas id="sparkline" width="200" height="32" style="width:100%;margin-top:5px;opacity:.7;"></canvas>
+      <div id="bi-panel" style="display:none;background:rgba(0,0,0,.2);border:1px solid rgba(0,180,255,.1);border-radius:3px;padding:7px;margin-top:3px;">
+        <div id="bi-features" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.5);margin-bottom:5px;line-height:1.6;"></div>
+        <div id="bi-narrative" style="background:rgba(0,180,255,.06);border-left:2px solid rgba(0,180,255,.3);padding:4px 6px;border-radius:2px;margin-bottom:5px;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,200,255,.8);line-height:1.4;"></div>
+        <div id="bi-signals" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+      </div>
     </div>
 
-    <!-- 3D HEATMAP -->
-    <div class="sec">▐ 3D HEATMAP <span style="font-size:6.5px;opacity:.5;">Hue=勝率 / Sat=密度 / Lum=将来性</span></div>
-    <div id="hm-legend">
-      <div class="legend-grad"></div>
-      <span>強 → 弱</span>
+    <!-- Range Advantage: pos-matrixに統合済み。sparkline/barは互換性のためDOM保持・非表示 -->
+    <div style="display:none;">
+      <div id="bar-btn"></div><div id="val-btn"></div>
+      <div id="bar-bb"></div><div id="val-bb"></div>
+      <span id="range-adv-title"></span>
+      <span id="range-hero-name"></span><span id="range-villain-name"></span>
+      <canvas id="sparkline" width="1" height="1"></canvas>
+    </div>
+
+    <!-- ══ L4: 3D HEATMAP ══ -->
+    <div class="sec">▐ 3D HEATMAP</div>
+    <div id="hm-legend" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:hsl(0,80%,50%);">STRENGTH</span>
+      <div style="width:60px;height:5px;border-radius:2px;background:linear-gradient(90deg,hsl(0,90%,45%),hsl(180,50%,30%));flex-shrink:0;"></div>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:hsl(180,50%,35%);">弱</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.25);">|</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(255,220,100,.7);">FLEX</span>
+      <div style="width:60px;height:5px;border-radius:2px;background:linear-gradient(90deg,hsl(50,80%,65%),hsl(50,40%,25%));flex-shrink:0;"></div>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.4);">なし</span>
     </div>
     <div id="hm-wrap">
       <div id="hm-grid"></div>
@@ -476,6 +655,20 @@ let calcTimer      = null;
 let evalCache      = new Map();
 let lastHeatmapData= [];     // For tooltip access
 let camStream      = null;
+let activeRequestId = 0;
+let calcWatchdog    = null;
+let useInlineFallback = false;
+
+function hideHeatmapSpinner() {
+  clearTimeout(_spinTimer);
+  const spin = document.getElementById('hm-spin');
+  if (spin) spin.classList.remove('active');
+}
+
+function clearCalcWatchdog() {
+  clearTimeout(calcWatchdog);
+  calcWatchdog = null;
+}
 
 /* ══════════════════════════════
    WORKER INIT
@@ -484,47 +677,86 @@ function initEngine() {
   setBrainMsg('LOADING JS ENGINE...','spectra-worker.js',20);
 
   try {
-    spectraWorker = new Worker('spectra-worker.js');
+    useInlineFallback = false;
+    spectraWorker = new Worker('worker/spectra-worker.js');
     spectraWorker.onmessage = onWorkerMessage;
     spectraWorker.onerror   = (e) => {
-      console.warn('[SPECTRA] Worker error, using fallback:', e.message);
+      console.warn('[SPECTRA] Worker error, switching to fallback:', e.message);
       workerReady = false;
-      startFallback();
+      setStabState('ERR');
+      startFallback('worker runtime error');
     };
     spectraWorker.postMessage({ type: 'INIT' });
     // Timeout: if no READY within 3s, use fallback
     setTimeout(() => {
-      if (!workerReady) startFallback();
+      if (!workerReady) startFallback('worker init timeout');
     }, 3000);
   } catch(e) {
-    startFallback();
+    startFallback('worker boot failed');
   }
 }
 
-function startFallback() {
+function startFallback(reason = 'inline js eval') {
+  if (spectraWorker) {
+    try { spectraWorker.terminate(); } catch (_) {}
+  }
+  spectraWorker = null;
+  useInlineFallback = true;
   workerReady = true;
-  setBrainMsg('FALLBACK ENGINE READY','inline js eval',100);
+  hideHeatmapSpinner();
+  clearCalcWatchdog();
+  setBrainMsg('FALLBACK ENGINE READY', reason, 100);
   finalizeBrainReady();
 }
 
 function onWorkerMessage(e) {
-  const { type, data, cached, calcTime } = e.data;
+  const { type, data, cached, calcTime, requestId } = e.data;
 
-  if (type === 'READY' || type === 'INIT_OK') {
+  if (type === 'INIT_OK') {
     workerReady = true;
+    useInlineFallback = false;
     setBrainMsg('BRAIN ONLINE','worker ready',100);
     finalizeBrainReady();
     return;
   }
 
+  if (requestId && requestId !== activeRequestId) {
+    return; // ignore stale async responses
+  }
+
+  if (type === 'ENGINE_ERROR') {
+    console.warn('[SPECTRA] Worker engine error:', data?.message || data);
+    setStabState('ERR');
+    startFallback(data?.message || 'worker computation error');
+    return;
+  }
+
+  clearCalcWatchdog();
+  hideHeatmapSpinner();
+
   switch(type) {
+    case 'BOARD_INTELLIGENCE':
+      if (!data) break;
+      if (data.rangeMatrix && data.rangeMatrix.length) {
+        lastHeatmapData = data.rangeMatrix;
+        render3DHeatmap(data.rangeMatrix);
+        renderNuts(data.rangeMatrix, data.features);
+      }
+      if (data.texture) applyTexture(data.texture);
+      renderRangeAdvantage(data);
+      renderBoardIntelligence(data);
+      document.getElementById('calc-time').textContent =
+        `CALC: ${calcTime||0}ms${cached?' (cache)':''}`;
+      setStabState('DONE');
+      updateHeroCells();
+      break;
+
     case 'EVAL_169':
       if (data && data.length) {
         lastHeatmapData = data;
         render3DHeatmap(data);
         renderNuts(data);
       }
-      document.getElementById('hm-spin').classList.remove('active');
       document.getElementById('calc-time').textContent = `CALC: ${calcTime||0}ms${cached?' (cache)':''}`;
       setStabState('DONE');
       updateHeroCells();
@@ -543,31 +775,91 @@ function finalizeBrainReady() {
   document.getElementById('brain-badge').style.color = '#00ff9d';
   document.getElementById('brain-badge').style.borderColor = 'rgba(0,255,157,.4)';
   setTimeout(() => document.getElementById('brain-overlay').classList.add('hidden'), 600);
+  updateConfigFeedback();
+  buildPosMatrix(); // P3: 初期描画
   if (currentBoard.length >= 3) triggerUpdate();
 }
 
 /* ══════════════════════════════
-   3D HSL COLOR ENGINE
-   Hue    : 勝率（0=赤 → 60=黄 → 180=青緑）  ← 強=赤、弱=青
-   Sat    : コンボ密度（100%=鮮やか → 0%=灰）
-   Lum    : 将来性（50%+drawBonus = 明るい）
+/* ══════════════════════════════
+   P1-Ca: DISPLAY STRENGTH BRIDGE
+   Single source of truth for "how strong is this hand (0-100)?"
+   Priority: rawScore → strength → equity → pct
+   Future-proof: adding madeStrength/potentialStrength only requires updating here.
+══════════════════════════════ */
+function getDisplayStrength(item) {
+  if (!item) return 0;
+  if (item.rawScore    !== undefined) return item.rawScore * 100;
+  if (item.strength    !== undefined) return item.strength * 100;
+  if (item.equity      !== undefined) return item.equity;      // legacy: 0-100
+  if (item.pct         !== undefined) return item.pct;         // legacy: 0-100
+  return 0;
+}
+
+/* ══════════════════════════════
+   3D HSL COLOR ENGINE v2 — ストリート対応版
+   
+   設計思想:
+   - Hue  : made強度（赤=強 / 青緑=弱）
+   - Sat  : コンボ密度（鮮やか=実在する / 灰=デッド）
+   - Lum  : ストリート依存
+       FLOP  : 将来性で明暗（draws = 明るい）
+       TURN  : 将来性は半分だけ反映（1枚残り）
+       RIVER : 将来性を無視。made強度のみで明暗
+               弱い手（one pair以下 ≒ made < 0.26）→ 暗く落とす
+   
+   凡例:
+   FLOP/TURN  Hue=勝率 / Sat=密度 / Lum=将来性
+   RIVER      Hue=勝率 / Sat=密度 / Lum=made強度のみ
 ══════════════════════════════ */
 function calc3DHSL(item) {
-  // item: { equity, potential, activeCombos, totalCombos, drawType }
-  const eq = Math.max(0, Math.min(100, item.equity || 0));
-  const pot= Math.max(0, Math.min(1,   item.potential || 0));
-  const ac = item.activeCombos || 0;
-  const tc = item.totalCombos  || 0;
+  const eq   = Math.max(0, Math.min(100, getDisplayStrength(item)));
+  const pot  = Math.max(0, Math.min(1,   item.potential      || 0));
+  const made = Math.max(0, Math.min(1,   item.madeStrength   || eq / 100));
+  const ac   = item.activeCombos || 0;
+  const tc   = item.totalCombos  || 0;
 
-  // Hue: 赤(0) → 黄(60) → 青緑(180)  強い手ほど赤
-  const hue = Math.round((1 - eq/100) * 180);
+  // ─ Street detection ─
+  const boardLen = (typeof currentBoard !== 'undefined') ? currentBoard.length : 3;
+  const isRiver  = boardLen === 5;
+  const isTurn   = boardLen === 4;
 
-  // Saturation: 存在するコンボが多いほど鮮やか
+  // ─ Hue: 強い手ほど赤 (0) → 弱い手ほど青緑 (180) ─
+  const hue = Math.round((1 - eq / 100) * 180);
+
+  // ─ Saturation: デッドコンボは灰色へ ─
   const density = tc > 0 ? ac / tc : 1;
-  const sat = Math.round(Math.max(20, density * 100));
+  const sat = Math.round(Math.max(15, density * 95));
 
-  // Lightness: 基本50%, ドロー力に応じて白く発光
-  const lum = Math.round(28 + pot * 38); // 28%〜66%
+  // ─ Lightness: ストリートで意味が変わる ─
+  let lum;
+
+  if (isRiver) {
+    // RIVER: 将来性は消える。made強度で明暗を決める。
+    // 弱い手（one pair以下: made < 0.25）= 暗く沈める
+    // 強い手（two pair+: made >= 0.26）  = 明るく浮かせる
+    if (made >= 0.70) {
+      lum = 60;                              // SF/Quads/Boat  = 最明
+    } else if (made >= 0.44) {
+      lum = 50;                              // Flush/Straight/Trips
+    } else if (made >= 0.26) {
+      lum = 40;                              // Two pair
+    } else if (made >= 0.10) {
+      lum = 22;                              // One pair → 暗く
+    } else {
+      lum = 14;                              // High card → 最暗（ほぼ灰）
+    }
+  } else if (isTurn) {
+    // TURN: 将来性は1枚分（50%重み）だけ反映
+    const potContrib = pot * 18;             // 最大+18% (FD+OESDで0.85→+15)
+    const madeBase   = Math.round(26 + made * 28); // 26%〜54%
+    lum = Math.round(Math.min(64, madeBase + potContrib));
+  } else {
+    // FLOP: 将来性をフルに使う（従来ロジック改善版）
+    const madeBase   = Math.round(22 + made * 22); // 22%〜44%（made手の最低輝度保証）
+    const potContrib = pot * 26;             // 最大+26%
+    lum = Math.round(Math.min(68, madeBase + potContrib));
+  }
 
   return `hsl(${hue},${sat}%,${lum}%)`;
 }
@@ -692,22 +984,18 @@ function classifyDrawInline(r1, r2, suited, pair, board) {
 ══════════════════════════════ */
 function render3DHeatmap(data) {
   if (!data || !data.length) return;
+  const boardLen = (typeof currentBoard !== 'undefined') ? currentBoard.length : 3;
   data.forEach((item, idx) => {
     const cell = document.getElementById('hc' + idx);
     if (!cell) return;
-    let color;
-    if (item.equity !== undefined && item.potential !== undefined) {
-      color = calc3DHSL(item);
-    } else {
-      color = fallbackColor(item.pct || 0);
-    }
-    cell.style.backgroundColor = color;
-    // Store data for tooltip
-    cell.dataset.eq  = item.equity  !== undefined ? item.equity.toFixed(1)  : (item.pct||0).toFixed(1);
-    cell.dataset.pot = item.potential !== undefined ? (item.potential*100).toFixed(0) : '0';
-    cell.dataset.den = item.totalCombos > 0 ? ((item.activeCombos/item.totalCombos)*100).toFixed(0) : '100';
-    cell.dataset.draw= item.drawType || '--';
-    cell.dataset.hand= item.hand || '';
+    cell.style.backgroundColor = item.potential !== undefined
+      ? calc3DHSL(item)
+      : fallbackColor(getDisplayStrength(item));
+    cell.dataset.eq   = getDisplayStrength(item).toFixed(1);
+    cell.dataset.pot  = item.potential !== undefined ? (item.potential * 100).toFixed(0) : '0';
+    cell.dataset.den  = item.totalCombos > 0 ? ((item.activeCombos / item.totalCombos) * 100).toFixed(0) : '100';
+    cell.dataset.draw = item.drawType || '--';
+    cell.dataset.hand = item.hand || '';
   });
 }
 
@@ -837,37 +1125,711 @@ function detectDraws(r1, r2, s1, s2, board) {
 }
 
 /* ══════════════════════════════
-   RENDER NUTS
+   OUTS CARD LIST: specific cards that improve/worsen
+   board: 現在のボード（文字列配列）
+   hand:  ハンド名（例 'AKs'）
+   drawType: 'OESD'|'GSD'|'FD'|'BD-FD'|null
 ══════════════════════════════ */
-function renderNuts(data) {
-  const top = [...data].sort((a,b) => (b.pct||b.equity||0) - (a.pct||a.equity||0)).slice(0, 8);
-  document.getElementById('nuts-list').innerHTML = top.map((item, i) => {
-    const eq    = item.pct !== undefined ? item.pct : (item.equity||0);
-    const draw  = item.drawType ? `<div class="n-draw" style="color:${drawColor(item.drawType)}">${item.drawType} (${item.outs||0}outs)</div>` : '';
-    return `<div class="nuts-row">
+function getOutsCards(hand, drawType, board) {
+  if (!drawType || !board || board.length < 3) return { up:[], down:[] };
+
+  const RANK_ORDER = 'AKQJT98765432';
+  const usedRanks  = new Set(board.map(c => c[0]));
+  const usedSuits  = board.map(c => c[1]);
+
+  // スートカウント（フラッシュドロー用）
+  const suitCnt = {};
+  usedSuits.forEach(s => suitCnt[s] = (suitCnt[s]||0)+1);
+  const drawSuit = Object.entries(suitCnt).sort((a,b)=>b[1]-a[1])[0]?.[0];
+
+  const upCards  = [];
+  const downCards = [];
+
+  if (drawType.includes('FD') && !drawType.includes('BD')) {
+    // FD: 同スートの残り9枚
+    const suited = hand.endsWith('s');
+    const suit   = suited ? drawSuit : drawSuit; // 代表スート
+    RANK_ORDER.split('').forEach(r => {
+      if (!usedRanks.has(r)) upCards.push(r + suit);
+    });
+    // down: フラッシュをブロックするカード（対戦相手の強い役）は簡易化して省略
+  } else if (drawType === 'OESD') {
+    // OESD: 両端2ランク × 4スート
+    const boardIdxs = board.map(c => RANK_ORDER.indexOf(c[0])).sort((a,b)=>a-b);
+    const hi = boardIdxs[0], lo = boardIdxs[boardIdxs.length-1];
+    const upRanks = [];
+    // 最低ランクの1つ上 & 最高ランクの1つ下
+    if (hi > 0)                     upRanks.push(RANK_ORDER[hi-1]);
+    if (lo < RANK_ORDER.length-1)   upRanks.push(RANK_ORDER[lo+1]);
+    upRanks.forEach(r => {
+      if (!usedRanks.has(r)) upCards.push(r+'(4枚)');
+    });
+  } else if (drawType === 'GSD') {
+    // GSD: 穴のランク × 4スート
+    const boardIdxs = board.map(c => RANK_ORDER.indexOf(c[0])).sort((a,b)=>a-b);
+    for (let k=0; k<boardIdxs.length-1; k++) {
+      if (boardIdxs[k+1] - boardIdxs[k] === 2) {
+        const gapRank = RANK_ORDER[boardIdxs[k]+1];
+        if (!usedRanks.has(gapRank)) upCards.push(gapRank+'(4枚)');
+      }
+    }
+  } else if (drawType === 'BD-FD') {
+    upCards.push(drawSuit+'×2(約8%)');
+  }
+
+  // DOWN: ボードをペアらせるカード（相手がフルハウス/クアッズになる）
+  board.forEach(c => {
+    const r = c[0];
+    if (!downCards.find(d => d[0]===r)) {
+      downCards.push(r+'(3枚)');
+    }
+  });
+
+  return { up: upCards.slice(0,4), down: downCards.slice(0,3) };
+}
+
+/* ══════════════════════════════
+   RIVER POLARIZED VIEW
+   
+   正しい定義:
+   PURE VALUE   : Two pair以上でベットしてコールを求める手 (rawScore >= 0.26)
+   BLUFF CATCH  : One pair強め。コールはできるが自分からベットしない (0.10 <= score < 0.26)
+   BLUFF / FOLD : Weak pair・High card。ベットはブラフ、コールされたら負ける (score < 0.10)
+══════════════════════════════ */
+function renderRiverPolar(data) {
+  const sorted = [...data].sort((a, b) => getDisplayStrength(b) - getDisplayStrength(a));
+
+  // 絶対閾値（strength.js の分類に準拠）
+  // Two pair+ = rawScore >= 0.26 → displayStrength >= 26
+  // One pair  = rawScore >= 0.10 → displayStrength >= 10
+  const valueHands = sorted.filter(h => getDisplayStrength(h) >= 26);
+  const catchHands = sorted.filter(h => getDisplayStrength(h) >= 10 && getDisplayStrength(h) < 26);
+  const bluffHands = sorted.filter(h => getDisplayStrength(h) < 10);
+
+  function handsHtml(list, limit = 12) {
+    return list.slice(0, limit).map(item =>
+      `<div class="polar-hand" title="${getDisplayStrength(item).toFixed(1)}%">${item.hand}</div>`
+    ).join('') + (list.length > limit
+      ? `<div class="polar-hand" style="opacity:.4">+${list.length - limit}</div>`
+      : '');
+  }
+
+  // ラベルも更新
+  document.getElementById('polar-value').querySelector('.polar-title').textContent = '⬆ PURE VALUE (2pair+)';
+  document.getElementById('polar-catch').querySelector('.polar-title').textContent = '↔ BLUFF CATCH (1pair)';
+  document.getElementById('polar-bluff').querySelector('.polar-title').textContent = '⬇ BLUFF / FOLD (air)';
+
+  document.getElementById('polar-value-hands').innerHTML = handsHtml(valueHands);
+  document.getElementById('polar-catch-hands').innerHTML = handsHtml(catchHands);
+  document.getElementById('polar-bluff-hands').innerHTML = handsHtml(bluffHands);
+}
+
+/* ══════════════════════════════
+   RENDER NUTS — street-aware
+══════════════════════════════ */
+function drawColor(type) {
+  if (!type) return 'rgba(160,200,230,.5)';
+  if (type.includes('FD') && type.includes('OESD')) return '#ff9d00'; // combo draw
+  if (type === 'FD')   return '#00d4ff';  // flush draw  → 青
+  if (type === 'BD-FD') return 'rgba(0,180,255,.45)'; // backdoor FD → 薄青
+  if (type === 'OESD') return '#ffb800';  // open-ended  → 黄
+  if (type === 'GSD')  return '#ff8c00';  // gutshot     → オレンジ
+  return 'rgba(160,200,230,.7)';
+}
+
+function renderNuts(data, meta = null) {
+  const isRiver = currentBoard.length === 5;
+
+  const nutsEl  = document.getElementById('nuts-list');
+  const polarEl = document.getElementById('river-polar');
+  const secLbl  = document.getElementById('nuts-sec-label');
+  const list    = Array.isArray(data) ? data : [];
+
+  if (isRiver) {
+    nutsEl.style.display  = 'none';
+    polarEl.style.display = 'flex';
+    secLbl.innerHTML = 'RIVER — POLARIZED VIEW <span style="font-size:6.5px;opacity:.6">[VALUE / CATCH / BLUFF]</span>';
+    renderRiverPolar(list);
+    return;
+  }
+
+  polarEl.style.display = 'none';
+  nutsEl.style.display  = 'flex';
+  nutsEl.style.flexDirection = 'column';
+  secLbl.innerHTML = 'NUTS RANKING <span style="font-size:6.5px;opacity:.6">[ABSOLUTE + PLAYABILITY]</span>';
+
+  const fmtPct = v => `${Math.round((v || 0) * 100)}%`;
+  const top = [...list]
+    .sort((a, b) => getDisplayStrength(b) - getDisplayStrength(a))
+    .slice(0, 8);
+
+  const summaryBits = [];
+  if (meta?.nutAdvantage) {
+    summaryBits.push(`<div style="padding:4px 6px;border:1px solid rgba(255,215,0,.18);background:rgba(255,215,0,.05);border-radius:3px;display:flex;flex-direction:column;gap:1px;min-width:72px;"><span style="font-size:7px;color:rgba(255,215,0,.55);font-family:'Orbitron',monospace;">NUT DENS</span><span style="font-size:10px;color:#ffd700;font-family:'Share Tech Mono',monospace;">${fmtPct(meta.nutAdvantage.density)}</span></div>`);
+    summaryBits.push(`<div style="padding:4px 6px;border:1px solid rgba(0,212,255,.18);background:rgba(0,212,255,.05);border-radius:3px;display:flex;flex-direction:column;gap:1px;min-width:72px;"><span style="font-size:7px;color:rgba(0,212,255,.55);font-family:'Orbitron',monospace;">LIVE COVER</span><span style="font-size:10px;color:#00d4ff;font-family:'Share Tech Mono',monospace;">${fmtPct(meta.nutAdvantage.coverage)}</span></div>`);
+  }
+  if (meta?.rangeStats) {
+    summaryBits.push(`<div style="padding:4px 6px;border:1px solid rgba(0,255,157,.18);background:rgba(0,255,157,.05);border-radius:3px;display:flex;flex-direction:column;gap:1px;min-width:72px;"><span style="font-size:7px;color:rgba(0,255,157,.55);font-family:'Orbitron',monospace;">DRAW HVY</span><span style="font-size:10px;color:#00ff9d;font-family:'Share Tech Mono',monospace;">${fmtPct(meta.rangeStats.drawHeavy)}</span></div>`);
+  }
+
+  const summaryHtml = summaryBits.length
+    ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;">${summaryBits.join('')}</div>`
+    : '';
+
+  nutsEl.innerHTML = summaryHtml + top.map((item, i) => {
+    const eq = getDisplayStrength(item);
+    const typeStr = item.handName || (item.class ? item.class.replace(/_/g,' ') : '');
+    const madePct = fmtPct(item.madeStrength);
+    const potPct  = fmtPct(item.potentialStrength || item.potential);
+    const livePct = fmtPct(item.density);
+
+    const mainRow = `<div class="nuts-row" style="border-bottom:none;padding-bottom:1px;align-items:flex-start;">
       <div class="n-rank">${i+1}</div>
       <div class="n-eq">${eq.toFixed(1)}%</div>
       <div class="n-hand">${item.hand}</div>
-      <div>
-        <div class="n-type">${HAND_TYPES[item.rc]||''}</div>
-        ${draw}
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+        <div class="n-type">${typeStr}</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;font-family:'Share Tech Mono',monospace;font-size:7px;line-height:1;">
+          <span style="padding:2px 4px;border:1px solid rgba(255,140,0,.22);border-radius:999px;color:#ffb366;background:rgba(255,140,0,.06);">MADE ${madePct}</span>
+          <span style="padding:2px 4px;border:1px solid rgba(0,212,255,.22);border-radius:999px;color:#7fdbff;background:rgba(0,212,255,.06);">POT ${potPct}</span>
+          <span style="padding:2px 4px;border:1px solid rgba(160,200,230,.18);border-radius:999px;color:rgba(200,225,245,.8);background:rgba(160,200,230,.05);">LIVE ${livePct}</span>
+          ${item.drawType ? `<span style="padding:2px 4px;border:1px solid ${drawColor(item.drawType)}33;border-radius:999px;color:${drawColor(item.drawType)};background:${drawColor(item.drawType)}12;">${item.drawType} ${item.outs||0}outs</span>` : ''}
+        </div>
       </div>
+    </div>`;
+
+    const { up, down } = getOutsCards(item.hand, item.drawType, currentBoard);
+    let subRow = '';
+    if (up.length || down.length) {
+      const upHtml = up.length
+        ? `<span class="outs-up"><span class="outs-arrow" style="color:#00ff9d">▲</span>${up.map(c=>`<span class="outs-card-tag">${c}</span>`).join('')}</span>`
+        : '';
+      const downHtml = down.length
+        ? `<span class="outs-down" style="margin-left:4px;"><span class="outs-arrow" style="color:#ff3b3b">▼</span>${down.map(c=>`<span class="outs-card-tag down">${c}</span>`).join('')}</span>`
+        : '';
+      const turnPct  = item.outs ? `T:${Math.round(item.outs*2)}%` : '';
+      const riverPct = item.outs ? `R:${Math.round(item.outs*4)}%` : '';
+      const pctBadge = (turnPct||riverPct)
+        ? `<span class="outs-count">${[turnPct,riverPct].filter(Boolean).join(' ')}</span>`
+        : '';
+      subRow = `<div class="nuts-subrow">${upHtml}${downHtml}${pctBadge}</div>`;
+    }
+
+    return mainRow + subRow;
+  }).join('');
+}
+
+/* ══════════════════════════════
+   STREET DETECTION
+══════════════════════════════ */
+function detectStreet(board) {
+  if (!board || board.length < 3) return 'PREFLOP';
+  if (board.length === 3) return 'FLOP';
+  if (board.length === 4) return 'TURN';
+  return 'RIVER';
+}
+
+/* ══════════════════════════════
+   TACTIC BADGE — aggressionSignal × rangeDynamics → 戦術バッジ
+   Board Wetness ≠ Situation の分離
+══════════════════════════════ */
+const TACTIC_BADGE_MAP = [
+  // [aggressionSignal, rangeDynamics条件fn, badge]
+  {
+    match: (s, d) => s === 'ATTACK' && d === 'RANGE_ADV_HERO',
+    text: '⚡ ATTACK WINDOW',
+    sub:  'Hero has range + aggression edge',
+    color: '#ff4a4a', shadow: 'rgba(255,74,74,.45)'
+  },
+  {
+    match: (s, d) => s === 'ATTACK',
+    text: '▲ SLIGHT EDGE',
+    sub:  'Aggression is available — select spots',
+    color: '#ffb300', shadow: 'rgba(255,179,0,.35)'
+  },
+  {
+    match: (s, d) => s === 'CAUTION',
+    text: '⚠ CAUTION',
+    sub:  'Board is dangerous — be selective',
+    color: '#29b6f6', shadow: 'rgba(41,182,246,.35)'
+  },
+  {
+    match: (s, d) => s === 'DEFEND' || d === 'RANGE_ADV_VILLAIN',
+    text: '🛡 DEFEND',
+    sub:  'Villain range dominates — resist wisely',
+    color: '#ab47bc', shadow: 'rgba(171,71,188,.35)'
+  },
+  {
+    match: (s, d) => s === 'POLARIZE',
+    text: '↕ POLARIZED',
+    sub:  'Nuts vs. air — think in extremes',
+    color: '#e2e8f0', shadow: 'rgba(255,255,255,.2)'
+  },
+];
+const TACTIC_BADGE_NEUTRAL = {
+  text: '— NEUTRAL', sub: 'Even match — read the board',
+  color: 'rgba(160,200,230,.5)', shadow: 'transparent'
+};
+
+function deriveSituationBadge(features) {
+  if (!features) return TACTIC_BADGE_NEUTRAL;
+  const s = features.aggressionSignal || 'NEUTRAL';
+  const d = features.rangeDynamics    || 'NEUTRAL';
+  return TACTIC_BADGE_MAP.find(b => b.match(s, d)) || TACTIC_BADGE_NEUTRAL;
+}
+
+function applySituationBadge(model) {
+  // LEFT パネルの SIT BADGE（小）
+  const dot   = document.getElementById('sit-dot');
+  const label = document.getElementById('sit-label');
+  const sub   = document.getElementById('sit-sub');
+  const badge = document.getElementById('sit-badge');
+  if (!model || !dot) return;
+  dot.style.background    = model.color;
+  dot.style.boxShadow     = `0 0 8px ${model.shadow}`;
+  label.style.color       = model.color;
+  label.textContent       = model.text;
+  sub.textContent         = model.sub || '';
+  badge.style.borderColor = model.color;
+  badge.style.boxShadow   = `0 0 10px ${model.shadow}`;
+
+  // RIGHT パネルの TACTIC BADGE（大）
+  const tDot  = document.getElementById('tactic-dot');
+  const tText = document.getElementById('tactic-text');
+  const tSub  = document.getElementById('tactic-sub');
+  const tBadge= document.getElementById('tactic-badge');
+  if (!tDot) return;
+  tDot.style.background    = model.color;
+  tDot.style.boxShadow     = `0 0 10px ${model.shadow}`;
+  tText.style.color        = model.color;
+  tText.textContent        = model.text;
+  tSub.textContent         = model.sub || '';
+  tBadge.style.borderColor = model.color;
+  tBadge.style.boxShadow   = `0 0 14px ${model.shadow}`;
+}
+
+
+/* ══════════════════════════════
+   HUD LEVEL — 0..1 → 言語レーティング
+══════════════════════════════ */
+const HUD_LEVELS = [
+  { min: 0.72, label: 'VERY HIGH', color: '#ff4a4a' },
+  { min: 0.55, label: 'HIGH',      color: '#ffb300' },
+  { min: 0.38, label: 'MODERATE',  color: '#29b6f6' },
+  { min: 0,    label: 'LOW',       color: 'rgba(160,200,230,.4)' },
+];
+function hudLevel(val) {
+  return HUD_LEVELS.find(l => (val || 0) >= l.min) || HUD_LEVELS[HUD_LEVELS.length - 1];
+}
+
+const HUD_DEFS = [
+  { key: 'attack', label: 'Attack Opportunity', icon: '⚡' },
+  { key: 'value',  label: 'Value Density',       icon: '💎' },
+  { key: 'bluff',  label: 'Bluff Availability',  icon: '🎭' },
+  { key: 'capped', label: 'Range Capped',         icon: '🔒' },
+];
+
+
+/* ══════════════════════════════
+   RENDER: CONCLUSION（L1 — 戦況 + RANGE PROFILE）
+══════════════════════════════ */
+function renderConclusion(data) {
+  const panel = document.getElementById('conclusion-panel');
+  if (!data) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  // ─ 戦況バッジ ─
+  const badge = deriveSituationBadge(data.features);
+  applySituationBadge(badge);
+
+  // ─ RANGE PROFILE（VALUE / BLUFF / CAPPED）─
+  const s = data.hudSignals || {};
+  const profileDefs = [
+    { key: 'value',  label: 'Value Density',      icon: '💎' },
+    { key: 'bluff',  label: 'Bluff Availability',  icon: '🎭' },
+    { key: 'capped', label: 'Range Capped',         icon: '🔒' },
+  ];
+  const profileHtml = profileDefs.map(def => {
+    const val = s[def.key] || 0;
+    const lvl = hudLevel(val);
+    const pct = Math.round(val * 100);
+    const barW = Math.round(val * 100);
+    return `<div style="display:flex;align-items:center;gap:5px;">
+      <span style="font-size:9px;flex-shrink:0;">${def.icon}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <span style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;color:rgba(180,210,240,.7);">${def.label}</span>
+          <span style="font-family:'Orbitron',monospace;font-size:7px;font-weight:700;color:${lvl.color};">${lvl.label}</span>
+        </div>
+        <div style="height:2px;background:rgba(255,255,255,.06);border-radius:1px;margin-top:1px;overflow:hidden;">
+          <div style="height:100%;width:${barW}%;background:${lvl.color};border-radius:1px;transition:width .5s;"></div>
+        </div>
+      </div>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.3);flex-shrink:0;min-width:26px;text-align:right;">${pct}%</span>
+    </div>`;
+  }).join('');
+
+  const profileBlock = document.getElementById('range-profile-block');
+  document.getElementById('range-profile-hud').innerHTML = profileHtml;
+  if (profileBlock) profileBlock.style.display = 'block';
+
+  // ─ Narrative ─
+  const narEl = document.getElementById('conclusion-narrative');
+  if (data.narrative && data.narrative.length && data.narrative[0] !== '--') {
+    narEl.textContent = data.narrative[0];
+    narEl.style.display = 'block';
+  } else {
+    narEl.style.display = 'none';
+  }
+}
+
+
+/* ══════════════════════════════
+   RENDER: BOARD DIAGNOSTICS（L3 — 折りたたみ詳細）
+══════════════════════════════ */
+function renderBoardDiagnostics(data) {
+  const toggle = document.getElementById('bi-toggle');
+  const panel  = document.getElementById('bi-panel');
+  if (!data) {
+    if (toggle) toggle.style.display = 'none';
+    if (panel)  panel.style.display  = 'none';
+    return;
+  }
+  if (toggle) toggle.style.display = 'flex';
+  // bi-panel は折りたたみ状態を維持（強制展開しない）
+
+  const f = data.features || {};
+  const featLines = [
+    `Texture: ${fl(f.texture)}`,
+    `Connect: ${fl(f.connectivity)}  /  Flush: ${fl(f.flushPressure)}`,
+    `${fl(f.rangeDynamics)}  /  ${fl(f.nutDynamics)}`,
+    `Signal: ${fl(f.aggressionSignal)}`
+  ];
+  document.getElementById('bi-features').innerHTML =
+    `<div style="color:rgba(0,212,255,.6);line-height:1.7;">${featLines.join('<br>')}</div>`;
+
+  const narrativeStr = (data.narrative && data.narrative.length)
+    ? data.narrative.join('<br>')
+    : '--';
+  document.getElementById('bi-narrative').innerHTML = narrativeStr;
+
+  const s = data.hudSignals || {};
+  document.getElementById('bi-signals').innerHTML = HUD_DEFS.map(def => {
+    const val = s[def.key] || 0;
+    const lvl = hudLevel(val);
+    const pct = Math.round(val * 100);
+    return `<div style="border:1px solid ${lvl.color};border-radius:2px;padding:2px 5px;
+      font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:${lvl.color};">
+      <span style="opacity:.6;">${def.key.toUpperCase()}</span><br>
+      <span style="font-size:9px;font-weight:700;">${pct}%</span>
     </div>`;
   }).join('');
 }
 
-function drawColor(dt) {
-  if (!dt) return 'rgba(160,200,230,.4)';
-  if (dt.includes('OESD+FD')) return '#ff3b3b';
-  if (dt.includes('FD'))   return '#4080ff';
-  if (dt.includes('OESD')) return '#ffb800';
-  if (dt.includes('GSD'))  return '#ff8020';
-  return 'rgba(200,220,240,.4)';
+function toggleBiPanel() {
+  const panel = document.getElementById('bi-panel');
+  const icon  = document.getElementById('bi-toggle-icon');
+  const open  = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  icon.textContent    = open ? '▼' : '▲';
+}
+
+
+/* ══════════════════════════════
+   RENDER: BOARD INTELLIGENCE（ディスパッチャー）
+══════════════════════════════ */
+function renderBoardIntelligence(data) {
+  renderConclusion(data);
+  renderBoardDiagnostics(data);
+}
+
+function colorGradient(val, minColor, maxColor) {
+  // Simple linear interpolation
+  if (val < 0.3) return minColor;
+  if (val > 0.7) return maxColor;
+  return 'rgba(160,200,230,.5)';
 }
 
 /* ══════════════════════════════
-   SITUATION BADGE
+   RANGE ADVANTAGE — Worker 出力を単一ソースとする
+   features.rangeAdvantage: -1..+1 (hero側が正)
+   fallback 時は呼ばれない（onInputChanged の texture 経路では描画しない）
 ══════════════════════════════ */
+function renderRangeAdvantage(data) {
+  const adv = data?.features?.rangeAdvantage ?? 0; // -1..+1
+  const heroPct    = Math.round(((adv + 1) / 2) * 100);
+  const villainPct = 100 - heroPct;
+
+  // DOM互換（非表示要素への書き込みは無害）
+  const heroPos    = document.getElementById('hero-pos-select')?.value    || 'HERO';
+  const villainPos = document.getElementById('villain-pos-select')?.value || 'VILLAIN';
+  const titleEl    = document.getElementById('range-adv-title');
+  const heroLbl    = document.getElementById('range-hero-name');
+  const villainLbl = document.getElementById('range-villain-name');
+  if (titleEl)    titleEl.textContent    = `${heroPos} vs ${villainPos}`;
+  if (heroLbl)    heroLbl.textContent    = heroPos;
+  if (villainLbl) villainLbl.textContent = villainPos;
+  const btnEl = document.getElementById('bar-btn');
+  const bbEl  = document.getElementById('bar-bb');
+  if (btnEl) btnEl.style.width = heroPct + '%';
+  if (bbEl)  bbEl.style.width  = villainPct + '%';
+  const vBtn = document.getElementById('val-btn');
+  const vBb  = document.getElementById('val-bb');
+  if (vBtn) vBtn.textContent = heroPct + '%';
+  if (vBb)  vBb.textContent  = villainPct + '%';
+  drawSparkline(heroPct, villainPct);
+
+  // POS MATRIX に Worker 精密値を反映して再描画
+  lastRangeAdv = adv;
+  buildPosMatrix();
+}
+
+
+/* ══════════════════════════════
+   POSITION MATRIX (5×5)
+   
+   設計:
+   - 縦: HERO POS（UTG/HJ/CO/BTN/SB）
+   - 横: VILLAIN POS（UTG/HJ/CO/BTN/SB/BB）
+   - 各セル: position.js の openWidth × adjustmentFactor から
+             ベースアドバンテージを計算し色分け
+   - ボード入力後: Worker の features.rangeAdvantage で
+             現在選択セルの値を更新
+   - 選択中セル: ハイライト枠
+══════════════════════════════ */
+const POS_MATRIX_ROWS = ['UTG','HJ','CO','BTN','SB'];
+const POS_MATRIX_COLS = ['UTG','HJ','CO','BTN','SB','BB'];
+
+// position.js の POSITION_PROFILE を UI 側に薄く複製（Worker不要）
+const POS_PROFILE_UI = {
+  UTG: { open: 0.6,  adj: 1.0, def: 0.7  },
+  HJ:  { open: 0.8,  adj: 1.1, def: 0.75 },
+  CO:  { open: 1.2,  adj: 1.2, def: 0.85 },
+  BTN: { open: 1.5,  adj: 1.3, def: 0.9  },
+  SB:  { open: 1.3,  adj: 1.2, def: 1.0  },
+  BB:  { open: 0.5,  adj: 1.0, def: 1.1  },
+};
+
+function calcPosBaseAdv(heroPos, villainPos) {
+  const h = POS_PROFILE_UI[heroPos]    || POS_PROFILE_UI.BTN;
+  const v = POS_PROFILE_UI[villainPos] || POS_PROFILE_UI.BB;
+  const heroBase    = h.open * h.adj;
+  const villainBase = v.open * v.adj;
+  // -1..+1 : 正=Hero有利
+  return Math.max(-1, Math.min(1,
+    (heroBase - villainBase) / Math.max(heroBase, villainBase, 0.01)
+  ));
+}
+
+function advToCell(adv, isSelected, isLive, liveAdv) {
+  // adv: -1..+1 (ベース値)
+  // liveAdv: Workerから来た実測値（選択セルのみ上書き）
+  const val = (isSelected && isLive) ? liveAdv : adv;
+
+  // 色: 赤(Hero▲) ← 灰(中立) → 青(Villain▲)
+  let bg, textColor;
+  if (val > 0.18) {
+    const intensity = Math.min(1, (val - 0.18) / 0.82);
+    const r = Math.round(100 + intensity * 120);
+    const g = Math.round(20  + intensity * 10);
+    const b = Math.round(20  + intensity * 10);
+    bg = `rgb(${r},${g},${b})`;
+    textColor = 'rgba(255,200,200,.9)';
+  } else if (val < -0.18) {
+    const intensity = Math.min(1, (-val - 0.18) / 0.82);
+    const r = Math.round(10  + intensity * 10);
+    const g = Math.round(30  + intensity * 20);
+    const b = Math.round(80  + intensity * 110);
+    bg = `rgb(${r},${g},${b})`;
+    textColor = 'rgba(150,200,255,.9)';
+  } else {
+    bg = 'rgba(30,50,80,.5)';
+    textColor = 'rgba(160,200,230,.4)';
+  }
+
+  const border = isSelected
+    ? '2px solid rgba(0,212,255,.9)'
+    : '1px solid rgba(0,180,255,.08)';
+  const shadow = isSelected ? '0 0 8px rgba(0,212,255,.5)' : 'none';
+  const pct    = Math.round(((val + 1) / 2) * 100);
+
+  return { bg, textColor, border, shadow, pct };
+}
+
+// Worker から受け取った rangeAdvantage を保持
+let lastRangeAdv = null;
+
+function buildPosMatrix() {
+  const wrap    = document.getElementById('pos-matrix-wrap');
+  if (!wrap) return;
+  const heroSel = document.getElementById('hero-pos-select')?.value    || 'BTN';
+  const villSel = document.getElementById('villain-pos-select')?.value || 'BB';
+
+  const ROWS = POS_MATRIX_ROWS;           // Hero (縦)
+  const COLS = POS_MATRIX_COLS;           // Villain (横)
+  const cellSize = `1fr`;
+  const cols = `28px repeat(${COLS.length}, ${cellSize})`;
+
+  let html = `<div style="display:grid;grid-template-columns:${cols};gap:1px;font-family:'Share Tech Mono',monospace;">`;
+
+  // ヘッダー行
+  html += `<div style="font-size:6px;color:rgba(160,200,230,.25);text-align:center;padding:2px 0;">H\\V</div>`;
+  COLS.forEach(col => {
+    const isV = col === villSel;
+    html += `<div style="
+      font-size:6px;text-align:center;padding:2px 0;
+      color:${isV ? 'rgba(100,150,255,.9)' : 'rgba(160,200,230,.35)'};
+      font-weight:${isV ? '700' : '400'};
+    ">${col}</div>`;
+  });
+
+  // データ行
+  ROWS.forEach(row => {
+    const isH = row === heroSel;
+    // 行ラベル
+    html += `<div style="
+      font-size:6px;text-align:right;padding:2px 3px 2px 0;
+      color:${isH ? 'rgba(255,215,0,.9)' : 'rgba(160,200,230,.35)'};
+      font-weight:${isH ? '700' : '400'};
+      display:flex;align-items:center;justify-content:flex-end;
+    ">${row}</div>`;
+
+    COLS.forEach(col => {
+      const isSelf     = row === col;
+      const isSelected = row === heroSel && col === villSel;
+      const isHRow     = row === heroSel;
+      const isVCol     = col === villSel;
+
+      if (isSelf) {
+        html += `<div style="background:rgba(0,0,0,.3);border-radius:1px;"></div>`;
+        return;
+      }
+
+      // アドバンテージ計算（Worker値は選択セルのみ上書き）
+      const baseAdv = calcPosBaseAdv(row, col);
+      const adv     = (isSelected && lastRangeAdv !== null) ? lastRangeAdv : baseAdv;
+      const pct     = Math.round(((adv + 1) / 2) * 100);
+
+      // 色
+      let bg, fg;
+      if (adv > 0.18) {
+        const t = Math.min(1, (adv - 0.18) / 0.65);
+        bg = `rgba(${Math.round(120+t*80)},${Math.round(20+t*5)},${Math.round(20+t*5)},${0.4+t*0.4})`;
+        fg = 'rgba(255,180,180,.9)';
+      } else if (adv < -0.18) {
+        const t = Math.min(1, (-adv - 0.18) / 0.65);
+        bg = `rgba(${Math.round(10+t*10)},${Math.round(30+t*20)},${Math.round(100+t*100)},${0.4+t*0.4})`;
+        fg = 'rgba(150,200,255,.9)';
+      } else {
+        bg = 'rgba(20,35,55,.5)';
+        fg = 'rgba(160,200,230,.4)';
+      }
+
+      const border = isSelected
+        ? '1px solid rgba(0,212,255,.8)'
+        : (isHRow || isVCol)
+          ? '1px solid rgba(0,180,255,.12)'
+          : '1px solid rgba(0,180,255,.04)';
+
+      html += `<div
+        onclick="setPosFromMatrix('${row}','${col}')"
+        style="
+          background:${bg};border:${border};border-radius:1px;
+          height:18px;cursor:pointer;
+          display:flex;align-items:center;justify-content:center;
+          font-size:7px;color:${fg};
+          ${isSelected ? 'box-shadow:0 0 6px rgba(0,212,255,.4);font-weight:700;' : ''}
+          transition:all .2s;
+        "
+      >${pct}%</div>`;
+    });
+  });
+
+  html += `</div>`;
+  wrap.innerHTML = html;
+}
+
+function setPosFromMatrix(heroPos, villainPos) {
+  const heroEl    = document.getElementById('hero-pos-select');
+  const villainEl = document.getElementById('villain-pos-select');
+  if (heroEl)    heroEl.value    = heroPos;
+  if (villainEl) villainEl.value = villainPos;
+  lastRangeAdv = null;
+  buildPosMatrix();
+  updateConfigFeedback();
+  // ヒートマップは既存データで色を再計算して再描画（Workerを叩かない）
+  if (lastHeatmapData && lastHeatmapData.length) {
+    render3DHeatmap(lastHeatmapData);
+  }
+}
+/* ══════════════════════════════
+   設定変更に即時フィードバック（Worker不要・静的テーブル）
+══════════════════════════════ */
+const POS_FEEDBACK = {
+  UTG: { range: '~15%',  tag: 'Tight',   note: 'Premium heavy / Nut dense'          },
+  HJ:  { range: '~20%',  tag: 'Moderate',note: 'Broadway + strong draws'            },
+  CO:  { range: '~27%',  tag: 'Wide',    note: 'Balanced range / IP flexibility'    },
+  BTN: { range: '~40%+', tag: 'Widest',  note: 'Max flex / Aggression available'    },
+  SB:  { range: '~35%',  tag: 'Wide',    note: 'OOP — needs stronger hand to c-bet' },
+  BB:  { range: 'Defend wide', tag: 'Defender', note: 'Low boards hit harder / Calls wide' },
+};
+
+const ARCHETYPE_FEEDBACK = {
+  STANDARD:     { width: '~26%', bias: 'Balanced',    note: 'GTO baseline — value + bluff mixed'       },
+  TIGHT:        { width: '~18%', bias: 'Value heavy',  note: 'Nut dense / Low bluff frequency'          },
+  LOOSE:        { width: '~38%', bias: 'Draw heavy',   note: 'Connector rich / Weaker average equity'   },
+  GTO:          { width: '~26%', bias: 'Optimal',      note: 'Balanced exploit — hardest to read'       },
+  RECREATIONAL: { width: 'N/A',  bias: 'Unpredictable',note: 'High variance — range analysis limited'   },
+};
+
+const SITUATION_FEEDBACK = {
+  BTN_VS_BB: 'SRP: Button opens, BB defends',
+  '3BET_IP': '3-Bet pot in position — range compressed, nut heavy',
+  SRP_IP:    'Single raised pot in position — balanced aggression',
+};
+
+function _fbLine(label, val, col) {
+  return `<span style="font-family:'Orbitron',monospace;font-size:6px;color:${col};opacity:.6;">${label}</span>`
+       + `<span style="font-family:'Share Tech Mono',monospace;font-size:8px;color:${col};margin-left:4px;">${val}</span>`;
+}
+
+function updateConfigFeedback() {
+  const heroVal    = document.getElementById('hero-pos-select')?.value    || 'BTN';
+  const villainVal = document.getElementById('villain-pos-select')?.value || 'BB';
+  const archVal    = document.getElementById('archetype-select')?.value   || 'STANDARD';
+  const sitVal     = document.getElementById('situation-select')?.value   || 'BTN_VS_BB';
+
+  const heroFb    = POS_FEEDBACK[heroVal]    || POS_FEEDBACK.BTN;
+  const villainFb = POS_FEEDBACK[villainVal] || POS_FEEDBACK.BB;
+  const archFb    = ARCHETYPE_FEEDBACK[archVal] || ARCHETYPE_FEEDBACK.STANDARD;
+  const sitFb     = SITUATION_FEEDBACK[sitVal]  || '';
+
+  // Hero Pos
+  const heroEl = document.getElementById('fb-hero-pos');
+  if (heroEl) heroEl.innerHTML =
+    `<div style="line-height:1.6;">${_fbLine('RANGE', heroFb.range, '#ffd700')}</div>`
+  + `<div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(255,215,0,.38);margin-top:1px;">${heroFb.note}</div>`;
+
+  // Villain Pos
+  const villainEl = document.getElementById('fb-villain-pos');
+  if (villainEl) villainEl.innerHTML =
+    `<div style="line-height:1.6;">${_fbLine('RANGE', villainFb.range, '#6495ff')}</div>`
+  + `<div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(100,150,255,.38);margin-top:1px;">${villainFb.note}</div>`;
+
+  // Situation
+  const sitEl = document.getElementById('fb-situation');
+  if (sitEl) sitEl.innerHTML =
+    `<div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(0,180,255,.45);line-height:1.5;">${sitFb}</div>`;
+
+  // Archetype
+  const archEl = document.getElementById('fb-archetype');
+  if (archEl) archEl.innerHTML =
+    `<div style="line-height:1.7;">`
+  + `${_fbLine('WIDTH', archFb.width, '#00ff9d')}  `
+  + `${_fbLine('BIAS', archFb.bias, '#00ff9d')}`
+  + `</div>`
+  + `<div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(0,255,157,.38);margin-top:1px;">${archFb.note}</div>`;
+}
 const SIT_PRESETS = {
   MONSTER: { col:'#a855f7', glow:'rgba(168,85,247,.4)', sub:'MONSTER BOARD', icon:'⚡' },
   WET:     { col:'#3b82f6', glow:'rgba(59,130,246,.4)', sub:'WET / 激戦区',   icon:'💧' },
@@ -937,60 +1899,90 @@ function applyTexture(tex) {
   document.getElementById('val-con').textContent = tex.connect+'%';
   document.getElementById('bar-fls').style.width = tex.flush+'%';
   document.getElementById('val-fls').textContent = tex.flush+'%';
-  const btn = Math.round(50 + tex.wet*.12);
-  const bb  = 100 - btn;
-  document.getElementById('bar-btn').style.width = btn+'%';
-  document.getElementById('val-btn').textContent = btn+'%';
-  document.getElementById('bar-bb').style.width  = bb+'%';
-  document.getElementById('val-bb').textContent  = bb+'%';
   document.getElementById('prog-bar').style.width= (currentBoard.length/5*100)+'%';
-  drawSparkline(btn, bb);
   updateSituationBadge(tex);
 }
 
 /* ══════════════════════════════
    TRIGGER UPDATE
 ══════════════════════════════ */
+let _spinTimer = null;
+
 function triggerUpdate() {
   if (!workerReady) return;
-  if (currentBoard.length < 3) return;
-
-  const cacheKey = currentBoard.join(',');
-  if (evalCache.has(cacheKey)) {
-    const cached = evalCache.get(cacheKey);
-    lastHeatmapData = cached;
-    render3DHeatmap(cached);
-    renderNuts(cached);
-    document.getElementById('calc-time').textContent = 'CALC: 0ms (cache)';
-    setStabState('DONE');
-    updateHeroCells();
+  if (currentBoard.length < 3) {
+    hideHeatmapSpinner();
+    clearCalcWatchdog();
     return;
   }
 
+  const requestId        = ++activeRequestId;
+  const boardSnapshot    = [...currentBoard];
+  const situationProfile = document.getElementById('situation-select')?.value    || 'BTN_VS_BB';
+  const rangeArchetype   = document.getElementById('archetype-select')?.value    || 'STANDARD';
+  const heroPos          = document.getElementById('hero-pos-select')?.value     || 'BTN';
+  const villainPos       = document.getElementById('villain-pos-select')?.value  || 'BB';
+
   setStabState('CALC');
-  document.getElementById('hm-spin').classList.add('active');
 
-  const payload = { board: currentBoard, hero: heroHand };
+  hideHeatmapSpinner();
+  _spinTimer = setTimeout(() => {
+    if (requestId !== activeRequestId) return;
+    document.getElementById('hm-spin').classList.add('active');
+  }, 200);
 
-  if (spectraWorker) {
-    spectraWorker.postMessage({ type: 'EVAL_169', payload });
-    spectraWorker.postMessage({ type: 'TEXTURE',  payload });
-    spectraWorker.postMessage({ type: 'NUTS',     payload });
+  clearCalcWatchdog();
+  calcWatchdog = setTimeout(() => {
+    if (requestId !== activeRequestId) return;
+    console.warn('[SPECTRA] Calculation timeout — switching to fallback');
+    setStabState('ERR');
+    startFallback('worker timeout');
+  }, 8000);
+
+  if (spectraWorker && !useInlineFallback) {
+    spectraWorker.postMessage({
+      type: 'BOARD_INTELLIGENCE',
+      requestId,
+      payload: {
+        board: boardSnapshot,
+        context: {
+          street:     detectStreet(boardSnapshot),
+          profile:    situationProfile,
+          archetype:  rangeArchetype,
+          heroPos,
+          villainPos
+        }
+      }
+    });
   } else {
-    // Inline fallback
+    const cacheKey = boardSnapshot.join(',');
+    if (evalCache.has(cacheKey)) {
+      const cached = evalCache.get(cacheKey);
+      clearCalcWatchdog();
+      hideHeatmapSpinner();
+      lastHeatmapData = cached;
+      render3DHeatmap(cached);
+      renderNuts(cached);
+      document.getElementById('calc-time').textContent = 'CALC: 0ms (cache)';
+      setStabState('DONE');
+      updateHeroCells();
+      return;
+    }
     setTimeout(() => {
+      if (requestId !== activeRequestId) return;
       const t0 = performance.now();
-      const data = fallbackEval169(currentBoard);
+      const data = fallbackEval169(boardSnapshot);
       const ms   = Math.round(performance.now() - t0);
       evalCache.set(cacheKey, data);
+      clearCalcWatchdog();
+      hideHeatmapSpinner();
       lastHeatmapData = data;
       render3DHeatmap(data);
       renderNuts(data);
-      document.getElementById('hm-spin').classList.remove('active');
       document.getElementById('calc-time').textContent = `CALC: ${ms}ms (fallback)`;
       setStabState('DONE');
       updateHeroCells();
-      const tex = calcTexture(currentBoard);
+      const tex = calcTexture(boardSnapshot);
       if (tex) applyTexture(tex);
     }, 50);
   }
@@ -1295,6 +2287,9 @@ function onInputChanged() {
     clearTimeout(calcTimer);
     calcTimer = setTimeout(triggerUpdate, 300);
   } else {
+    clearTimeout(calcTimer);
+    hideHeatmapSpinner();
+    clearCalcWatchdog();
     resetHeatmapUI();
     setStabState('MANUAL');
   }
@@ -1333,6 +2328,9 @@ function renderStreet(board) {
 
 /* ── CLEAR BOARD ── */
 function clearBoard() {
+  clearTimeout(calcTimer);
+  hideHeatmapSpinner();
+  clearCalcWatchdog();
   for (let i=0; i<5; i++) {
     const r = document.getElementById('rsel-'+i);
     const s = document.getElementById('ssel-'+i);
@@ -1353,10 +2351,16 @@ function clearBoard() {
 }
 
 function resetHeatmapUI() {
+  hideHeatmapSpinner();
+  clearCalcWatchdog();
   for (let i=0; i<169; i++) {
     const c = document.getElementById('hc'+i);
     if (c) { c.style.backgroundColor='#0d1a2a'; delete c.dataset.eq; }
   }
+  document.getElementById('nuts-list').style.display = 'flex';
+  document.getElementById('nuts-list').style.flexDirection = 'column';
+  document.getElementById('river-polar').style.display = 'none';
+  document.getElementById('nuts-sec-label').innerHTML = 'NUTS RANKING <span style="font-size:6.5px;opacity:.6">[ABSOLUTE]</span>';
   document.getElementById('nuts-list').innerHTML =
     '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:rgba(160,200,230,.3);padding:10px 4px;line-height:1.6;">ボードを3枚以上<br>入力するとNUTS<br>が表示されます</div>';
   document.getElementById('calc-time').textContent='CALC: --ms';
@@ -1460,5 +2464,6 @@ buildBoardArea();
 buildHeroSelects();
 initEngine();
 </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
