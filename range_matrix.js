@@ -99,11 +99,21 @@ function eval169(board, hero) {
   const heroSet  = new Set(hero || []);
   const deadSet  = new Set([...boardSet, ...heroSet]);
 
+  // ── ボード上で最も多いスート ── 同点タイブレーク時、このスートのコンボを優先
+  // (例: board に h が2枚 → AhKh のようなフラッシュドロー成立コンボを bestCombo に選ぶ)
+  const suitCounts = {};
+  board.forEach(c => suitCounts[c[1]] = (suitCounts[c[1]] || 0) + 1);
+  const dominantSuit = Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  const dominantSuitCount = dominantSuit ? suitCounts[dominantSuit] : 0;
+
   for (let i = 0; i < 13; i++) {
     for (let j = 0; j < 13; j++) {
       const r1 = RANKS[i];
       const r2 = RANKS[j];
-      let hand, combos = [], scores = [], activeCombos = 0;
+      let hand, activeCombos = 0;
+      let bestScore = -1;
+      let bestCombo = null; // 最高スコアを出した具体的コンボ "KhKd" 等
+      let bestIsDominantSuit = false;
 
       if (i === j) {
         // Pair
@@ -115,12 +125,12 @@ function eval169(board, hero) {
             if (!deadSet.has(c1) && !deadSet.has(c2)) {
               activeCombos++;
               const score = evaluate7([c1, c2, ...board]);
-              scores.push(score);
+              if (score > bestScore) { bestScore = score; bestCombo = c1 + c2; }
             }
           }
         }
       } else if (i < j) {
-        // Suited
+        // Suited — 同点なら dominantSuit と一致するコンボを優先（FD表示のため）
         hand = r1 + r2 + 's';
         for (let s = 0; s < 4; s++) {
           const c1 = r1 + SUITS[s];
@@ -128,7 +138,11 @@ function eval169(board, hero) {
           if (!deadSet.has(c1) && !deadSet.has(c2)) {
             activeCombos++;
             const score = evaluate7([c1, c2, ...board]);
-            scores.push(score);
+            const isDominant = dominantSuitCount >= 2 && SUITS[s] === dominantSuit;
+            // 厳密に上回るか、同点でdominantSuit一致なら採用
+            if (score > bestScore || (score === bestScore && isDominant && !bestIsDominantSuit)) {
+              bestScore = score; bestCombo = c1 + c2; bestIsDominantSuit = isDominant;
+            }
           }
         }
       } else {
@@ -142,20 +156,21 @@ function eval169(board, hero) {
             if (!deadSet.has(c1) && !deadSet.has(c2)) {
               activeCombos++;
               const score = evaluate7([c1, c2, ...board]);
-              scores.push(score);
+              if (score > bestScore) { bestScore = score; bestCombo = c1 + c2; }
             }
           }
         }
       }
 
       const totalCombos = i === j ? 6 : (i < j ? 4 : 12);
-      const rawEval7    = scores.length ? Math.max(...scores) : 0;
+      const rawEval7    = bestScore >= 0 ? bestScore : 0;
       const potStrength = classifyPotential(hand, board);
       const madeStr     = computeMadeStrength(rawEval7, board);
       const rawScore    = computeProjectedRawScore(madeStr, potStrength);
 
       results.push({
         hand:             hand,
+        bestCombo:        bestCombo,       // 例: "KhKd" — 最高評価を出した具体的カード組
         rawScore:         rawScore,
         madeStrength:     madeStr,
         potentialStrength: potStrength,
@@ -178,6 +193,7 @@ function evalRange169(board, hero, context) {
   const raw = eval169(board, hero); // hero passed for removal
   return raw.map(item => ({
     hand:              item.hand,
+    bestCombo:         item.bestCombo,      // 例: "KhKd" — NUTS表示用の具体コンボ
     rawScore:          item.rawScore,
     madeStrength:      item.madeStrength,
     potentialStrength: item.potentialStrength,

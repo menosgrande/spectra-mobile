@@ -85,13 +85,27 @@ function evaluate7(cards) {
   }
   madeScore = clamp01(madeScore);
 
+  // ── Band ceiling: 各役カテゴリの上限を定義 ──
+  // boardAdjustment がカテゴリの境界を飛び越えないようにする
+  // (例: Quads(0.80-0.89) が +0.12 補正で Royal帯(0.90+) に侵入するのを防ぐ)
+  let bandCeiling;
+  if (isStraightFlush)                       bandCeiling = 1.00;
+  else if (counts[0] === 4)                  bandCeiling = 0.895;  // Quads上限
+  else if (counts[0] === 3 && counts[1] >= 2) bandCeiling = 0.795; // Full House上限
+  else if (isFlush)                          bandCeiling = 0.675; // Flush上限
+  else if (isStraight)                       bandCeiling = 0.575; // Straight上限
+  else if (counts[0] === 3)                  bandCeiling = 0.465; // Trips上限
+  else if (counts[0] === 2 && counts[1] === 2) bandCeiling = 0.375; // Two pair上限
+  else if (counts[0] === 2)                  bandCeiling = 0.255; // One pair上限
+  else                                        bandCeiling = 0.095; // High card上限
+
   // ── Layer 2: board interaction adjustment ──
   // Separates hands only if board context (≥5 cards = hand + board given)
   const boardAdjustment = computeBoardInteraction(cards, ranks, freq, isStraightFlush, isFlush, isStraight, counts);
 
-  // boardAdjustment is a signed delta (-0.08..+0.20) added to madeScore.
-  // madeScore carries the category; boardAdjustment refines within-category.
-  return clamp01(madeScore + boardAdjustment);
+  // boardAdjustment refines within-category, but cannot push score past bandCeiling
+  // (= cannot make a Quads hand score like a Straight Flush)
+  return Math.min(bandCeiling, clamp01(madeScore + boardAdjustment));
 }
 
 

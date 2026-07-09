@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>SPECTRA v3.0 — BATTLE OS</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════
    SPECTRA v3.0 — BATTLE OS  (Python完全追放・Worker純JS駆動)
@@ -375,7 +375,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 <!-- MAIN -->
 <div id="main">
 
-  <!-- LEFT: STREET + NUTS + HERO HAND -->
+  <!-- LEFT: STREET + HERO HAND + NUTS TABLE -->
   <div class="pnl" id="mob-pnl-nuts">
     <div id="street-box">
       <div id="street-name">PREFLOP</div>
@@ -389,84 +389,51 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       <div class="sit-sub" id="sit-sub">--</div>
     </div>
 
-    <!-- SITUATION / ARCHETYPE (非表示・Worker用に保持) -->
+    <!-- 非表示Worker用DOM -->
     <div style="display:none;">
-      <select id="situation-select">
-        <option value="BTN_VS_BB" selected>BTN vs BB</option>
-        <option value="3BET_IP">3-Bet IP</option>
-        <option value="SRP_IP">SRP IP</option>
-      </select>
-      <select id="archetype-select" onchange="onInputChanged();">
-        <option value="STANDARD" selected>Standard</option>
-        <option value="TIGHT">Tight</option>
-        <option value="LOOSE">Loose</option>
-        <option value="GTO">GTO</option>
-        <option value="RECREATIONAL">Recreational</option>
-      </select>
+      <select id="situation-select"><option value="BTN_VS_BB" selected>BTN vs BB</option><option value="3BET_IP">3-Bet IP</option><option value="SRP_IP">SRP IP</option></select>
+      <select id="archetype-select" onchange="onInputChanged();"><option value="STANDARD" selected>Standard</option><option value="TIGHT">Tight</option><option value="LOOSE">Loose</option><option value="GTO">GTO</option><option value="RECREATIONAL">Recreational</option></select>
       <div id="fb-archetype"></div>
+      <select id="hero-pos-select" onchange="lastRangeAdv=null;onInputChanged();updateConfigFeedback();buildPosMatrix();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN" selected>BTN</option><option value="SB">SB</option></select>
+      <select id="villain-pos-select" onchange="lastRangeAdv=null;onInputChanged();updateConfigFeedback();buildPosMatrix();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN">BTN</option><option value="SB">SB</option><option value="BB" selected>BB</option></select>
+      <div id="fb-hero-pos"></div><div id="fb-villain-pos"></div><div id="fb-situation"></div>
     </div>
 
-    <!-- Hero/Villain Pos (非表示セレクタ: POS MATRIXクリックで操作) -->
-    <div style="display:none;">
-      <select id="hero-pos-select" onchange="lastRangeAdv=null;onInputChanged();updateConfigFeedback();buildPosMatrix();">
-        <option value="UTG">UTG</option>
-        <option value="HJ">HJ</option>
-        <option value="CO">CO</option>
-        <option value="BTN" selected>BTN</option>
-        <option value="SB">SB</option>
-      </select>
-      <select id="villain-pos-select" onchange="lastRangeAdv=null;onInputChanged();updateConfigFeedback();buildPosMatrix();">
-        <option value="UTG">UTG</option>
-        <option value="HJ">HJ</option>
-        <option value="CO">CO</option>
-        <option value="BTN">BTN</option>
-        <option value="SB">SB</option>
-        <option value="BB" selected>BB</option>
-      </select>
-    </div>
-    <!-- feedback placeholders (updateConfigFeedback用) -->
-    <div id="fb-hero-pos" style="display:none;"></div>
-    <div id="fb-villain-pos" style="display:none;"></div>
-    <div id="fb-situation" style="display:none;"></div>
-
-    <!-- HERO HAND -->
+    <!-- HERO HAND（サブ的要素・コンパクト） -->
     <div id="hero-section">
-      <div class="sec">▐ HERO HAND <span style="font-size:6px;color:rgba(255,215,0,.5);">/ 自分の手札（金枠）</span></div>
+      <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1.5px;color:rgba(255,215,0,.45);margin-bottom:3px;">▐ HERO HAND</div>
       <div class="hero-selects">
-        <select id="hero-r1" onchange="onHeroChanged()">
-          <option value="">-</option>
-        </select>
-        <select id="hero-s1" onchange="onHeroChanged()">
-          <option value="">-</option>
-        </select>
-        <select id="hero-r2" onchange="onHeroChanged()">
-          <option value="">-</option>
-        </select>
-        <select id="hero-s2" onchange="onHeroChanged()">
-          <option value="">-</option>
-        </select>
+        <select id="hero-r1" onchange="onHeroChanged()"><option value="">-</option></select>
+        <select id="hero-s1" onchange="onHeroChanged()"><option value="">-</option></select>
+        <select id="hero-r2" onchange="onHeroChanged()"><option value="">-</option></select>
+        <select id="hero-s2" onchange="onHeroChanged()"><option value="">-</option></select>
       </div>
     </div>
 
-    <div class="sec" style="margin-top:3px" id="nuts-sec-label">NUTS RANKING <span style="font-size:6.5px;opacity:.6">[ABSOLUTE]</span></div>
-    <!-- フロップ/ターン: サブ行付きリスト -->
-    <div id="nuts-list">
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);padding:10px 4px;line-height:1.6;">ボードを3枚以上<br>入力するとNUTS<br>が表示されます</div>
-    </div>
-    <!-- リバー: ポラライズド3分割 -->
-    <div id="river-polar">
-      <div class="polar-section pure-value" id="polar-value">
-        <div class="polar-title">⬆ PURE VALUE</div>
-        <div class="polar-hands" id="polar-value-hands"></div>
+    <!-- NUTS TABLE：Heatmapの補完情報 -->
+    <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-height:0;overflow-y:auto;">
+
+      <!-- フロップ/ターン: TOP MADE + TOP DRAWS + BOARD PROFILE -->
+      <div id="nuts-list">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.25);padding:8px 4px;line-height:1.8;text-align:center;">ボードを<br>3枚以上入力</div>
       </div>
-      <div class="polar-section check-catch" id="polar-catch">
-        <div class="polar-title">↔ CHECK-CATCH</div>
-        <div class="polar-hands" id="polar-catch-hands"></div>
+
+      <!-- リバー: ポラライズド3分割 -->
+      <div id="river-polar">
+        <div class="polar-section pure-value" id="polar-value">
+          <div class="polar-title">⬆ PURE VALUE</div>
+          <div class="polar-hands" id="polar-value-hands"></div>
+        </div>
+        <div class="polar-section check-catch" id="polar-catch">
+          <div class="polar-title">↔ BLUFF CATCH</div>
+          <div class="polar-hands" id="polar-catch-hands"></div>
+        </div>
+        <div class="polar-section bluff-fold" id="polar-bluff">
+          <div class="polar-title">⬇ BLUFF / FOLD</div>
+          <div class="polar-hands" id="polar-bluff-hands"></div>
+        </div>
       </div>
-      <div class="polar-section bluff-fold" id="polar-bluff">
-        <div class="polar-title">⬇ BLUFF / FOLD</div>
-        <div class="polar-hands" id="polar-bluff-hands"></div>
-      </div>
+
     </div>
   </div>
 
@@ -501,121 +468,117 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
   <!-- RIGHT: ANALYTICS + HEATMAP -->
   <div class="pnl" id="mob-pnl-stats">
-    <div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;flex-shrink:0;">
+    <div style="height:2px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;flex-shrink:0;">
       <div id="prog-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#00d4ff,#1a6aff);border-radius:2px;transition:width .7s;"></div>
     </div>
 
-    <!-- ══ 教科書: POSITION MATRIX（固定・常時表示） ══ -->
-    <div style="padding:6px;border:1px solid rgba(0,180,255,.15);border-radius:3px;background:rgba(0,5,15,.4);flex-shrink:0;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-        <span style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.45);">▐ POSITION MATRIX</span>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:6px;color:rgba(160,200,230,.25);">click to select</span>
+    <!-- ══ L1: BOARD SUMMARY（最重要・最上部・大） ══ -->
+    <div id="conclusion-panel" style="display:none;flex-shrink:0;">
+      <!-- 戦況バッジ（大） -->
+      <div id="tactic-badge" style="
+        padding:10px 12px;border-radius:3px;
+        border:1px solid rgba(0,212,255,.3);
+        background:rgba(0,5,15,.7);
+        margin-bottom:4px;transition:all .4s;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+          <div id="tactic-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:rgba(0,180,255,.4);"></div>
+          <div id="tactic-text" style="font-family:'Orbitron',monospace;font-size:13px;font-weight:700;letter-spacing:2px;color:rgba(0,180,255,.6);">WAITING</div>
+        </div>
+        <div id="tactic-sub" style="
+          font-family:'Noto Sans JP','Share Tech Mono',monospace;
+          font-size:10px;line-height:1.6;
+          color:rgba(200,220,240,.6);
+          padding:5px 8px;
+          background:rgba(0,0,0,.25);
+          border-radius:2px;
+          border-left:2px solid rgba(0,180,255,.3);
+        ">ボードを入力してください</div>
+      </div>
+      <!-- RANGE PROFILE -->
+      <div id="range-profile-block" style="padding:5px 8px;border-radius:3px;border:1px solid rgba(0,180,255,.1);background:rgba(0,5,15,.4);margin-bottom:4px;display:none;">
+        <div style="font-family:'Orbitron',monospace;font-size:6px;letter-spacing:1px;color:rgba(0,180,255,.3);margin-bottom:3px;">RANGE PROFILE</div>
+        <div id="range-profile-hud" style="display:flex;flex-direction:column;gap:3px;"></div>
+      </div>
+      <!-- Narrative -->
+      <div id="conclusion-narrative" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.4);line-height:1.6;border-top:1px solid rgba(0,180,255,.08);padding-top:4px;display:none;"></div>
+    </div>
+
+    <!-- ══ L2: POSITION MATRIX（教科書・静的） ══ -->
+    <div style="padding:5px 6px;border:1px solid rgba(0,180,255,.12);border-radius:3px;background:rgba(0,5,15,.3);flex-shrink:0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);">▐ POSITION MATRIX</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:6px;color:rgba(160,200,230,.2);">click to select</span>
       </div>
       <div id="pos-matrix-wrap"></div>
     </div>
 
-    <!-- ══ BOARD SUMMARY ══ -->
-    <div id="conclusion-panel" style="display:none;flex-shrink:0;">
-
-      <!-- 戦況ブロック -->
-      <div id="tactic-badge" style="
-        padding:8px 10px;border-radius:3px;
-        border:1px solid rgba(0,212,255,.25);
-        background:rgba(0,5,15,.6);
-        margin-bottom:4px;transition:all .4s;">
-        <div style="display:flex;align-items:center;gap:7px;">
-          <div id="tactic-dot" style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:rgba(0,180,255,.4);"></div>
-          <div id="tactic-text" style="font-family:'Orbitron',monospace;font-size:13px;font-weight:700;letter-spacing:2px;color:rgba(0,180,255,.6);">WAITING</div>
-        </div>
-        <div id="tactic-sub" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.35);margin-top:3px;padding-left:16px;">ボードを入力してください</div>
+    <!-- ══ BOARD TEXTURE ══ -->
+    <div style="background:rgba(0,0,0,.25);border:1px solid rgba(0,180,255,.1);border-radius:3px;padding:6px;flex-shrink:0;">
+      <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);margin-bottom:4px;">▐ BOARD TEXTURE</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:5px;">
+        <div class="wet-big" id="wet-val">--%</div>
+        <div class="wet-sub" id="wet-lbl">ANALYZING</div>
       </div>
-
-      <!-- RANGE PROFILE ブロック -->
-      <div id="range-profile-block" style="
-        padding:6px 10px;border-radius:3px;
-        border:1px solid rgba(0,180,255,.12);
-        background:rgba(0,5,15,.4);
-        margin-bottom:4px;display:none;">
-        <div style="font-family:'Orbitron',monospace;font-size:6px;letter-spacing:1px;color:rgba(0,180,255,.3);margin-bottom:4px;">RANGE PROFILE</div>
-        <div id="range-profile-hud" style="display:flex;flex-direction:column;gap:3px;"></div>
+      <div class="metric">
+        <div class="metric-lbl">CONNECTEDNESS</div>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-con" style="width:0%;background:#00d4ff;"></div></div>
+        <div class="metric-val" id="val-con" style="color:#00d4ff;">--%</div>
       </div>
-
-      <!-- Narrative -->
-      <div id="conclusion-narrative" style="
-        font-family:'Share Tech Mono',monospace;font-size:8px;
-        color:rgba(160,200,230,.45);line-height:1.6;
-        border-top:1px solid rgba(0,180,255,.08);padding-top:4px;
-        display:none;">
-      </div>
-    </div>
-
-    <!-- ══ L2: BOARD TEXTURE ══ -->
-    <div style="background:rgba(0,0,0,.3);border:1px solid rgba(0,180,255,.12);border-radius:3px;padding:7px;flex-shrink:0;">
-      <div class="sec" style="border:none;padding:0;margin-bottom:5px;">▐ BOARD TEXTURE</div>
-      <div class="wet-big" id="wet-val">--%</div>
-      <div class="wet-sub" id="wet-lbl">ANALYZING</div>
-      <div style="margin-top:7px;">
-        <div class="metric">
-          <div class="metric-lbl">CONNECTEDNESS</div>
-          <div class="bar-wrap"><div class="bar-fill" id="bar-con" style="width:0%;background:#00d4ff;"></div></div>
-          <div class="metric-val" id="val-con" style="color:#00d4ff;">--%</div>
-        </div>
-        <div class="metric" style="margin-bottom:0;">
-          <div class="metric-lbl">FLUSH DENSITY</div>
-          <div class="bar-wrap"><div class="bar-fill" id="bar-fls" style="width:0%;background:#a855f7;"></div></div>
-          <div class="metric-val" id="val-fls" style="color:#a855f7;">--%</div>
-        </div>
+      <div class="metric" style="margin-bottom:0;">
+        <div class="metric-lbl">FLUSH DENSITY</div>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-fls" style="width:0%;background:#a855f7;"></div></div>
+        <div class="metric-val" id="val-fls" style="color:#a855f7;">--%</div>
       </div>
     </div>
 
     <!-- HERO OUTS -->
     <div id="outs-panel" style="display:none;">
-      <div class="sec" style="border:none;padding:0;margin-bottom:5px;">▐ HERO OUTS <span style="font-size:6px;opacity:.5;">/ アウツ解析</span></div>
+      <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);margin-bottom:4px;">▐ HERO OUTS</div>
       <div id="outs-list"></div>
     </div>
 
-    <!-- ══ L3: BOARD INTELLIGENCE — 折りたたみ（詳細診断） ══ -->
+    <!-- ══ BOARD INTELLIGENCE（折りたたみ・詳細） ══ -->
     <div style="flex-shrink:0;">
       <div id="bi-toggle" onclick="toggleBiPanel()" style="
         display:none;cursor:pointer;
-        font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;
-        color:rgba(0,212,255,.4);padding:4px 0;
-        border-top:1px solid rgba(0,180,255,.1);
+        font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1.5px;
+        color:rgba(0,212,255,.35);padding:4px 0;
+        border-top:1px solid rgba(0,180,255,.08);
         display:flex;align-items:center;justify-content:space-between;">
-        <span>▐ BOARD INTELLIGENCE <span style="font-size:6px;opacity:.5;">/ 詳細診断</span></span>
+        <span>▐ BOARD INTELLIGENCE</span>
         <span id="bi-toggle-icon" style="font-size:9px;">▼</span>
       </div>
-      <div id="bi-panel" style="display:none;background:rgba(0,0,0,.2);border:1px solid rgba(0,180,255,.1);border-radius:3px;padding:7px;margin-top:3px;">
-        <div id="bi-features" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.5);margin-bottom:5px;line-height:1.6;"></div>
-        <div id="bi-narrative" style="background:rgba(0,180,255,.06);border-left:2px solid rgba(0,180,255,.3);padding:4px 6px;border-radius:2px;margin-bottom:5px;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,200,255,.8);line-height:1.4;"></div>
-        <div id="bi-signals" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+      <div id="bi-panel" style="display:none;background:rgba(0,0,0,.2);border:1px solid rgba(0,180,255,.08);border-radius:3px;padding:6px;margin-top:3px;">
+        <div id="bi-features" style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(160,200,230,.45);margin-bottom:5px;line-height:1.7;"></div>
+        <div id="bi-narrative" style="background:rgba(0,180,255,.05);border-left:2px solid rgba(0,180,255,.25);padding:4px 6px;border-radius:2px;margin-bottom:5px;font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(0,200,255,.75);line-height:1.5;"></div>
+        <div id="bi-signals" style="display:flex;gap:3px;flex-wrap:wrap;"></div>
       </div>
     </div>
 
-    <!-- Range Advantage: pos-matrixに統合済み。sparkline/barは互換性のためDOM保持・非表示 -->
+    <!-- 非表示互換DOM -->
     <div style="display:none;">
       <div id="bar-btn"></div><div id="val-btn"></div>
       <div id="bar-bb"></div><div id="val-bb"></div>
-      <span id="range-adv-title"></span>
-      <span id="range-hero-name"></span><span id="range-villain-name"></span>
+      <span id="range-adv-title"></span><span id="range-hero-name"></span><span id="range-villain-name"></span>
       <canvas id="sparkline" width="1" height="1"></canvas>
     </div>
 
-    <!-- ══ L4: 3D HEATMAP ══ -->
-    <div class="sec">▐ 3D HEATMAP</div>
-    <div id="hm-legend" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <!-- ══ L3: 3D HEATMAP（主役・大きく） ══ -->
+    <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:rgba(0,212,255,.6);flex-shrink:0;">▐ 3D HEATMAP</div>
+    <div id="hm-legend" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;">
       <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:hsl(0,80%,50%);">STRENGTH</span>
-      <div style="width:60px;height:5px;border-radius:2px;background:linear-gradient(90deg,hsl(0,90%,45%),hsl(180,50%,30%));flex-shrink:0;"></div>
+      <div style="width:55px;height:4px;border-radius:2px;background:linear-gradient(90deg,hsl(0,90%,45%),hsl(180,50%,30%));"></div>
       <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:hsl(180,50%,35%);">弱</span>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.25);">|</span>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(255,220,100,.7);">FLEX</span>
-      <div style="width:60px;height:5px;border-radius:2px;background:linear-gradient(90deg,hsl(50,80%,65%),hsl(50,40%,25%));flex-shrink:0;"></div>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.4);">なし</span>
+      <span style="color:rgba(160,200,230,.2);">|</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(255,220,100,.65);">FLEX</span>
+      <div style="width:55px;height:4px;border-radius:2px;background:linear-gradient(90deg,hsl(50,80%,65%),hsl(50,40%,25%));"></div>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.35);">なし</span>
     </div>
     <div id="hm-wrap">
       <div id="hm-grid"></div>
       <div id="hm-spin">CALCULATING...</div>
     </div>
+
   </div>
 
 </div><!-- /main -->
@@ -655,20 +618,6 @@ let calcTimer      = null;
 let evalCache      = new Map();
 let lastHeatmapData= [];     // For tooltip access
 let camStream      = null;
-let activeRequestId = 0;
-let calcWatchdog    = null;
-let useInlineFallback = false;
-
-function hideHeatmapSpinner() {
-  clearTimeout(_spinTimer);
-  const spin = document.getElementById('hm-spin');
-  if (spin) spin.classList.remove('active');
-}
-
-function clearCalcWatchdog() {
-  clearTimeout(calcWatchdog);
-  calcWatchdog = null;
-}
 
 /* ══════════════════════════════
    WORKER INIT
@@ -677,86 +626,77 @@ function initEngine() {
   setBrainMsg('LOADING JS ENGINE...','spectra-worker.js',20);
 
   try {
-    useInlineFallback = false;
     spectraWorker = new Worker('worker/spectra-worker.js');
     spectraWorker.onmessage = onWorkerMessage;
     spectraWorker.onerror   = (e) => {
-      console.warn('[SPECTRA] Worker error, switching to fallback:', e.message);
+      console.warn('[SPECTRA] Worker error, using fallback:', e.message);
       workerReady = false;
-      setStabState('ERR');
-      startFallback('worker runtime error');
+      startFallback();
     };
     spectraWorker.postMessage({ type: 'INIT' });
     // Timeout: if no READY within 3s, use fallback
     setTimeout(() => {
-      if (!workerReady) startFallback('worker init timeout');
+      if (!workerReady) startFallback();
     }, 3000);
   } catch(e) {
-    startFallback('worker boot failed');
+    startFallback();
   }
 }
 
-function startFallback(reason = 'inline js eval') {
-  if (spectraWorker) {
-    try { spectraWorker.terminate(); } catch (_) {}
-  }
-  spectraWorker = null;
-  useInlineFallback = true;
+function startFallback() {
   workerReady = true;
-  hideHeatmapSpinner();
-  clearCalcWatchdog();
-  setBrainMsg('FALLBACK ENGINE READY', reason, 100);
+  setBrainMsg('FALLBACK ENGINE READY','inline js eval',100);
   finalizeBrainReady();
 }
 
 function onWorkerMessage(e) {
-  const { type, data, cached, calcTime, requestId } = e.data;
+  const { type, data, cached, calcTime } = e.data;
 
   if (type === 'INIT_OK') {
     workerReady = true;
-    useInlineFallback = false;
     setBrainMsg('BRAIN ONLINE','worker ready',100);
     finalizeBrainReady();
     return;
   }
 
-  if (requestId && requestId !== activeRequestId) {
-    return; // ignore stale async responses
-  }
-
-  if (type === 'ENGINE_ERROR') {
-    console.warn('[SPECTRA] Worker engine error:', data?.message || data);
-    setStabState('ERR');
-    startFallback(data?.message || 'worker computation error');
-    return;
-  }
-
-  clearCalcWatchdog();
-  hideHeatmapSpinner();
-
   switch(type) {
+    // ── P1.5: BOARD_INTELLIGENCE is the unified entry ──
+    // All rendering flows from this single response
     case 'BOARD_INTELLIGENCE':
       if (!data) break;
+
+      // 1. Heatmap + Nuts (from rangeMatrix)
       if (data.rangeMatrix && data.rangeMatrix.length) {
         lastHeatmapData = data.rangeMatrix;
         render3DHeatmap(data.rangeMatrix);
-        renderNuts(data.rangeMatrix, data.features);
+        renderNuts(data.rangeMatrix);
       }
+
+      // 2. Texture (embedded by Worker as intel.texture)
       if (data.texture) applyTexture(data.texture);
+
+      // 3. Range Advantage — Worker 精密値を単一ソースとして描画
       renderRangeAdvantage(data);
+
+      // 4. Board Intelligence panel (narrative / HUD / features)
       renderBoardIntelligence(data);
+
+      // 4. Status
+      document.getElementById('hm-spin').classList.remove('active');
       document.getElementById('calc-time').textContent =
         `CALC: ${calcTime||0}ms${cached?' (cache)':''}`;
       setStabState('DONE');
       updateHeroCells();
       break;
 
+    // ── Legacy handlers (backward compat, kept for safety) ──
     case 'EVAL_169':
       if (data && data.length) {
         lastHeatmapData = data;
         render3DHeatmap(data);
         renderNuts(data);
       }
+      document.getElementById('hm-spin').classList.remove('active');
       document.getElementById('calc-time').textContent = `CALC: ${calcTime||0}ms${cached?' (cache)':''}`;
       setStabState('DONE');
       updateHeroCells();
@@ -816,8 +756,12 @@ function calc3DHSL(item) {
   const eq   = Math.max(0, Math.min(100, getDisplayStrength(item)));
   const pot  = Math.max(0, Math.min(1,   item.potential      || 0));
   const made = Math.max(0, Math.min(1,   item.madeStrength   || eq / 100));
-  const ac   = item.activeCombos || 0;
-  const tc   = item.totalCombos  || 0;
+  const ac   = item.activeCombos ?? (item.totalCombos || 1);
+  const tc   = item.totalCombos  || 1;
+  const density = ac / tc;
+
+  // ── Dead combo: グレーアウト ──
+  if (ac === 0) return 'hsl(220,10%,8%)'; // ほぼ黒
 
   // ─ Street detection ─
   const boardLen = (typeof currentBoard !== 'undefined') ? currentBoard.length : 3;
@@ -827,37 +771,27 @@ function calc3DHSL(item) {
   // ─ Hue: 強い手ほど赤 (0) → 弱い手ほど青緑 (180) ─
   const hue = Math.round((1 - eq / 100) * 180);
 
-  // ─ Saturation: デッドコンボは灰色へ ─
-  const density = tc > 0 ? ac / tc : 1;
-  const sat = Math.round(Math.max(15, density * 95));
+  // ─ Saturation: live combo密度で彩度を落とす ─
+  const baseSat = density >= 0.66 ? 90
+                : density >= 0.33 ? 60
+                : density >= 0.01 ? 30
+                : 0;
+  const sat = Math.round(baseSat);
 
   // ─ Lightness: ストリートで意味が変わる ─
   let lum;
 
   if (isRiver) {
-    // RIVER: 将来性は消える。made強度で明暗を決める。
-    // 弱い手（one pair以下: made < 0.25）= 暗く沈める
-    // 強い手（two pair+: made >= 0.26）  = 明るく浮かせる
-    if (made >= 0.70) {
-      lum = 60;                              // SF/Quads/Boat  = 最明
-    } else if (made >= 0.44) {
-      lum = 50;                              // Flush/Straight/Trips
-    } else if (made >= 0.26) {
-      lum = 40;                              // Two pair
-    } else if (made >= 0.10) {
-      lum = 22;                              // One pair → 暗く
-    } else {
-      lum = 14;                              // High card → 最暗（ほぼ灰）
-    }
+    // RIVER: FLEXゼロ。made強度のみ、幅を狭く（28-52%）
+    lum = Math.round(28 + made * 24);
   } else if (isTurn) {
-    // TURN: 将来性は1枚分（50%重み）だけ反映
-    const potContrib = pot * 18;             // 最大+18% (FD+OESDで0.85→+15)
-    const madeBase   = Math.round(26 + made * 28); // 26%〜54%
-    lum = Math.round(Math.min(64, madeBase + potContrib));
+    const madeBase   = Math.round(26 + made * 22);
+    const potContrib = pot * 14;
+    lum = Math.round(Math.min(60, madeBase + potContrib));
   } else {
-    // FLOP: 将来性をフルに使う（従来ロジック改善版）
-    const madeBase   = Math.round(22 + made * 22); // 22%〜44%（made手の最低輝度保証）
-    const potContrib = pot * 26;             // 最大+26%
+    // FLOP: 将来性フル反映
+    const madeBase   = Math.round(22 + made * 18);
+    const potContrib = pot * 26;
     lum = Math.round(Math.min(68, madeBase + potContrib));
   }
 
@@ -881,68 +815,207 @@ function fallbackColor(pct) {
 ══════════════════════════════ */
 function fallbackEval169(board) {
   const results = [];
-  const boardCards = board.map(parseCard);
-  const boardSet   = new Set(board.map(s => s.toLowerCase()));
+
+  // ─ ボード構造を事前解析 ─
+  const boardRankFreq = {};
+  board.forEach(c => { boardRankFreq[c[0]] = (boardRankFreq[c[0]] || 0) + 1; });
+  const boardTripsRanks  = Object.keys(boardRankFreq).filter(r => boardRankFreq[r] >= 3);
+  const boardPairRanks   = Object.keys(boardRankFreq).filter(r => boardRankFreq[r] === 2);
+  const boardSingleRanks = Object.keys(boardRankFreq).filter(r => boardRankFreq[r] === 1);
+  const boardRanks       = board.map(c => c[0]);
+
+  // dead card set（ボードにあるカード）
+  const deadSet = new Set(board.map(c => c.toLowerCase()));
+
+  const boardSuitFreq = {};
+  board.forEach(c => { boardSuitFreq[c[1]] = (boardSuitFreq[c[1]] || 0) + 1; });
+  const maxSuitCount = Math.max(...Object.values(boardSuitFreq));
+
+  // live comboを正確に数える
+  function countLiveCombos(r1, r2, isPair, isSuited) {
+    const SUITS = ['s','h','d','c'];
+    let count = 0;
+    if (isPair) {
+      for (let i = 0; i < 4; i++) for (let j = i+1; j < 4; j++) {
+        const c1 = r1+SUITS[i], c2 = r1+SUITS[j];
+        if (!deadSet.has(c1.toLowerCase()) && !deadSet.has(c2.toLowerCase())) count++;
+      }
+    } else if (isSuited) {
+      for (const s of SUITS) {
+        const c1 = r1+s, c2 = r2+s;
+        if (!deadSet.has(c1.toLowerCase()) && !deadSet.has(c2.toLowerCase())) count++;
+      }
+    } else {
+      for (const s1 of SUITS) for (const s2 of SUITS) {
+        if (s1 === s2) continue;
+        const c1 = r1+s1, c2 = r2+s2;
+        if (!deadSet.has(c1.toLowerCase()) && !deadSet.has(c2.toLowerCase())) count++;
+      }
+    }
+    return count;
+  }
 
   RANKS_LIST.forEach((r1, i) => {
     RANKS_LIST.forEach((r2, j) => {
-      let label, score, rc;
+      let label, score;
+      const isPair   = (i === j);
+      const isSuited = (i < j);
 
-      if (i === j) {
-        // Pocket pair
-        label = r1 + r2;
-        score = estimatePairScore(r1, board);
-        rc    = score > 80 ? 8 : score > 50 ? 7 : 9;
-      } else if (i < j) {
-        // Suited
-        label = r1 + r2 + 's';
-        score = estimateSuitedScore(r1, r2, board);
-        rc    = 9;
-      } else {
-        // Offsuit
-        label = r2 + r1 + 'o';
-        score = estimateOffsuitScore(r2, r1, board);
-        rc    = 9;
-      }
+      if (isPair)        label = r1 + r2;
+      else if (isSuited) label = r1 + r2 + 's';
+      else               label = r2 + r1 + 'o';
+
+      // ─ ハンド強度を段階的に評価 ─
+      score = evalHandFallback(r1, r2, isPair, isSuited, boardRanks,
+        boardRankFreq, boardTripsRanks, boardPairRanks,
+        boardSingleRanks, maxSuitCount, boardSuitFreq, board);
+
       // draw classify
-      const drawInfo = classifyDrawInline(r1, r2, i < j, i === j, board);
+      const drawInfo = classifyDrawInline(r1, r2, isSuited, isPair, board);
 
+      const totalCombos  = isPair ? 6 : isSuited ? 4 : 12;
+      const activeCombos = countLiveCombos(r1, r2, isPair, isSuited);
+      const pct100 = Math.round(score * 100);
       results.push({
-        hand: label, score, rc, pct: score,
-        equity: score, potential: drawInfo.potential,
-        activeCombos: 4, totalCombos: 6,
-        drawType: drawInfo.drawType, outs: drawInfo.outs
+        hand: label, score, pct: pct100,
+        equity: pct100, potential: drawInfo.potential,
+        activeCombos,
+        totalCombos,
+        drawType: drawInfo.drawType, outs: drawInfo.outs,
+        madeStrength: score,
+        rawScore:     score,
+        handName: score >= 0.90 ? 'STRAIGHT FLUSH'
+                : score >= 0.80 ? 'FOUR OF A KIND'
+                : score >= 0.70 ? 'FULL HOUSE'
+                : score >= 0.58 ? 'FLUSH'
+                : score >= 0.47 ? 'STRAIGHT'
+                : score >= 0.38 ? 'THREE OF A KIND'
+                : score >= 0.26 ? 'TWO PAIR'
+                : score >= 0.10 ? 'ONE PAIR'
+                : 'HIGH CARD',
+        class:    score >= 0.80 ? 'NUTS'
+                : score >= 0.44 ? 'TOP_PAIR_PLUS'
+                : score >= 0.26 ? 'MIDDLE_PAIR'
+                : score >= 0.10 ? 'WEAK_PAIR'
+                : 'AIR'
       });
     });
   });
   return results;
 }
 
+function evalHandFallback(r1, r2, isPair, isSuited,
+  boardRanks, boardRankFreq, boardTripsRanks, boardPairRanks,
+  boardSingleRanks, maxSuitCount, boardSuitFreq, board) {
+
+  const ri1 = RANK_IDX[r1];
+  const ri2 = RANK_IDX[r2];
+
+  // ── 1. FOUR OF A KIND ──
+  if (isPair && boardTripsRanks.includes(r1)) {
+    return 0.83 + (1 - ri1 / 12) * 0.06;
+  }
+  if (Object.values(boardRankFreq).some(f => f >= 4)) {
+    return 0.82;
+  }
+
+  // ── 2. FULL HOUSE ──
+  // ポケットペア + ボードトリップス（異ランク）
+  if (isPair && boardTripsRanks.length >= 1 && !boardTripsRanks.includes(r1)) {
+    return 0.74 + (1 - ri1 / 12) * 0.04;
+  }
+  // ポケットペア + ボードペア
+  if (isPair && boardPairRanks.length >= 1) {
+    return 0.72 + (1 - ri1 / 12) * 0.04;
+  }
+  // 片手がボードトリップスに一致
+  if (!isPair) {
+    const h1 = boardTripsRanks.includes(r1), h2 = boardTripsRanks.includes(r2);
+    if (h1 || h2) {
+      const t = h1 ? r1 : r2;
+      return 0.71 + (1 - RANK_IDX[t] / 12) * 0.05;
+    }
+  }
+  // 片手がボードペアランクに一致 → trips（ボードペア3枚目）+ 相手ペア = full house
+  if (!isPair && boardPairRanks.length >= 1) {
+    const h1OnPair = boardPairRanks.includes(r1);
+    const h2OnPair = boardPairRanks.includes(r2);
+    if (h1OnPair || h2OnPair) {
+      const t = h1OnPair ? r1 : r2;
+      return 0.71 + (1 - RANK_IDX[t] / 12) * 0.04;
+    }
+  }
+
+  // ── 3. FLUSH（スーテッドハンドのみ・ボードの支配的スーツと一致する場合のみ）──
+  // fallback では具体スーツ不明だが、suited hand の 1/4 がボードのflush suitに一致する確率で補正
+  // maxSuitCount >= 3: ボードにフラッシュスーツがある
+  // suited hand がそのスーツに一致する確率: 1/4（4スーツのうち1つ）
+  // → 完全無視ではなく、スコアを 0.25 に割り引いて反映
+  if (isSuited && !isPair && maxSuitCount >= 3) {
+    // 支配的スーツ
+    const domSuit = Object.entries(boardSuitFreq).sort((a,b)=>b[1]-a[1])[0][0];
+    const domCount = boardSuitFreq[domSuit];
+    if (domCount >= 5) {
+      // ボードが5枚同色 → suited hand がそのスーツなら完成、でも169表記では確率1/4
+      return 0.62 * 0.25 + 0.05; // 実質かなり低い
+    }
+    if (domCount >= 4) {
+      // 4フラッシュボード → suited hand でフラッシュ完成の確率 1/4
+      return 0.60 * 0.25 + (1 - ri1 / 12) * 0.02;
+    }
+    // 3フラッシュ（FD状態）→ river なので完成か否かで大きく変わるが fallback では区別不可
+    // suited hand の 1/4 がFD→完成
+    return 0.58 * 0.25 + (1 - ri1 / 12) * 0.02; // 約0.15〜0.18
+  }
+
+  // ── 4. TRIPS（ボードトリップスをプレイ）──
+  if (boardTripsRanks.length >= 1 && !isPair) {
+    const hits = [r1, r2].filter(r => boardSingleRanks.includes(r)).length;
+    if (hits >= 1) return 0.40;
+    const kickerBonus = (1 - Math.min(ri1, ri2) / 12) * 0.04;
+    return 0.39 + kickerBonus;
+  }
+
+  // ── 5. SET（ポケットペアがボードにヒット）──
+  if (isPair) {
+    const boardHits = boardRanks.filter(r => r === r1).length;
+    if (boardHits >= 1) return 0.38 + (1 - ri1 / 12) * 0.06; // Aセット=0.44
+  }
+
+  // ── 6. TWO PAIR ──
+  const r1OnBoard = boardRanks.includes(r1);
+  const r2OnBoard = !isPair && boardRanks.includes(r2);
+  if (!isPair && r1OnBoard && r2OnBoard) {
+    return 0.28 + (1 - Math.min(ri1, ri2) / 12) * 0.05;
+  }
+
+  // ── 7. ONE PAIR ──
+  // ボードにペアがある場合（手がヒットしなくてもボードペアをプレイ）
+  if (!isPair && boardPairRanks.length >= 1 && !r1OnBoard && !r2OnBoard) {
+    return 0.11 + (1 - Math.min(ri1, ri2) / 12) * 0.03;
+  }
+  if (isPair) {
+    const boardMaxRankIdx = Math.min(...boardRanks.map(r => RANK_IDX[r]));
+    const isOver = ri1 < boardMaxRankIdx;
+    return isOver
+      ? 0.18 + (1 - ri1 / 12) * 0.06
+      : 0.10 + (1 - ri1 / 12) * 0.04;
+  }
+  if (r1OnBoard) return 0.14 + (1 - ri1 / 12) * 0.06;
+  if (r2OnBoard) return 0.14 + (1 - ri2 / 12) * 0.05;
+
+  // ── 8. HIGH CARD ──
+  return Math.max(0.03, 0.08 - (ri1 + ri2) * 0.002);
+}
+
 function parseCard(s) {
   return { rank: s[0], suit: s[1], idx: RANK_IDX[s[0]] };
 }
 
-function estimatePairScore(r, board) {
-  const ri = RANK_IDX[r];
-  let base = Math.round(100 - ri * 5.5);
-  // Bonus: if pair hits set on board
-  const boardRanks = board.map(c => c[0]);
-  if (boardRanks.filter(x => x === r).length >= 1) base = Math.min(100, base + 20);
-  return Math.max(5, Math.min(98, base));
-}
-
-function estimateSuitedScore(r1, r2, board) {
-  const i = RANK_IDX[r1], j = RANK_IDX[r2];
-  const hi = Math.min(i,j), lo = Math.max(i,j);
-  let base = Math.round(85 - hi*3 - lo*2);
-  // flush potential
-  const suitCount = board.filter(c => c[1] === 's' || true).length; // simplified
-  return Math.max(10, Math.min(90, base));
-}
-
-function estimateOffsuitScore(r1, r2, board) {
-  return Math.max(5, estimateSuitedScore(r1, r2, board) - 8);
-}
+// 旧関数（不使用だがclassifyDrawInlineの呼び出し互換のため残す）
+function estimatePairScore(r, board) { return 0.3; }
+function estimateSuitedScore(r1, r2, board) { return 0.2; }
+function estimateOffsuitScore(r1, r2, board) { return 0.15; }
 
 function classifyDrawInline(r1, r2, suited, pair, board) {
   if (!board || board.length < 3) return { drawType: null, potential: 0, outs: 0 };
@@ -1197,31 +1270,53 @@ function getOutsCards(hand, drawType, board) {
    BLUFF / FOLD : Weak pair・High card。ベットはブラフ、コールされたら負ける (score < 0.10)
 ══════════════════════════════ */
 function renderRiverPolar(data) {
-  const sorted = [...data].sort((a, b) => getDisplayStrength(b) - getDisplayStrength(a));
+  // live comboのみ対象（dead comboを除外）
+  const live = data.filter(h => (h.activeCombos ?? h.totalCombos ?? 1) > 0);
+  const sorted = [...live].sort((a, b) => getDisplayStrength(b) - getDisplayStrength(a));
 
-  // 絶対閾値（strength.js の分類に準拠）
-  // Two pair+ = rawScore >= 0.26 → displayStrength >= 26
-  // One pair  = rawScore >= 0.10 → displayStrength >= 10
-  const valueHands = sorted.filter(h => getDisplayStrength(h) >= 26);
-  const catchHands = sorted.filter(h => getDisplayStrength(h) >= 10 && getDisplayStrength(h) < 26);
-  const bluffHands = sorted.filter(h => getDisplayStrength(h) < 10);
+  // ── Board-relative 閾値 ──
+  // 全liveハンドの中央値を基準にする → ボード次第で閾値が動く
+  const scores = sorted.map(h => getDisplayStrength(h));
+  const median = scores.length > 0
+    ? scores[Math.floor(scores.length / 2)]
+    : 50;
 
-  function handsHtml(list, limit = 12) {
-    return list.slice(0, limit).map(item =>
+  // 4分類
+  // PURE VALUE : median + 20以上 かつ >= 38（Trips+）
+  // THIN VALUE : median以上 かつ >= 15
+  // BLUFF CATCH: median - 15以上
+  // BLUFF FOLD : それ以下
+  const pureVal   = sorted.filter(h => getDisplayStrength(h) >= Math.max(38, median + 20));
+  const thinVal   = sorted.filter(h => {
+    const s = getDisplayStrength(h);
+    return s >= Math.max(15, median) && s < Math.max(38, median + 20);
+  });
+  const catchH    = sorted.filter(h => {
+    const s = getDisplayStrength(h);
+    return s >= Math.max(0, median - 15) && s < Math.max(15, median);
+  });
+  const bluffFold = sorted.filter(h => getDisplayStrength(h) < Math.max(0, median - 15));
+
+  function handsHtml(list, limit = 10) {
+    const liveList = list.filter(h => (h.activeCombos ?? 1) > 0);
+    return liveList.slice(0, limit).map(item =>
       `<div class="polar-hand" title="${getDisplayStrength(item).toFixed(1)}%">${item.hand}</div>`
-    ).join('') + (list.length > limit
-      ? `<div class="polar-hand" style="opacity:.4">+${list.length - limit}</div>`
+    ).join('') + (liveList.length > limit
+      ? `<div class="polar-hand" style="opacity:.4">+${liveList.length - limit}</div>`
       : '');
   }
 
-  // ラベルも更新
-  document.getElementById('polar-value').querySelector('.polar-title').textContent = '⬆ PURE VALUE (2pair+)';
-  document.getElementById('polar-catch').querySelector('.polar-title').textContent = '↔ BLUFF CATCH (1pair)';
-  document.getElementById('polar-bluff').querySelector('.polar-title').textContent = '⬇ BLUFF / FOLD (air)';
+  // ラベル更新
+  document.getElementById('polar-value').querySelector('.polar-title').textContent
+    = `⬆ PURE VALUE (${pureVal.length})`;
+  document.getElementById('polar-catch').querySelector('.polar-title').textContent
+    = `↔ THIN VALUE / CATCH (${thinVal.length + catchH.length})`;
+  document.getElementById('polar-bluff').querySelector('.polar-title').textContent
+    = `⬇ BLUFF / FOLD (${bluffFold.length})`;
 
-  document.getElementById('polar-value-hands').innerHTML = handsHtml(valueHands);
-  document.getElementById('polar-catch-hands').innerHTML = handsHtml(catchHands);
-  document.getElementById('polar-bluff-hands').innerHTML = handsHtml(bluffHands);
+  document.getElementById('polar-value-hands').innerHTML  = handsHtml(pureVal);
+  document.getElementById('polar-catch-hands').innerHTML  = handsHtml([...thinVal, ...catchH]);
+  document.getElementById('polar-bluff-hands').innerHTML  = handsHtml(bluffFold);
 }
 
 /* ══════════════════════════════
@@ -1237,85 +1332,143 @@ function drawColor(type) {
   return 'rgba(160,200,230,.7)';
 }
 
-function renderNuts(data, meta = null) {
-  const isRiver = currentBoard.length === 5;
+/* ══════════════════════════════
+   具体スート推定：169ハンド表記 → ボードと矛盾しない代表コンボ
+   例: AKo + board[Ah,Kd,Ts] → Ac Ks（ボードのスートを避ける）
+══════════════════════════════ */
+function getRepresentativeCombo(handLabel, board) {
+  if (!handLabel) return null;
+  const SUITS = ['s', 'h', 'd', 'c'];
+  const usedCards = new Set((board || []).map(c => c.toLowerCase()));
 
+  let r1, r2, isPair, isSuited;
+  if (handLabel.length === 2) {
+    // ポケットペア "AA"
+    r1 = r2 = handLabel[0];
+    isPair = true; isSuited = false;
+  } else {
+    r1 = handLabel[0];
+    r2 = handLabel[1];
+    isSuited = handLabel[2] === 's';
+    isPair = false;
+  }
+
+  if (isPair) {
+    // 異なる2スートを選ぶ（ボードで使われていないもの優先）
+    for (let i = 0; i < SUITS.length; i++) {
+      for (let j = i + 1; j < SUITS.length; j++) {
+        const c1 = r1 + SUITS[i], c2 = r1 + SUITS[j];
+        if (!usedCards.has(c1.toLowerCase()) && !usedCards.has(c2.toLowerCase())) {
+          return c1 + c2;
+        }
+      }
+    }
+    return r1 + SUITS[0] + r1 + SUITS[1]; // fallback
+  }
+
+  if (isSuited) {
+    // 同じスートを選ぶ（ボードで使われていないもの優先）
+    for (const s of SUITS) {
+      const c1 = r1 + s, c2 = r2 + s;
+      if (!usedCards.has(c1.toLowerCase()) && !usedCards.has(c2.toLowerCase())) {
+        return c1 + c2;
+      }
+    }
+    return r1 + SUITS[0] + r2 + SUITS[0]; // fallback
+  }
+
+  // オフスート: 異なるスートを選ぶ
+  for (const s1 of SUITS) {
+    for (const s2 of SUITS) {
+      if (s1 === s2) continue;
+      const c1 = r1 + s1, c2 = r2 + s2;
+      if (!usedCards.has(c1.toLowerCase()) && !usedCards.has(c2.toLowerCase())) {
+        return c1 + c2;
+      }
+    }
+  }
+  return r1 + SUITS[0] + r2 + SUITS[1]; // fallback
+}
+
+const SUIT_SYMBOL = { s: '♠', h: '♥', d: '♦', c: '♣' };
+const SUIT_COLOR  = { s: '#cbd5e1', h: '#ff5566', d: '#3b9eff', c: '#34d399' };
+function comboToHtml(combo) {
+  if (!combo || combo.length !== 4) return '';
+  const r1 = combo[0], s1 = combo[1], r2 = combo[2], s2 = combo[3];
+  return `<span style="font-family:'Share Tech Mono',monospace;">`
+    + `${r1}<span style="color:${SUIT_COLOR[s1]}">${SUIT_SYMBOL[s1]}</span>`
+    + `${r2}<span style="color:${SUIT_COLOR[s2]}">${SUIT_SYMBOL[s2]}</span>`
+    + `</span>`;
+}
+
+function renderNuts(data) {
+  const isRiver = currentBoard.length === 5;
   const nutsEl  = document.getElementById('nuts-list');
   const polarEl = document.getElementById('river-polar');
   const secLbl  = document.getElementById('nuts-sec-label');
-  const list    = Array.isArray(data) ? data : [];
 
   if (isRiver) {
     nutsEl.style.display  = 'none';
     polarEl.style.display = 'flex';
-    secLbl.innerHTML = 'RIVER — POLARIZED VIEW <span style="font-size:6.5px;opacity:.6">[VALUE / CATCH / BLUFF]</span>';
-    renderRiverPolar(list);
+    if (secLbl) secLbl.textContent = 'RIVER — VALUE / CATCH / BLUFF';
+    renderRiverPolar(data);
     return;
   }
 
   polarEl.style.display = 'none';
   nutsEl.style.display  = 'flex';
-  nutsEl.style.flexDirection = 'column';
-  secLbl.innerHTML = 'NUTS RANKING <span style="font-size:6.5px;opacity:.6">[ABSOLUTE + PLAYABILITY]</span>';
+  if (secLbl) secLbl.textContent = 'HAND CATEGORIES';
 
-  const fmtPct = v => `${Math.round((v || 0) * 100)}%`;
-  const top = [...list]
-    .sort((a, b) => getDisplayStrength(b) - getDisplayStrength(a))
-    .slice(0, 8);
+  // live comboのみ
+  const live = data.filter(h => (h.activeCombos ?? h.totalCombos ?? 1) > 0);
 
-  const summaryBits = [];
-  if (meta?.nutAdvantage) {
-    summaryBits.push(`<div style="padding:4px 6px;border:1px solid rgba(255,215,0,.18);background:rgba(255,215,0,.05);border-radius:3px;display:flex;flex-direction:column;gap:1px;min-width:72px;"><span style="font-size:7px;color:rgba(255,215,0,.55);font-family:'Orbitron',monospace;">NUT DENS</span><span style="font-size:10px;color:#ffd700;font-family:'Share Tech Mono',monospace;">${fmtPct(meta.nutAdvantage.density)}</span></div>`);
-    summaryBits.push(`<div style="padding:4px 6px;border:1px solid rgba(0,212,255,.18);background:rgba(0,212,255,.05);border-radius:3px;display:flex;flex-direction:column;gap:1px;min-width:72px;"><span style="font-size:7px;color:rgba(0,212,255,.55);font-family:'Orbitron',monospace;">LIVE COVER</span><span style="font-size:10px;color:#00d4ff;font-family:'Share Tech Mono',monospace;">${fmtPct(meta.nutAdvantage.coverage)}</span></div>`);
+  // 役種別にグループ化（handName優先、fallback → rawScore閾値）
+  const HAND_GROUPS = [
+    { key: 'SF',    label: 'STRAIGHT FLUSH', icon: '🌈', min: 0.90, color: '#ff00ff' },
+    { key: 'QUADS', label: 'FOUR OF A KIND', icon: '🔥', min: 0.80, color: '#ff4a4a' },
+    { key: 'FH',    label: 'FULL HOUSE',     icon: '🏠', min: 0.70, color: '#ff7700' },
+    { key: 'FLUSH', label: 'FLUSH',          icon: '♠',  min: 0.58, color: '#a855f7' },
+    { key: 'STR',   label: 'STRAIGHT',       icon: '↗',  min: 0.47, color: '#3b82f6' },
+    { key: 'TRIPS', label: 'TRIPS / SET',    icon: '3️⃣', min: 0.38, color: '#00d4ff' },
+  ];
+
+  const groups = HAND_GROUPS.map(g => ({
+    ...g,
+    hands: live
+      .filter(h => getDisplayStrength(h) >= g.min * 100 &&
+                   getDisplayStrength(h) < (HAND_GROUPS[HAND_GROUPS.indexOf(g) - 1]?.min ?? 2) * 100)
+      .sort((a,b) => getDisplayStrength(b) - getDisplayStrength(a))
+  })).filter(g => g.hands.length > 0);
+
+  if (groups.length === 0) {
+    nutsEl.innerHTML = `<div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.25);padding:8px 4px;text-align:center;">ボードを3枚以上入力</div>`;
+    return;
   }
-  if (meta?.rangeStats) {
-    summaryBits.push(`<div style="padding:4px 6px;border:1px solid rgba(0,255,157,.18);background:rgba(0,255,157,.05);border-radius:3px;display:flex;flex-direction:column;gap:1px;min-width:72px;"><span style="font-size:7px;color:rgba(0,255,157,.55);font-family:'Orbitron',monospace;">DRAW HVY</span><span style="font-size:10px;color:#00ff9d;font-family:'Share Tech Mono',monospace;">${fmtPct(meta.rangeStats.drawHeavy)}</span></div>`);
-  }
 
-  const summaryHtml = summaryBits.length
-    ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;">${summaryBits.join('')}</div>`
-    : '';
+  nutsEl.innerHTML = groups.map(g => {
+    const topHands = g.hands.slice(0, 5);
+    const more = g.hands.length - topHands.length;
+    const handsHtml = topHands.map(h =>
+      `<span style="
+        font-family:'Share Tech Mono',monospace;font-size:8px;
+        color:${g.color};
+        background:rgba(0,0,0,.3);
+        border:1px solid ${g.color}40;
+        border-radius:2px;padding:1px 4px;
+        display:inline-block;margin:1px;
+      ">${h.hand}</span>`
+    ).join('') + (more > 0
+      ? `<span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.3);margin-left:3px;">+${more}</span>`
+      : '');
 
-  nutsEl.innerHTML = summaryHtml + top.map((item, i) => {
-    const eq = getDisplayStrength(item);
-    const typeStr = item.handName || (item.class ? item.class.replace(/_/g,' ') : '');
-    const madePct = fmtPct(item.madeStrength);
-    const potPct  = fmtPct(item.potentialStrength || item.potential);
-    const livePct = fmtPct(item.density);
-
-    const mainRow = `<div class="nuts-row" style="border-bottom:none;padding-bottom:1px;align-items:flex-start;">
-      <div class="n-rank">${i+1}</div>
-      <div class="n-eq">${eq.toFixed(1)}%</div>
-      <div class="n-hand">${item.hand}</div>
-      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
-        <div class="n-type">${typeStr}</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;font-family:'Share Tech Mono',monospace;font-size:7px;line-height:1;">
-          <span style="padding:2px 4px;border:1px solid rgba(255,140,0,.22);border-radius:999px;color:#ffb366;background:rgba(255,140,0,.06);">MADE ${madePct}</span>
-          <span style="padding:2px 4px;border:1px solid rgba(0,212,255,.22);border-radius:999px;color:#7fdbff;background:rgba(0,212,255,.06);">POT ${potPct}</span>
-          <span style="padding:2px 4px;border:1px solid rgba(160,200,230,.18);border-radius:999px;color:rgba(200,225,245,.8);background:rgba(160,200,230,.05);">LIVE ${livePct}</span>
-          ${item.drawType ? `<span style="padding:2px 4px;border:1px solid ${drawColor(item.drawType)}33;border-radius:999px;color:${drawColor(item.drawType)};background:${drawColor(item.drawType)}12;">${item.drawType} ${item.outs||0}outs</span>` : ''}
-        </div>
+    return `<div style="margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid rgba(0,180,255,.06);">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
+        <span style="font-size:10px;">${g.icon}</span>
+        <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:${g.color};opacity:.8;">${g.label}</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:6px;color:rgba(160,200,230,.3);margin-left:auto;">${g.hands.length}手</span>
       </div>
+      <div style="display:flex;flex-wrap:wrap;">${handsHtml}</div>
     </div>`;
-
-    const { up, down } = getOutsCards(item.hand, item.drawType, currentBoard);
-    let subRow = '';
-    if (up.length || down.length) {
-      const upHtml = up.length
-        ? `<span class="outs-up"><span class="outs-arrow" style="color:#00ff9d">▲</span>${up.map(c=>`<span class="outs-card-tag">${c}</span>`).join('')}</span>`
-        : '';
-      const downHtml = down.length
-        ? `<span class="outs-down" style="margin-left:4px;"><span class="outs-arrow" style="color:#ff3b3b">▼</span>${down.map(c=>`<span class="outs-card-tag down">${c}</span>`).join('')}</span>`
-        : '';
-      const turnPct  = item.outs ? `T:${Math.round(item.outs*2)}%` : '';
-      const riverPct = item.outs ? `R:${Math.round(item.outs*4)}%` : '';
-      const pctBadge = (turnPct||riverPct)
-        ? `<span class="outs-count">${[turnPct,riverPct].filter(Boolean).join(' ')}</span>`
-        : '';
-      subRow = `<div class="nuts-subrow">${upHtml}${downHtml}${pctBadge}</div>`;
-    }
-
-    return mainRow + subRow;
   }).join('');
 }
 
@@ -1334,40 +1487,40 @@ function detectStreet(board) {
    Board Wetness ≠ Situation の分離
 ══════════════════════════════ */
 const TACTIC_BADGE_MAP = [
-  // [aggressionSignal, rangeDynamics条件fn, badge]
   {
     match: (s, d) => s === 'ATTACK' && d === 'RANGE_ADV_HERO',
-    text: '⚡ ATTACK WINDOW',
-    sub:  'Hero has range + aggression edge',
+    text:  '⚡ ATTACK WINDOW',
+    sub:   '🟥 積極的に攻めていい局面　相手より強いレンジ',
     color: '#ff4a4a', shadow: 'rgba(255,74,74,.45)'
   },
   {
     match: (s, d) => s === 'ATTACK',
-    text: '▲ SLIGHT EDGE',
-    sub:  'Aggression is available — select spots',
+    text:  '▲ SLIGHT EDGE',
+    sub:   '🟧 やや有利　選択的に攻めると効果的',
     color: '#ffb300', shadow: 'rgba(255,179,0,.35)'
   },
   {
     match: (s, d) => s === 'CAUTION',
-    text: '⚠ CAUTION',
-    sub:  'Board is dangerous — be selective',
+    text:  '⚠ CAUTION',
+    sub:   '🟦 慎重に　ドロー豊富で危険なボード',
     color: '#29b6f6', shadow: 'rgba(41,182,246,.35)'
   },
   {
     match: (s, d) => s === 'DEFEND' || d === 'RANGE_ADV_VILLAIN',
-    text: '🛡 DEFEND',
-    sub:  'Villain range dominates — resist wisely',
+    text:  '🛡 DEFEND',
+    sub:   '🟪 相手が有利　無理に攻めず粘り強く守る',
     color: '#ab47bc', shadow: 'rgba(171,71,188,.35)'
   },
   {
     match: (s, d) => s === 'POLARIZE',
-    text: '↕ POLARIZED',
-    sub:  'Nuts vs. air — think in extremes',
+    text:  '↕ POLARIZED',
+    sub:   '⬜ ナッツかブラフか二択　中間の手は価値が薄い',
     color: '#e2e8f0', shadow: 'rgba(255,255,255,.2)'
   },
 ];
 const TACTIC_BADGE_NEUTRAL = {
-  text: '— NEUTRAL', sub: 'Even match — read the board',
+  text: '— NEUTRAL',
+  sub:  '⬜ 互角　ボードによって柔軟に対応',
   color: 'rgba(160,200,230,.5)', shadow: 'transparent'
 };
 
@@ -1377,6 +1530,15 @@ function deriveSituationBadge(features) {
   const d = features.rangeDynamics    || 'NEUTRAL';
   return TACTIC_BADGE_MAP.find(b => b.match(s, d)) || TACTIC_BADGE_NEUTRAL;
 }
+
+const TACTIC_SHORT = {
+  '⚡ ATTACK WINDOW': '積極的に攻める',
+  '▲ SLIGHT EDGE':   'やや有利',
+  '⚠ CAUTION':       '慎重に',
+  '🛡 DEFEND':        '守り重視',
+  '↕ POLARIZED':     'ナッツか空気か',
+  '— NEUTRAL':       '互角',
+};
 
 function applySituationBadge(model) {
   // LEFT パネルの SIT BADGE（小）
@@ -1389,7 +1551,7 @@ function applySituationBadge(model) {
   dot.style.boxShadow     = `0 0 8px ${model.shadow}`;
   label.style.color       = model.color;
   label.textContent       = model.text;
-  sub.textContent         = model.sub || '';
+  sub.textContent         = TACTIC_SHORT[model.text] || '';
   badge.style.borderColor = model.color;
   badge.style.boxShadow   = `0 0 10px ${model.shadow}`;
 
@@ -1906,47 +2068,27 @@ function applyTexture(tex) {
 /* ══════════════════════════════
    TRIGGER UPDATE
 ══════════════════════════════ */
-let _spinTimer = null;
-
 function triggerUpdate() {
   if (!workerReady) return;
-  if (currentBoard.length < 3) {
-    hideHeatmapSpinner();
-    clearCalcWatchdog();
-    return;
-  }
+  if (currentBoard.length < 3) return;
 
-  const requestId        = ++activeRequestId;
-  const boardSnapshot    = [...currentBoard];
+  // Worker が board|heroPos|villainPos|archetype|profile の正しいキーでキャッシュする。
+  // UI 側は board-only キャッシュを持たない（文脈変更が反映されなくなるため）。
+  setStabState('CALC');
+  document.getElementById('hm-spin').classList.add('active');
+
   const situationProfile = document.getElementById('situation-select')?.value    || 'BTN_VS_BB';
   const rangeArchetype   = document.getElementById('archetype-select')?.value    || 'STANDARD';
   const heroPos          = document.getElementById('hero-pos-select')?.value     || 'BTN';
   const villainPos       = document.getElementById('villain-pos-select')?.value  || 'BB';
 
-  setStabState('CALC');
-
-  hideHeatmapSpinner();
-  _spinTimer = setTimeout(() => {
-    if (requestId !== activeRequestId) return;
-    document.getElementById('hm-spin').classList.add('active');
-  }, 200);
-
-  clearCalcWatchdog();
-  calcWatchdog = setTimeout(() => {
-    if (requestId !== activeRequestId) return;
-    console.warn('[SPECTRA] Calculation timeout — switching to fallback');
-    setStabState('ERR');
-    startFallback('worker timeout');
-  }, 8000);
-
-  if (spectraWorker && !useInlineFallback) {
+  if (spectraWorker) {
     spectraWorker.postMessage({
       type: 'BOARD_INTELLIGENCE',
-      requestId,
       payload: {
-        board: boardSnapshot,
+        board: currentBoard,
         context: {
-          street:     detectStreet(boardSnapshot),
+          street:     detectStreet(currentBoard),
           profile:    situationProfile,
           archetype:  rangeArchetype,
           heroPos,
@@ -1955,11 +2097,10 @@ function triggerUpdate() {
       }
     });
   } else {
-    const cacheKey = boardSnapshot.join(',');
+    // Inline fallback（Worker 未使用時のみ evalCache を使用）
+    const cacheKey = currentBoard.join(',');
     if (evalCache.has(cacheKey)) {
       const cached = evalCache.get(cacheKey);
-      clearCalcWatchdog();
-      hideHeatmapSpinner();
       lastHeatmapData = cached;
       render3DHeatmap(cached);
       renderNuts(cached);
@@ -1969,20 +2110,18 @@ function triggerUpdate() {
       return;
     }
     setTimeout(() => {
-      if (requestId !== activeRequestId) return;
       const t0 = performance.now();
-      const data = fallbackEval169(boardSnapshot);
+      const data = fallbackEval169(currentBoard);
       const ms   = Math.round(performance.now() - t0);
       evalCache.set(cacheKey, data);
-      clearCalcWatchdog();
-      hideHeatmapSpinner();
       lastHeatmapData = data;
       render3DHeatmap(data);
       renderNuts(data);
+      document.getElementById('hm-spin').classList.remove('active');
       document.getElementById('calc-time').textContent = `CALC: ${ms}ms (fallback)`;
       setStabState('DONE');
       updateHeroCells();
-      const tex = calcTexture(boardSnapshot);
+      const tex = calcTexture(currentBoard);
       if (tex) applyTexture(tex);
     }, 50);
   }
@@ -2287,9 +2426,6 @@ function onInputChanged() {
     clearTimeout(calcTimer);
     calcTimer = setTimeout(triggerUpdate, 300);
   } else {
-    clearTimeout(calcTimer);
-    hideHeatmapSpinner();
-    clearCalcWatchdog();
     resetHeatmapUI();
     setStabState('MANUAL');
   }
@@ -2328,9 +2464,6 @@ function renderStreet(board) {
 
 /* ── CLEAR BOARD ── */
 function clearBoard() {
-  clearTimeout(calcTimer);
-  hideHeatmapSpinner();
-  clearCalcWatchdog();
   for (let i=0; i<5; i++) {
     const r = document.getElementById('rsel-'+i);
     const s = document.getElementById('ssel-'+i);
@@ -2351,16 +2484,10 @@ function clearBoard() {
 }
 
 function resetHeatmapUI() {
-  hideHeatmapSpinner();
-  clearCalcWatchdog();
   for (let i=0; i<169; i++) {
     const c = document.getElementById('hc'+i);
     if (c) { c.style.backgroundColor='#0d1a2a'; delete c.dataset.eq; }
   }
-  document.getElementById('nuts-list').style.display = 'flex';
-  document.getElementById('nuts-list').style.flexDirection = 'column';
-  document.getElementById('river-polar').style.display = 'none';
-  document.getElementById('nuts-sec-label').innerHTML = 'NUTS RANKING <span style="font-size:6.5px;opacity:.6">[ABSOLUTE]</span>';
   document.getElementById('nuts-list').innerHTML =
     '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:rgba(160,200,230,.3);padding:10px 4px;line-height:1.6;">ボードを3枚以上<br>入力するとNUTS<br>が表示されます</div>';
   document.getElementById('calc-time').textContent='CALC: --ms';
@@ -2464,6 +2591,5 @@ buildBoardArea();
 buildHeroSelects();
 initEngine();
 </script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
