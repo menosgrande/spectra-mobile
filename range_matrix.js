@@ -99,21 +99,11 @@ function eval169(board, hero) {
   const heroSet  = new Set(hero || []);
   const deadSet  = new Set([...boardSet, ...heroSet]);
 
-  // ── ボード上で最も多いスート ── 同点タイブレーク時、このスートのコンボを優先
-  // (例: board に h が2枚 → AhKh のようなフラッシュドロー成立コンボを bestCombo に選ぶ)
-  const suitCounts = {};
-  board.forEach(c => suitCounts[c[1]] = (suitCounts[c[1]] || 0) + 1);
-  const dominantSuit = Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-  const dominantSuitCount = dominantSuit ? suitCounts[dominantSuit] : 0;
-
   for (let i = 0; i < 13; i++) {
     for (let j = 0; j < 13; j++) {
       const r1 = RANKS[i];
       const r2 = RANKS[j];
-      let hand, activeCombos = 0;
-      let bestScore = -1;
-      let bestCombo = null; // 最高スコアを出した具体的コンボ "KhKd" 等
-      let bestIsDominantSuit = false;
+      let hand, combos = [], scores = [], activeCombos = 0;
 
       if (i === j) {
         // Pair
@@ -125,12 +115,12 @@ function eval169(board, hero) {
             if (!deadSet.has(c1) && !deadSet.has(c2)) {
               activeCombos++;
               const score = evaluate7([c1, c2, ...board]);
-              if (score > bestScore) { bestScore = score; bestCombo = c1 + c2; }
+              scores.push(score);
             }
           }
         }
       } else if (i < j) {
-        // Suited — 同点なら dominantSuit と一致するコンボを優先（FD表示のため）
+        // Suited
         hand = r1 + r2 + 's';
         for (let s = 0; s < 4; s++) {
           const c1 = r1 + SUITS[s];
@@ -138,11 +128,7 @@ function eval169(board, hero) {
           if (!deadSet.has(c1) && !deadSet.has(c2)) {
             activeCombos++;
             const score = evaluate7([c1, c2, ...board]);
-            const isDominant = dominantSuitCount >= 2 && SUITS[s] === dominantSuit;
-            // 厳密に上回るか、同点でdominantSuit一致なら採用
-            if (score > bestScore || (score === bestScore && isDominant && !bestIsDominantSuit)) {
-              bestScore = score; bestCombo = c1 + c2; bestIsDominantSuit = isDominant;
-            }
+            scores.push(score);
           }
         }
       } else {
@@ -156,21 +142,20 @@ function eval169(board, hero) {
             if (!deadSet.has(c1) && !deadSet.has(c2)) {
               activeCombos++;
               const score = evaluate7([c1, c2, ...board]);
-              if (score > bestScore) { bestScore = score; bestCombo = c1 + c2; }
+              scores.push(score);
             }
           }
         }
       }
 
       const totalCombos = i === j ? 6 : (i < j ? 4 : 12);
-      const rawEval7    = bestScore >= 0 ? bestScore : 0;
+      const rawEval7    = scores.length ? Math.max(...scores) : 0;
       const potStrength = classifyPotential(hand, board);
       const madeStr     = computeMadeStrength(rawEval7, board);
       const rawScore    = computeProjectedRawScore(madeStr, potStrength);
 
       results.push({
         hand:             hand,
-        bestCombo:        bestCombo,       // 例: "KhKd" — 最高評価を出した具体的カード組
         rawScore:         rawScore,
         madeStrength:     madeStr,
         potentialStrength: potStrength,
@@ -193,7 +178,6 @@ function evalRange169(board, hero, context) {
   const raw = eval169(board, hero); // hero passed for removal
   return raw.map(item => ({
     hand:              item.hand,
-    bestCombo:         item.bestCombo,      // 例: "KhKd" — NUTS表示用の具体コンボ
     rawScore:          item.rawScore,
     madeStrength:      item.madeStrength,
     potentialStrength: item.potentialStrength,
@@ -223,6 +207,86 @@ function computeRangeStats(rangeMatrix) {
   const madeSpread = topMade - botMade;
 
   return { madeAvg, potAvg, drawHeavy, madeSpread };
+}
+
+
+/* ══════════════════════════════
+   computeStructureFeatures
+   5軸すべて 0-100 (整数)
+
+   データソース別に独立した指標を計算する。
+   PokerのGTOや戦略的判断は含まない — 純粋な構造統計。
+
+   Entropy      rawScore分布 → 複雑さ
+                0=全ハンドが同一強度  100=あらゆる強さが均等に分布
+   Polarization rawScore分布 → 強弱差
+                0=上下25%の差なし    100=上位と下位が最大乖離
+   Coverage     density      → レンジの広さ
+                0=全コンボデッド      100=169ハンド全生存
+   DrawStructure drawType    → ドロー構造  (UI表示名: Draw Pressure)
+                0=ドロー要素皆無      100=複合ドローが充満
+   Dominance    rawScore分布 → Gini不平等度
+                0=全ハンドの強さが均等  100=一部ハンドが格差を独占
+                ← モノトーンボードで高い、クアッズボードで低い
+══════════════════════════════ */
+function computeStructureFeatures(rangeMatrix) {
+  const live = rangeMatrix.filter(h => h.density > 0);
+  if (live.length === 0) {
+    return { entropy: 0, polarization: 0, coverage: 0, drawStructure: 0, dominance: 0 };
+  }
+
+  const n      = live.length;
+  const scores = live.map(h => h.rawScore);
+  const total  = scores.reduce((s, v) => s + v, 0);
+
+  // A. Entropy（rawScore → 複雑さ）
+  // Shannon entropy を 20ビンで計算し、log2(20) で正規化
+  const BIN  = 20;
+  const bins = new Array(BIN).fill(0);
+  scores.forEach(s => bins[Math.min(BIN - 1, Math.floor(s * BIN))]++);
+  const entropyRaw = -bins.reduce((sum, c) => {
+    if (!c) return sum;
+    const p = c / n;
+    return sum + p * Math.log2(p);
+  }, 0);
+  const entropy = Math.round((entropyRaw / Math.log2(BIN)) * 100);
+
+  // B. Polarization（rawScore → 強弱差）
+  // 上位25%平均 - 下位25%平均
+  const sorted = [...scores].sort((a, b) => b - a);
+  const q25    = Math.max(1, Math.floor(n * 0.25));
+  const topAvg = sorted.slice(0, q25).reduce((s, v) => s + v, 0) / q25;
+  const botAvg = sorted.slice(-q25).reduce((s, v) => s + v, 0) / q25;
+  const polarization = Math.round((topAvg - botAvg) * 100);
+
+  // C. Coverage（density → レンジの広さ）
+  const coverage = Math.round((n / 169) * 100);
+
+  // D. DrawStructure（drawType → ドロー構造）
+  // LiveDrawRatio×0.4 + DrawComplexity×0.4 + DrawOverlap×0.2
+  const withDraw      = live.filter(h => h.drawType && h.drawType !== '--');
+  const liveDrawRatio = withDraw.length / n;
+  const drawTypes     = new Set(withDraw.map(h => h.drawType));
+  const drawComplexity = drawTypes.size / 4; // FD/OESD/GSD/BD-FD → max 4種
+  const fdSet   = new Set(withDraw.filter(h => h.drawType.includes('FD')).map(h => h.hand));
+  const sdSet   = new Set(withDraw.filter(h => h.drawType === 'OESD' || h.drawType === 'GSD').map(h => h.hand));
+  const drawOverlap   = [...fdSet].filter(h => sdSet.has(h)).length / n;
+  const drawStructure = Math.round(
+    clamp01(liveDrawRatio * 0.40 + drawComplexity * 0.40 + drawOverlap * 0.20) * 100
+  );
+
+  // E. Dominance（rawScore → Gini不平等度）
+  // Gini係数: 0=完全均等、1=完全集中
+  // モノトーンボードで高い（フラッシュ持ちだけが圧倒的強さ）
+  // クアッズボードで低い（ほぼ全ハンドがフルハウス帯に密集）
+  const ascended = [...scores].sort((a, b) => a - b);
+  let giniNum = 0;
+  ascended.forEach((v, i) => { giniNum += (2 * (i + 1) - n - 1) * v; });
+  const dominance = Math.round(
+    (total > 0 ? Math.max(0, giniNum / (n * total)) : 0) * 100
+  );
+
+  return { entropy, polarization, coverage, drawStructure, dominance };
 }
 
 

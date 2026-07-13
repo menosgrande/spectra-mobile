@@ -50,14 +50,16 @@ function analyzeBoard(board, context) {
   const features = extractBoardFeatures(board, context);
 
   // 3. Advantage engine (-1..+1 scalars)
-  const rangeAdv   = computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix);
-  const nutAdv     = computeNutAdvantage(board, heroPos, villainPos, rangeMatrix);
-  const rangeStats = computeRangeStats(rangeMatrix);
+  const rangeAdv        = computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix);
+  const nutAdv          = computeNutAdvantage(board, heroPos, villainPos, rangeMatrix);
+  const rangeStats      = computeRangeStats(rangeMatrix);
+  const structureFeatures = computeStructureFeatures(rangeMatrix);
 
   // Attach continuous advantage values + range stats to features for downstream consumers
-  features.rangeAdvantage = rangeAdv;                    // -1..+1
-  features.nutAdvantage   = nutAdv;                      // { advantage, density, coverage }
-  features.rangeStats     = rangeStats;                  // { madeAvg, potAvg, drawHeavy, madeSpread }
+  features.rangeAdvantage    = rangeAdv;              // -1..+1
+  features.nutAdvantage      = nutAdv;                // { advantage, density, coverage }
+  features.rangeStats        = rangeStats;            // { madeAvg, potAvg, drawHeavy, madeSpread }
+  features.structureFeatures = structureFeatures;     // { entropy, polarization, coverage, drawStructure, dominance } (0-100)
 
   // 4. Interpretations (use enriched features)
   const interpretations = deriveInterpretations(features);
@@ -74,6 +76,7 @@ function analyzeBoard(board, context) {
     interpretations,
     narrative,
     hudSignals,
-    rangeMatrix   // include for consumers that want raw matrix
+    structureFeatures,  // レーダー表示用（0-100, 5軸）
+    rangeMatrix         // include for consumers that want raw matrix
   };
 }

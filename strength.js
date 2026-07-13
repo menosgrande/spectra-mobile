@@ -51,9 +51,16 @@ function evaluate7(cards) {
   const topRank = entries[0].r; // rank index of primary card (0=Ace)
 
   if (isStraightFlush) {
-    // Royal = 1.0, lowest SF (A-5) ≈ 0.90
-    const sfHigh = uniqueRanks[straightHighIdx]; // 0=A at high end
-    madeScore = 0.90 + (1 - sfHigh / 12) * 0.10;
+    // sfHigh = uniqueRanks[straightHighIdx] = lowest-rank-index card in the straight
+    // RANK_IDX: A=0, K=1, Q=2, J=3, T=4, ...
+    // Royal Flush = T-J-Q-K-A → low card = T(idx=4) → sfHigh=4
+    // A-2-3-4-5 (wheel SF) → low card = A treated as low(idx=13 or 0), handled separately
+    const sfHigh = uniqueRanks[straightHighIdx];
+    // Royal: sfHigh=4 (Ten is the lowest card, Ace is high)
+    const isRoyal = (sfHigh === 4);
+    // Score: Royal=1.00, next best SF (K-high, sfHigh=5) ≈ 0.958, lowest SF ≈ 0.90
+    // Use sfHigh to distinguish within SF band
+    madeScore = isRoyal ? 1.00 : 0.90 + (1 - sfHigh / 12) * 0.054;
   } else if (counts[0] === 4) {
     // Quads: 0.80..0.89, higher quads = higher score
     madeScore = 0.80 + (1 - topRank / 12) * 0.09;
@@ -85,26 +92,24 @@ function evaluate7(cards) {
   }
   madeScore = clamp01(madeScore);
 
-  // ── Band ceiling: 各役カテゴリの上限を定義 ──
-  // boardAdjustment がカテゴリの境界を飛び越えないようにする
-  // (例: Quads(0.80-0.89) が +0.12 補正で Royal帯(0.90+) に侵入するのを防ぐ)
+  // ── Band ceiling: カテゴリ境界をまたぐ補正を防止 ──
   let bandCeiling;
-  if (isStraightFlush)                       bandCeiling = 1.00;
-  else if (counts[0] === 4)                  bandCeiling = 0.895;  // Quads上限
-  else if (counts[0] === 3 && counts[1] >= 2) bandCeiling = 0.795; // Full House上限
-  else if (isFlush)                          bandCeiling = 0.675; // Flush上限
-  else if (isStraight)                       bandCeiling = 0.575; // Straight上限
-  else if (counts[0] === 3)                  bandCeiling = 0.465; // Trips上限
-  else if (counts[0] === 2 && counts[1] === 2) bandCeiling = 0.375; // Two pair上限
-  else if (counts[0] === 2)                  bandCeiling = 0.255; // One pair上限
-  else                                        bandCeiling = 0.095; // High card上限
+  if (isStraightFlush) {
+    // Royal (madeScore=1.00) → ceiling=1.00
+    // Non-Royal SF (madeScore<1.00) → ceiling=0.954（Royal帯0.955+に侵入しない）
+    bandCeiling = (madeScore >= 0.9999) ? 1.00 : 0.954;
+  } else if (counts[0] === 4)                    { bandCeiling = 0.895; }
+  else if (counts[0] === 3 && counts[1] >= 2)    { bandCeiling = 0.795; }
+  else if (isFlush)                              { bandCeiling = 0.675; }
+  else if (isStraight)                           { bandCeiling = 0.575; }
+  else if (counts[0] === 3)                      { bandCeiling = 0.465; }
+  else if (counts[0] === 2 && counts[1] === 2)   { bandCeiling = 0.375; }
+  else if (counts[0] === 2)                      { bandCeiling = 0.255; }
+  else                                            { bandCeiling = 0.095; }
 
   // ── Layer 2: board interaction adjustment ──
-  // Separates hands only if board context (≥5 cards = hand + board given)
   const boardAdjustment = computeBoardInteraction(cards, ranks, freq, isStraightFlush, isFlush, isStraight, counts);
 
-  // boardAdjustment refines within-category, but cannot push score past bandCeiling
-  // (= cannot make a Quads hand score like a Straight Flush)
   return Math.min(bandCeiling, clamp01(madeScore + boardAdjustment));
 }
 

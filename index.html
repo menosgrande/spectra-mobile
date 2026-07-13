@@ -512,22 +512,24 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       <div id="pos-matrix-wrap"></div>
     </div>
 
-    <!-- ══ BOARD TEXTURE ══ -->
+    <!-- ══ STRUCTURE RADAR（Feature可視化・5軸） ══ -->
     <div style="background:rgba(0,0,0,.25);border:1px solid rgba(0,180,255,.1);border-radius:3px;padding:6px;flex-shrink:0;">
-      <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);margin-bottom:4px;">▐ BOARD TEXTURE</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:5px;">
-        <div class="wet-big" id="wet-val">--%</div>
-        <div class="wet-sub" id="wet-lbl">ANALYZING</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+        <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);">▐ STRUCTURE RADAR</div>
+        <div id="radar-street-lbl" style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.25);">--</div>
       </div>
-      <div class="metric">
-        <div class="metric-lbl">CONNECTEDNESS</div>
-        <div class="bar-wrap"><div class="bar-fill" id="bar-con" style="width:0%;background:#00d4ff;"></div></div>
-        <div class="metric-val" id="val-con" style="color:#00d4ff;">--%</div>
-      </div>
-      <div class="metric" style="margin-bottom:0;">
-        <div class="metric-lbl">FLUSH DENSITY</div>
-        <div class="bar-wrap"><div class="bar-fill" id="bar-fls" style="width:0%;background:#a855f7;"></div></div>
-        <div class="metric-val" id="val-fls" style="color:#a855f7;">--%</div>
+      <svg id="radar-svg" viewBox="0 0 160 130" width="100%" style="display:block;overflow:visible;">
+        <g id="radar-grid" opacity="0.2"></g>
+        <g id="radar-axes" opacity="0.25"></g>
+        <polygon id="radar-shape" points="" fill="rgba(0,212,255,0.1)" stroke="#00d4ff" stroke-width="1.5" stroke-linejoin="round"/>
+        <g id="radar-labels"></g>
+        <g id="radar-dots"></g>
+      </svg>
+      <!-- 既存texture互換DOM（非表示・applyTextureが参照） -->
+      <div style="display:none;">
+        <div id="wet-val"></div><div id="wet-lbl"></div>
+        <div class="metric"><div class="bar-wrap"><div class="bar-fill" id="bar-con"></div></div><div id="val-con"></div></div>
+        <div class="metric"><div class="bar-wrap"><div class="bar-fill" id="bar-fls"></div></div><div id="val-fls"></div></div>
       </div>
     </div>
 
@@ -669,7 +671,7 @@ function onWorkerMessage(e) {
       if (data.rangeMatrix && data.rangeMatrix.length) {
         lastHeatmapData = data.rangeMatrix;
         render3DHeatmap(data.rangeMatrix);
-        renderNuts(data.rangeMatrix);
+        renderNuts(data.rangeMatrix, data.features);
       }
 
       // 2. Texture (embedded by Worker as intel.texture)
@@ -678,7 +680,12 @@ function onWorkerMessage(e) {
       // 3. Range Advantage — Worker 精密値を単一ソースとして描画
       renderRangeAdvantage(data);
 
-      // 4. Board Intelligence panel (narrative / HUD / features)
+      // 4. Structure Radar（structureFeaturesがあれば描画）
+      if (data.structureFeatures) {
+        renderStructureRadar(data.structureFeatures, data.street);
+      }
+
+      // 5. Board Intelligence panel (narrative / HUD / features)
       renderBoardIntelligence(data);
 
       // 4. Status
@@ -717,6 +724,7 @@ function finalizeBrainReady() {
   setTimeout(() => document.getElementById('brain-overlay').classList.add('hidden'), 600);
   updateConfigFeedback();
   buildPosMatrix(); // P3: 初期描画
+  buildRadarGrid(); // Structure Radar グリッド初期構築
   if (currentBoard.length >= 3) triggerUpdate();
 }
 
@@ -756,12 +764,8 @@ function calc3DHSL(item) {
   const eq   = Math.max(0, Math.min(100, getDisplayStrength(item)));
   const pot  = Math.max(0, Math.min(1,   item.potential      || 0));
   const made = Math.max(0, Math.min(1,   item.madeStrength   || eq / 100));
-  const ac   = item.activeCombos ?? (item.totalCombos || 1);
-  const tc   = item.totalCombos  || 1;
-  const density = ac / tc;
-
-  // ── Dead combo: グレーアウト ──
-  if (ac === 0) return 'hsl(220,10%,8%)'; // ほぼ黒
+  const ac   = item.activeCombos || 0;
+  const tc   = item.totalCombos  || 0;
 
   // ─ Street detection ─
   const boardLen = (typeof currentBoard !== 'undefined') ? currentBoard.length : 3;
@@ -771,27 +775,37 @@ function calc3DHSL(item) {
   // ─ Hue: 強い手ほど赤 (0) → 弱い手ほど青緑 (180) ─
   const hue = Math.round((1 - eq / 100) * 180);
 
-  // ─ Saturation: live combo密度で彩度を落とす ─
-  const baseSat = density >= 0.66 ? 90
-                : density >= 0.33 ? 60
-                : density >= 0.01 ? 30
-                : 0;
-  const sat = Math.round(baseSat);
+  // ─ Saturation: デッドコンボは灰色へ ─
+  const density = tc > 0 ? ac / tc : 1;
+  const sat = Math.round(Math.max(15, density * 95));
 
   // ─ Lightness: ストリートで意味が変わる ─
   let lum;
 
   if (isRiver) {
-    // RIVER: FLEXゼロ。made強度のみ、幅を狭く（28-52%）
-    lum = Math.round(28 + made * 24);
+    // RIVER: 将来性は消える。made強度で明暗を決める。
+    // 弱い手（one pair以下: made < 0.25）= 暗く沈める
+    // 強い手（two pair+: made >= 0.26）  = 明るく浮かせる
+    if (made >= 0.70) {
+      lum = 60;                              // SF/Quads/Boat  = 最明
+    } else if (made >= 0.44) {
+      lum = 50;                              // Flush/Straight/Trips
+    } else if (made >= 0.26) {
+      lum = 40;                              // Two pair
+    } else if (made >= 0.10) {
+      lum = 22;                              // One pair → 暗く
+    } else {
+      lum = 14;                              // High card → 最暗（ほぼ灰）
+    }
   } else if (isTurn) {
-    const madeBase   = Math.round(26 + made * 22);
-    const potContrib = pot * 14;
-    lum = Math.round(Math.min(60, madeBase + potContrib));
+    // TURN: 将来性は1枚分（50%重み）だけ反映
+    const potContrib = pot * 18;             // 最大+18% (FD+OESDで0.85→+15)
+    const madeBase   = Math.round(26 + made * 28); // 26%〜54%
+    lum = Math.round(Math.min(64, madeBase + potContrib));
   } else {
-    // FLOP: 将来性フル反映
-    const madeBase   = Math.round(22 + made * 18);
-    const potContrib = pot * 26;
+    // FLOP: 将来性をフルに使う（従来ロジック改善版）
+    const madeBase   = Math.round(22 + made * 22); // 22%〜44%（made手の最低輝度保証）
+    const potContrib = pot * 26;             // 最大+26%
     lum = Math.round(Math.min(68, madeBase + potContrib));
   }
 
@@ -824,36 +838,10 @@ function fallbackEval169(board) {
   const boardSingleRanks = Object.keys(boardRankFreq).filter(r => boardRankFreq[r] === 1);
   const boardRanks       = board.map(c => c[0]);
 
-  // dead card set（ボードにあるカード）
-  const deadSet = new Set(board.map(c => c.toLowerCase()));
-
+  // スート集計（フラッシュ判定用）
   const boardSuitFreq = {};
   board.forEach(c => { boardSuitFreq[c[1]] = (boardSuitFreq[c[1]] || 0) + 1; });
   const maxSuitCount = Math.max(...Object.values(boardSuitFreq));
-
-  // live comboを正確に数える
-  function countLiveCombos(r1, r2, isPair, isSuited) {
-    const SUITS = ['s','h','d','c'];
-    let count = 0;
-    if (isPair) {
-      for (let i = 0; i < 4; i++) for (let j = i+1; j < 4; j++) {
-        const c1 = r1+SUITS[i], c2 = r1+SUITS[j];
-        if (!deadSet.has(c1.toLowerCase()) && !deadSet.has(c2.toLowerCase())) count++;
-      }
-    } else if (isSuited) {
-      for (const s of SUITS) {
-        const c1 = r1+s, c2 = r2+s;
-        if (!deadSet.has(c1.toLowerCase()) && !deadSet.has(c2.toLowerCase())) count++;
-      }
-    } else {
-      for (const s1 of SUITS) for (const s2 of SUITS) {
-        if (s1 === s2) continue;
-        const c1 = r1+s1, c2 = r2+s2;
-        if (!deadSet.has(c1.toLowerCase()) && !deadSet.has(c2.toLowerCase())) count++;
-      }
-    }
-    return count;
-  }
 
   RANKS_LIST.forEach((r1, i) => {
     RANKS_LIST.forEach((r2, j) => {
@@ -868,19 +856,17 @@ function fallbackEval169(board) {
       // ─ ハンド強度を段階的に評価 ─
       score = evalHandFallback(r1, r2, isPair, isSuited, boardRanks,
         boardRankFreq, boardTripsRanks, boardPairRanks,
-        boardSingleRanks, maxSuitCount, boardSuitFreq, board);
+        boardSingleRanks, maxSuitCount, board);
 
       // draw classify
       const drawInfo = classifyDrawInline(r1, r2, isSuited, isPair, board);
 
-      const totalCombos  = isPair ? 6 : isSuited ? 4 : 12;
-      const activeCombos = countLiveCombos(r1, r2, isPair, isSuited);
       const pct100 = Math.round(score * 100);
       results.push({
         hand: label, score, pct: pct100,
         equity: pct100, potential: drawInfo.potential,
-        activeCombos,
-        totalCombos,
+        activeCombos: isPair ? 6 : isSuited ? 4 : 12,
+        totalCombos:  isPair ? 6 : isSuited ? 4 : 12,
         drawType: drawInfo.drawType, outs: drawInfo.outs,
         madeStrength: score,
         rawScore:     score,
@@ -906,80 +892,64 @@ function fallbackEval169(board) {
 
 function evalHandFallback(r1, r2, isPair, isSuited,
   boardRanks, boardRankFreq, boardTripsRanks, boardPairRanks,
-  boardSingleRanks, maxSuitCount, boardSuitFreq, board) {
+  boardSingleRanks, maxSuitCount, board) {
 
   const ri1 = RANK_IDX[r1];
   const ri2 = RANK_IDX[r2];
 
   // ── 1. FOUR OF A KIND ──
+  // ポケットペア + ボードトリップス（同ランク）= QUADS
   if (isPair && boardTripsRanks.includes(r1)) {
     return 0.83 + (1 - ri1 / 12) * 0.06;
   }
+  // ボード自体がフォーカード
   if (Object.values(boardRankFreq).some(f => f >= 4)) {
     return 0.82;
   }
 
   // ── 2. FULL HOUSE ──
-  // ポケットペア + ボードトリップス（異ランク）
+  // ポケットペア + ボードにトリップス（異ランク）= Full house (pair over trips)
   if (isPair && boardTripsRanks.length >= 1 && !boardTripsRanks.includes(r1)) {
     return 0.74 + (1 - ri1 / 12) * 0.04;
   }
-  // ポケットペア + ボードペア
+  // ポケットペア + ボードに別のペア = Full house
   if (isPair && boardPairRanks.length >= 1) {
     return 0.72 + (1 - ri1 / 12) * 0.04;
   }
-  // 片手がボードトリップスに一致
+  // 片手がボードトリップスランクに一致（trips + hole pair = full house）
   if (!isPair) {
-    const h1 = boardTripsRanks.includes(r1), h2 = boardTripsRanks.includes(r2);
-    if (h1 || h2) {
-      const t = h1 ? r1 : r2;
-      return 0.71 + (1 - RANK_IDX[t] / 12) * 0.05;
-    }
-  }
-  // 片手がボードペアランクに一致 → trips（ボードペア3枚目）+ 相手ペア = full house
-  if (!isPair && boardPairRanks.length >= 1) {
-    const h1OnPair = boardPairRanks.includes(r1);
-    const h2OnPair = boardPairRanks.includes(r2);
-    if (h1OnPair || h2OnPair) {
-      const t = h1OnPair ? r1 : r2;
-      return 0.71 + (1 - RANK_IDX[t] / 12) * 0.04;
+    const h1OnTrips = boardTripsRanks.includes(r1);
+    const h2OnTrips = boardTripsRanks.includes(r2);
+    if (h1OnTrips || h2OnTrips) {
+      const topRank = h1OnTrips ? r1 : r2;
+      return 0.71 + (1 - RANK_IDX[topRank] / 12) * 0.05;
     }
   }
 
-  // ── 3. FLUSH（スーテッドハンドのみ・ボードの支配的スーツと一致する場合のみ）──
-  // fallback では具体スーツ不明だが、suited hand の 1/4 がボードのflush suitに一致する確率で補正
-  // maxSuitCount >= 3: ボードにフラッシュスーツがある
-  // suited hand がそのスーツに一致する確率: 1/4（4スーツのうち1つ）
-  // → 完全無視ではなく、スコアを 0.25 に割り引いて反映
-  if (isSuited && !isPair && maxSuitCount >= 3) {
-    // 支配的スーツ
-    const domSuit = Object.entries(boardSuitFreq).sort((a,b)=>b[1]-a[1])[0][0];
-    const domCount = boardSuitFreq[domSuit];
-    if (domCount >= 5) {
-      // ボードが5枚同色 → suited hand がそのスーツなら完成、でも169表記では確率1/4
-      return 0.62 * 0.25 + 0.05; // 実質かなり低い
-    }
-    if (domCount >= 4) {
-      // 4フラッシュボード → suited hand でフラッシュ完成の確率 1/4
-      return 0.60 * 0.25 + (1 - ri1 / 12) * 0.02;
-    }
-    // 3フラッシュ（FD状態）→ river なので完成か否かで大きく変わるが fallback では区別不可
-    // suited hand の 1/4 がFD→完成
-    return 0.58 * 0.25 + (1 - ri1 / 12) * 0.02; // 約0.15〜0.18
+  // ── 3. FLUSH（近似） ──
+  if (isSuited && maxSuitCount >= 3) {
+    return 0.60 + (1 - ri1 / 12) * 0.05;
   }
 
-  // ── 4. TRIPS（ボードトリップスをプレイ）──
+  // ── 4. TRIPS（ボードトリップス + 手は関係なし = 全員同スコア）──
+  // ボードにトリップスがあって上記に該当しない（ハンドがトリップスに乗らない）
   if (boardTripsRanks.length >= 1 && !isPair) {
-    const hits = [r1, r2].filter(r => boardSingleRanks.includes(r)).length;
-    if (hits >= 1) return 0.40;
+    // ハンドがボードペアに乗ればtwo pair with trips
+    if (boardPairRanks.includes(r1) || boardPairRanks.includes(r2)) return 0.42;
+    // 何も乗らない → ボードのtrips をプレイ（全員同じ）
+    // ただし片手がボードシングルに乗れば two pair
+    const hits = [r1,r2].filter(r => boardSingleRanks.includes(r)).length;
+    if (hits >= 1) return 0.40; // trips + pair kicker
+    // 何も乗らない → ボードのtrips をプレイ（全員同じ）+ キッカー補正
+    // 高いカードを持つほどキッカー勝負で有利
     const kickerBonus = (1 - Math.min(ri1, ri2) / 12) * 0.04;
     return 0.39 + kickerBonus;
   }
 
-  // ── 5. SET（ポケットペアがボードにヒット）──
+  // ── 5. THREE OF A KIND（セット）──
   if (isPair) {
     const boardHits = boardRanks.filter(r => r === r1).length;
-    if (boardHits >= 1) return 0.38 + (1 - ri1 / 12) * 0.06; // Aセット=0.44
+    if (boardHits >= 1) return 0.42 + (1 - ri1 / 12) * 0.05; // set
   }
 
   // ── 6. TWO PAIR ──
@@ -988,12 +958,11 @@ function evalHandFallback(r1, r2, isPair, isSuited,
   if (!isPair && r1OnBoard && r2OnBoard) {
     return 0.28 + (1 - Math.min(ri1, ri2) / 12) * 0.05;
   }
+  if ((r1OnBoard || r2OnBoard) && boardPairRanks.length >= 1) {
+    return 0.27;
+  }
 
   // ── 7. ONE PAIR ──
-  // ボードにペアがある場合（手がヒットしなくてもボードペアをプレイ）
-  if (!isPair && boardPairRanks.length >= 1 && !r1OnBoard && !r2OnBoard) {
-    return 0.11 + (1 - Math.min(ri1, ri2) / 12) * 0.03;
-  }
   if (isPair) {
     const boardMaxRankIdx = Math.min(...boardRanks.map(r => RANK_IDX[r]));
     const isOver = ri1 < boardMaxRankIdx;
@@ -1270,53 +1239,31 @@ function getOutsCards(hand, drawType, board) {
    BLUFF / FOLD : Weak pair・High card。ベットはブラフ、コールされたら負ける (score < 0.10)
 ══════════════════════════════ */
 function renderRiverPolar(data) {
-  // live comboのみ対象（dead comboを除外）
-  const live = data.filter(h => (h.activeCombos ?? h.totalCombos ?? 1) > 0);
-  const sorted = [...live].sort((a, b) => getDisplayStrength(b) - getDisplayStrength(a));
+  const sorted = [...data].sort((a, b) => getDisplayStrength(b) - getDisplayStrength(a));
 
-  // ── Board-relative 閾値 ──
-  // 全liveハンドの中央値を基準にする → ボード次第で閾値が動く
-  const scores = sorted.map(h => getDisplayStrength(h));
-  const median = scores.length > 0
-    ? scores[Math.floor(scores.length / 2)]
-    : 50;
+  // 絶対閾値（strength.js の分類に準拠）
+  // PURE VALUE   : Three of a kind以上 — 自分からベットして価値を取れる手 (rawScore >= 0.38)
+  // BLUFF CATCH  : One pair / Two pair — コールはできるが自分からベットしない (0.10 <= score < 0.38)
+  // BLUFF / FOLD : High card / 弱いペア — ベットはブラフ目的のみ (score < 0.10)
+  const valueHands = sorted.filter(h => getDisplayStrength(h) >= 38);
+  const catchHands = sorted.filter(h => getDisplayStrength(h) >= 10 && getDisplayStrength(h) < 38);
+  const bluffHands = sorted.filter(h => getDisplayStrength(h) < 10);
 
-  // 4分類
-  // PURE VALUE : median + 20以上 かつ >= 38（Trips+）
-  // THIN VALUE : median以上 かつ >= 15
-  // BLUFF CATCH: median - 15以上
-  // BLUFF FOLD : それ以下
-  const pureVal   = sorted.filter(h => getDisplayStrength(h) >= Math.max(38, median + 20));
-  const thinVal   = sorted.filter(h => {
-    const s = getDisplayStrength(h);
-    return s >= Math.max(15, median) && s < Math.max(38, median + 20);
-  });
-  const catchH    = sorted.filter(h => {
-    const s = getDisplayStrength(h);
-    return s >= Math.max(0, median - 15) && s < Math.max(15, median);
-  });
-  const bluffFold = sorted.filter(h => getDisplayStrength(h) < Math.max(0, median - 15));
-
-  function handsHtml(list, limit = 10) {
-    const liveList = list.filter(h => (h.activeCombos ?? 1) > 0);
-    return liveList.slice(0, limit).map(item =>
+  function handsHtml(list, limit = 12) {
+    return list.slice(0, limit).map(item =>
       `<div class="polar-hand" title="${getDisplayStrength(item).toFixed(1)}%">${item.hand}</div>`
-    ).join('') + (liveList.length > limit
-      ? `<div class="polar-hand" style="opacity:.4">+${liveList.length - limit}</div>`
+    ).join('') + (list.length > limit
+      ? `<div class="polar-hand" style="opacity:.4">+${list.length - limit}</div>`
       : '');
   }
 
-  // ラベル更新
-  document.getElementById('polar-value').querySelector('.polar-title').textContent
-    = `⬆ PURE VALUE (${pureVal.length})`;
-  document.getElementById('polar-catch').querySelector('.polar-title').textContent
-    = `↔ THIN VALUE / CATCH (${thinVal.length + catchH.length})`;
-  document.getElementById('polar-bluff').querySelector('.polar-title').textContent
-    = `⬇ BLUFF / FOLD (${bluffFold.length})`;
+  document.getElementById('polar-value').querySelector('.polar-title').textContent = '⬆ PURE VALUE (trips+)';
+  document.getElementById('polar-catch').querySelector('.polar-title').textContent = '↔ BLUFF CATCH (pair)';
+  document.getElementById('polar-bluff').querySelector('.polar-title').textContent = '⬇ BLUFF / FOLD (air)';
 
-  document.getElementById('polar-value-hands').innerHTML  = handsHtml(pureVal);
-  document.getElementById('polar-catch-hands').innerHTML  = handsHtml([...thinVal, ...catchH]);
-  document.getElementById('polar-bluff-hands').innerHTML  = handsHtml(bluffFold);
+  document.getElementById('polar-value-hands').innerHTML = handsHtml(valueHands);
+  document.getElementById('polar-catch-hands').innerHTML = handsHtml(catchHands);
+  document.getElementById('polar-bluff-hands').innerHTML = handsHtml(bluffHands);
 }
 
 /* ══════════════════════════════
@@ -1401,7 +1348,7 @@ function comboToHtml(combo) {
     + `</span>`;
 }
 
-function renderNuts(data) {
+function renderNuts(data, features) {
   const isRiver = currentBoard.length === 5;
   const nutsEl  = document.getElementById('nuts-list');
   const polarEl = document.getElementById('river-polar');
@@ -1410,67 +1357,154 @@ function renderNuts(data) {
   if (isRiver) {
     nutsEl.style.display  = 'none';
     polarEl.style.display = 'flex';
-    if (secLbl) secLbl.textContent = 'RIVER — VALUE / CATCH / BLUFF';
+    if (secLbl) secLbl.innerHTML = 'RIVER — POLARIZED VIEW <span style="font-size:6.5px;opacity:.6">[VALUE / CATCH / BLUFF]</span>';
     renderRiverPolar(data);
     return;
   }
 
   polarEl.style.display = 'none';
   nutsEl.style.display  = 'flex';
-  if (secLbl) secLbl.textContent = 'HAND CATEGORIES';
+  if (secLbl) secLbl.innerHTML = 'HAND DISTRIBUTION <span style="font-size:6.5px;opacity:.6">[COMBO %]</span>';
 
-  // live comboのみ
-  const live = data.filter(h => (h.activeCombos ?? h.totalCombos ?? 1) > 0);
+  const SSYM = { s:'♠', h:'♥', d:'♦', c:'♣' };
+  const SCOL = { s:'#a0a8c0', h:'#e04060', d:'#4080e0', c:'#30b060' };
 
-  // 役種別にグループ化（handName優先、fallback → rawScore閾値）
-  const HAND_GROUPS = [
-    { key: 'SF',    label: 'STRAIGHT FLUSH', icon: '🌈', min: 0.90, color: '#ff00ff' },
-    { key: 'QUADS', label: 'FOUR OF A KIND', icon: '🔥', min: 0.80, color: '#ff4a4a' },
-    { key: 'FH',    label: 'FULL HOUSE',     icon: '🏠', min: 0.70, color: '#ff7700' },
-    { key: 'FLUSH', label: 'FLUSH',          icon: '♠',  min: 0.58, color: '#a855f7' },
-    { key: 'STR',   label: 'STRAIGHT',       icon: '↗',  min: 0.47, color: '#3b82f6' },
-    { key: 'TRIPS', label: 'TRIPS / SET',    icon: '3️⃣', min: 0.38, color: '#00d4ff' },
+  // ── ボードのスート集計 ──
+  const suitCnt = {};
+  currentBoard.forEach(c => suitCnt[c[1]] = (suitCnt[c[1]] || 0) + 1);
+  const suitsSorted   = Object.entries(suitCnt).sort((a,b) => b[1]-a[1]);
+  const dominantSuit  = suitsSorted[0]?.[0] || 'h';
+  const dominantCount = suitsSorted[0]?.[1] || 0;
+
+  // ── pairStructure判定 ──
+  // PAIRED以上（PAIRED/DOUBLE_PAIRED/TRIPS_BOARD/QUADS_BOARD）のボードでは
+  // 全ハンドが最低1ペアになるためHIGH CARDは存在しない
+  const pairStruct = features?.pairStructure || '';
+  const boardHasPair = ['PAIRED','DOUBLE_PAIRED','TRIPS_BOARD','FULL_HOUSE_BOARD','QUADS_BOARD'].includes(pairStruct);
+  // 同様にストレート/フラッシュが「確定」しているボードの判定
+  const boardFlushComplete = features?.flushPressure === 'FOUR_FLUSH' || features?.flushPressure === 'FIVE_FLUSH';
+
+  // ── 役バンド定義 ──
+  // Royal FlushをSFから分離（madeStrength ≥ 0.99）
+  const HAND_BANDS = [
+    { name:'ROYAL FLUSH',    min:0.955, color:'#ffffff', textColor:'#ffffff',              confirmed: false },
+    { name:'STRAIGHT FLUSH', min:0.896, color:'#ffd700', textColor:'#ffd700',              confirmed: false },
+    { name:'FOUR OF A KIND', min:0.796, color:'#ff3b3b', textColor:'#ff8080',              confirmed: false },
+    { name:'FULL HOUSE',     min:0.676, color:'#ff7c00', textColor:'#ffaa55',              confirmed: false },
+    { name:'FLUSH',          min:0.576, color:'#a855f7', textColor:'#c084fc',              confirmed: boardFlushComplete },
+    { name:'STRAIGHT',       min:0.466, color:'#3b82f6', textColor:'#60a5fa',              confirmed: false },
+    { name:'THREE OF A KIND',min:0.376, color:'#00d4ff', textColor:'#00d4ff',              confirmed: false },
+    { name:'TWO PAIR',       min:0.256, color:'#00ff9d', textColor:'#00ff9d',              confirmed: false },
+    { name:'ONE PAIR',       min:0.096, color:'#6b7280', textColor:'#9ca3af',              confirmed: boardHasPair },
+    { name:'HIGH CARD',      min:0.000, color:'#374151', textColor:'rgba(160,200,230,.35)',hidden: boardHasPair },
   ];
 
-  const groups = HAND_GROUPS.map(g => ({
-    ...g,
-    hands: live
-      .filter(h => getDisplayStrength(h) >= g.min * 100 &&
-                   getDisplayStrength(h) < (HAND_GROUPS[HAND_GROUPS.indexOf(g) - 1]?.min ?? 2) * 100)
-      .sort((a,b) => getDisplayStrength(b) - getDisplayStrength(a))
-  })).filter(g => g.hands.length > 0);
+  // ── 集計 ──
+  const live = data.filter(h => (h.density ?? 1) > 0);
+  let totalCombos = 0;
+  const bands = HAND_BANDS.map(b => ({ ...b, combos: 0, items: [] }));
 
-  if (groups.length === 0) {
-    nutsEl.innerHTML = `<div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.25);padding:8px 4px;text-align:center;">ボードを3枚以上入力</div>`;
+  live.forEach(h => {
+    const isPair    = h.hand.length === 2 && h.hand[0] === h.hand[1];
+    const isSuited  = h.hand.endsWith('s');
+    const baseTotal = isPair ? 6 : isSuited ? 4 : 12;
+    const combos    = Math.round((h.density ?? 1) * baseTotal);
+    totalCombos    += combos;
+    const score = h.madeStrength ?? h.rawScore ?? 0;
+    const bi = bands.findIndex(b => score >= b.min);
+    if (bi >= 0 && combos > 0) {
+      bands[bi].combos += combos;
+      bands[bi].items.push({ hand: h.hand, combos, isSuited, isPair });
+    }
+  });
+
+  // ── 表示対象フィルター ──
+  // hidden=true（HIGH CARD on pair board等）、combos=0 は非表示
+  const activeBands = bands.filter(b => !b.hidden && b.combos > 0);
+
+  if (!activeBands.length) {
+    nutsEl.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:8px;color:rgba(160,200,230,.3);padding:6px;">--</div>';
     return;
   }
 
-  nutsEl.innerHTML = groups.map(g => {
-    const topHands = g.hands.slice(0, 5);
-    const more = g.hands.length - topHands.length;
-    const handsHtml = topHands.map(h =>
-      `<span style="
-        font-family:'Share Tech Mono',monospace;font-size:8px;
-        color:${g.color};
-        background:rgba(0,0,0,.3);
-        border:1px solid ${g.color}40;
-        border-radius:2px;padding:1px 4px;
-        display:inline-block;margin:1px;
-      ">${h.hand}</span>`
-    ).join('') + (more > 0
-      ? `<span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.3);margin-left:3px;">+${more}</span>`
-      : '');
+  nutsEl.innerHTML = activeBands.map(b => {
+    const pct  = totalCombos > 0 ? (b.combos / totalCombos * 100) : 0;
+    const barW = Math.min(100, Math.round(pct));
 
-    return `<div style="margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid rgba(0,180,255,.06);">
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
-        <span style="font-size:10px;">${g.icon}</span>
-        <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:${g.color};opacity:.8;">${g.label}</span>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:6px;color:rgba(160,200,230,.3);margin-left:auto;">${g.hands.length}手</span>
+    // ── 代表ハンド表示 ──
+    let repHtml = '';
+    let subHtml = '';
+
+    const isFlushBand = b.name === 'FLUSH' || b.name === 'STRAIGHT FLUSH' || b.name === 'ROYAL FLUSH';
+
+    if (isFlushBand) {
+      // スーテッドのみ → 支配スートで A♣K♣ 形式
+      const suited = b.items.filter(i => i.isSuited).slice(0, 2);
+      const sc  = SCOL[dominantSuit];
+      const sym = SSYM[dominantSuit];
+      repHtml = suited.map(i => {
+        const r1 = i.hand[0], r2 = i.hand[1];
+        return `<span style="color:${sc};letter-spacing:-0.5px">${r1}${sym}${r2}${sym}</span>`;
+      }).join('<span style="color:rgba(255,255,255,.15);margin:0 2px">/</span>');
+
+      // Flush時のみスート内訳サブ行（2枚以上のスートのみ）
+      if (b.name === 'FLUSH' && dominantCount >= 2) {
+        const breakdown = suitsSorted
+          .filter(([, n]) => n >= 2)
+          .map(([s, n]) => {
+            // そのスートのフラッシュコンボ割合を近似
+            const flushCombosForSuit = b.items.filter(i => i.isSuited).length > 0
+              ? Math.round(b.combos * (n / currentBoard.length))
+              : 0;
+            const subPct = totalCombos > 0 ? (flushCombosForSuit / totalCombos * 100) : 0;
+            return `<span style="color:${SCOL[s]}">${SSYM[s]}${n}枚</span><span style="color:rgba(160,200,230,.45)"> ${subPct.toFixed(1)}%</span>`;
+          }).join('<span style="color:rgba(255,255,255,.12);margin:0 3px">·</span>');
+        if (breakdown) {
+          subHtml = `<div style="font-size:7px;margin-top:1px;padding-left:1px;line-height:1.5;opacity:.85">${breakdown}</div>`;
+        }
+      }
+
+    } else if (b.name === 'STRAIGHT') {
+      // ランクのみ、上位3種
+      const top = b.items.slice(0, 3);
+      repHtml = top.map(i => `<span style="color:rgba(200,220,240,.7)">${i.hand[0]}${i.hand[1]}</span>`)
+        .join('<span style="color:rgba(255,255,255,.12);margin:0 2px">/</span>');
+
+    } else {
+      // FH/4カード/3カード/2ペア/1ペア/ハイカード → ランクのみ
+      const top = b.items.slice(0, 3);
+      repHtml = top.map(i => {
+        const r1 = i.hand[0], r2 = i.hand[1];
+        return `<span style="color:rgba(200,220,240,.7)">${r1}${r2}</span>`;
+      }).join('<span style="color:rgba(255,255,255,.12);margin:0 2px">/</span>');
+    }
+
+    // ── confirmed バッジ ──
+    // 「確定」表示：PAIREDボードのONE PAIR、FLUSHコンプリートボードのFLUSH等
+    const confirmedHtml = b.confirmed
+      ? `<span style="font-family:'Orbitron',monospace;font-size:5.5px;color:${b.textColor};opacity:.7;margin-left:3px;letter-spacing:.5px">CONFIRMED</span>`
+      : '';
+
+    return `
+    <div style="margin-bottom:5px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px;">
+        <div style="display:flex;align-items:center;gap:3px;">
+          <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:.5px;color:${b.textColor};">${b.name}</span>
+          ${confirmedHtml}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:9px;">${repHtml}</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;color:${b.textColor};min-width:36px;text-align:right;">${pct.toFixed(1)}%</span>
+        </div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;">${handsHtml}</div>
+      ${subHtml}
+      <div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin-top:2px;">
+        <div style="height:100%;width:${barW}%;background:${b.color};border-radius:2px;transition:width .5s ease;"></div>
+      </div>
     </div>`;
   }).join('');
 }
+
 
 /* ══════════════════════════════
    STREET DETECTION
@@ -1595,6 +1629,116 @@ const HUD_DEFS = [
 /* ══════════════════════════════
    RENDER: CONCLUSION（L1 — 戦況 + RANGE PROFILE）
 ══════════════════════════════ */
+/* ══════════════════════════════
+   STRUCTURE RADAR
+   5軸ペンタゴン: Entropy / Polarization / Coverage / DrawStructure / Dominance
+   全て0-100スケール。Worker の structureFeatures から受け取る。
+══════════════════════════════ */
+const RADAR_AXES = [
+  { key:'entropy',       label:'ENT',   color:'#00d4ff' },  // 複雑さ
+  { key:'polarization',  label:'POL',   color:'#ff3b3b' },  // 強弱差
+  { key:'coverage',      label:'COV',   color:'#00ff9d' },  // レンジの広さ
+  { key:'drawStructure', label:'DRW',   color:'#ffb800' },  // ドロー構造
+  { key:'dominance',     label:'DOM',   color:'#a855f7' },  // Gini不平等度
+];
+const RADAR_CX = 80, RADAR_CY = 62, RADAR_R = 44;
+
+function radarXY(axisIdx, value100) {
+  const angle = (axisIdx / RADAR_AXES.length) * 2 * Math.PI - Math.PI / 2;
+  const r     = RADAR_R * Math.max(0, Math.min(100, value100)) / 100;
+  return { x: RADAR_CX + r * Math.cos(angle), y: RADAR_CY + r * Math.sin(angle) };
+}
+
+function buildRadarGrid() {
+  const gridEl  = document.getElementById('radar-grid');
+  const axesEl  = document.getElementById('radar-axes');
+  const lblsEl  = document.getElementById('radar-labels');
+  if (!gridEl) return;
+
+  const N = RADAR_AXES.length;
+  const LAYERS = 4;
+
+  // グリッドペンタゴン
+  gridEl.innerHTML = '';
+  for (let l = 1; l <= LAYERS; l++) {
+    const r   = RADAR_R * l / LAYERS;
+    const pts = Array.from({length: N}, (_, i) => {
+      const a = (i / N) * 2 * Math.PI - Math.PI / 2;
+      return `${(RADAR_CX + r * Math.cos(a)).toFixed(1)},${(RADAR_CY + r * Math.sin(a)).toFixed(1)}`;
+    }).join(' ');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', pts);
+    poly.setAttribute('fill', 'none');
+    poly.setAttribute('stroke', 'rgba(0,180,255,0.3)');
+    poly.setAttribute('stroke-width', '0.5');
+    gridEl.appendChild(poly);
+    // 層ラベル（25/50/75/100）
+    if (l < LAYERS) {
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      lbl.setAttribute('x', (RADAR_CX + 2).toFixed(1));
+      lbl.setAttribute('y', (RADAR_CY - r + 3).toFixed(1));
+      lbl.setAttribute('fill', 'rgba(0,180,255,0.2)');
+      lbl.setAttribute('font-size', '5');
+      lbl.setAttribute('font-family', "'Share Tech Mono',monospace");
+      lbl.textContent = l * 25;
+      gridEl.appendChild(lbl);
+    }
+  }
+
+  // 軸線＋ラベル
+  axesEl.innerHTML = '';
+  lblsEl.innerHTML = '';
+  RADAR_AXES.forEach((ax, i) => {
+    const a  = (i / N) * 2 * Math.PI - Math.PI / 2;
+    const x2 = RADAR_CX + RADAR_R * Math.cos(a);
+    const y2 = RADAR_CY + RADAR_R * Math.sin(a);
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', RADAR_CX); line.setAttribute('y1', RADAR_CY);
+    line.setAttribute('x2', x2.toFixed(1)); line.setAttribute('y2', y2.toFixed(1));
+    line.setAttribute('stroke', 'rgba(0,180,255,0.2)');
+    line.setAttribute('stroke-width', '0.5');
+    axesEl.appendChild(line);
+
+    // ラベル（軸先端の外側）
+    const offset = 11;
+    const lx = RADAR_CX + (RADAR_R + offset) * Math.cos(a);
+    const ly = RADAR_CY + (RADAR_R + offset) * Math.sin(a);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', lx.toFixed(1));
+    txt.setAttribute('y', (ly + 2.5).toFixed(1));
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('fill', ax.color);
+    txt.setAttribute('font-size', '6.5');
+    txt.setAttribute('font-family', "'Orbitron',monospace");
+    txt.setAttribute('letter-spacing', '0.5');
+    txt.textContent = ax.label;
+    lblsEl.appendChild(txt);
+  });
+}
+
+function renderStructureRadar(sf, street) {
+  if (!sf) return;
+  const shape  = document.getElementById('radar-shape');
+  const dotsEl = document.getElementById('radar-dots');
+  const streetLbl = document.getElementById('radar-street-lbl');
+  if (!shape) return;
+
+  if (streetLbl) streetLbl.textContent = street || '--';
+
+  const pts = RADAR_AXES.map((ax, i) => {
+    const p = radarXY(i, sf[ax.key] || 0);
+    return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+  }).join(' ');
+  shape.setAttribute('points', pts);
+
+  dotsEl.innerHTML = RADAR_AXES.map((ax, i) => {
+    const val = sf[ax.key] || 0;
+    const p   = radarXY(i, val);
+    return `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="2.8" fill="${ax.color}" opacity="0.85"><title>${ax.label}: ${val}</title></circle>`;
+  }).join('');
+}
+
 function renderConclusion(data) {
   const panel = document.getElementById('conclusion-panel');
   if (!data) { panel.style.display = 'none'; return; }
