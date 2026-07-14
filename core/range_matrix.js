@@ -28,10 +28,27 @@ function classifyPotential(hand, board) {
 
   let hasOESD = false;
   let hasGSD  = false;
-  for (let k = 0; k <= allRanks.length - 4; k++) {
-    const span = allRanks[k + 3] - allRanks[k];
-    if (span === 3) { hasOESD = true; break; }
-    if (span === 4) hasGSD = true;
+
+  // バグ修正: allRanks内に「5枚連続」＝完成済みストレートが既に存在する場合、
+  // その中の4枚部分集合が偶然OESDパターン（span===3）に一致してしまい、
+  // 「役が完成しているのに、さらにドローの伸びしろがある」という
+  // 二重計上バグが起きていた（例: J-Q-A盤面でK-Tsが完成ブロードウェイなのに
+  // OESD+0.40が上乗せされ、最終スコアが閾値をまたいでhandNameが誤表示される）。
+  // → 5枚連続が既に成立している場合は、それはmadeStrength側の仕事なので
+  //   ここでは追加のOESD/GSD potentialを与えない。
+  // ホイール(A-2-3-4-5)はAceがlow側にも回るため、Aceを13として扱う別配列でも判定する。
+  const straightCheckRanks = allRanks[0] === 0 ? [...allRanks, 13] : allRanks;
+  let hasMadeStraight = false;
+  for (let k = 0; k <= straightCheckRanks.length - 5; k++) {
+    if (straightCheckRanks[k + 4] - straightCheckRanks[k] === 4) { hasMadeStraight = true; break; }
+  }
+
+  if (!hasMadeStraight) {
+    for (let k = 0; k <= allRanks.length - 4; k++) {
+      const span = allRanks[k + 3] - allRanks[k];
+      if (span === 3) { hasOESD = true; break; }
+      if (span === 4) hasGSD = true;
+    }
   }
 
   // ── Score ──
@@ -59,17 +76,28 @@ function classifyDraw(hand, board) {
   const allRanks = [...new Set([ri1, ri2, ...boardRanks])].sort((a, b) => a - b);
 
   // ── Straight draw checks ──
-  // OESD: 4 cards spanning exactly 3 ranks (e.g. 5678)
-  for (let k = 0; k <= allRanks.length - 4; k++) {
-    if (allRanks[k + 3] - allRanks[k] === 3) {
-      return 'OESD';
-    }
+  // バグ修正: classifyPotentialと同様、5枚連続（完成済みストレート）が
+  // 既に存在する場合は、それを「ドロー」として二重にタグ付けしない。
+  // ホイール(A-2-3-4-5)はAceをlow(13扱い)にした配列でも判定する。
+  const straightCheckRanks = allRanks[0] === 0 ? [...allRanks, 13] : allRanks;
+  let hasMadeStraight = false;
+  for (let k = 0; k <= straightCheckRanks.length - 5; k++) {
+    if (straightCheckRanks[k + 4] - straightCheckRanks[k] === 4) { hasMadeStraight = true; break; }
   }
 
-  // GSD: 4 cards spanning exactly 4 ranks with one gap (e.g. 5679)
-  for (let k = 0; k <= allRanks.length - 4; k++) {
-    if (allRanks[k + 3] - allRanks[k] === 4) {
-      return 'GSD';
+  if (!hasMadeStraight) {
+    // OESD: 4 cards spanning exactly 3 ranks (e.g. 5678)
+    for (let k = 0; k <= allRanks.length - 4; k++) {
+      if (allRanks[k + 3] - allRanks[k] === 3) {
+        return 'OESD';
+      }
+    }
+
+    // GSD: 4 cards spanning exactly 4 ranks with one gap (e.g. 5679)
+    for (let k = 0; k <= allRanks.length - 4; k++) {
+      if (allRanks[k + 3] - allRanks[k] === 4) {
+        return 'GSD';
+      }
     }
   }
 

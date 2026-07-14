@@ -86,8 +86,15 @@ function evaluate7(cards) {
     madeScore = 0.58 + (1 - flushTop / 12) * 0.09;
   } else if (isStraight) {
     // Straight: 0.47..0.57
+    // バグ修正: ホイール(A-2-3-4-5)はAceをlow扱い(idx=13)で表現するため、
+    // 通常のstHigh域(4〜12)を超えて式に代入すると0.47の下限を割り込み、
+    // THREE OF A KIND帯に誤って分類されてしまっていた。
+    // ストレートは常にトリップス以上として扱うため0.47を下限にclampする。
     const stHigh = uniqueRanks[straightHighIdx];
-    madeScore = 0.47 + (1 - stHigh / 12) * 0.10;
+    // 0.47ちょうどでclampすると、この後のcomputeMadeStrength()内boardHazardペナルティで
+    // 再び0.466/0.47のカテゴリ閾値を下回ってしまうケースがあったため、
+    // ペナルティ分を吸収できるよう少し余裕を持たせて0.49を床にする。
+    madeScore = Math.max(0.49, 0.47 + (1 - stHigh / 12) * 0.10);
   } else if (counts[0] === 3) {
     // Trips: 0.38..0.46
     madeScore = 0.38 + (1 - topRank / 12) * 0.08;
