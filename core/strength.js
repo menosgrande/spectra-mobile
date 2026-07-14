@@ -24,7 +24,17 @@ function evaluate7(cards) {
     }
   }
   const isStraight = straightHighIdx !== -1;
-  const isStraightFlush = isFlush && isStraight && (function() {
+
+  // ── straight-flush specific detection ──
+  // バグ修正: 従来は isStraightFlush の真偽だけをここで判定し、
+  // スコア計算では「全7枚混合スートの straightHighIdx」を流用していたため、
+  // フラッシュに関与しない余分な低ランクカードが一般ストレートの下端を
+  // 押し下げると、実際はロイヤルフラッシュなのに sfHigh が誤って
+  // 低い値（＝弱いSF扱い）になるバグがあった。
+  // 修正後は「flushSuitのカードだけ」で改めてストレートを判定し、
+  // そこで見つかった高位側インデックス(sfHigh)を専用に保持する。
+  let sfHigh = -1; // flushSuit内で成立するストレートの下端 RANK_IDX（値が小さいほど強い）
+  if (isFlush) {
     const flushRanks = cards
       .filter(c => c[1] === flushSuit)
       .map(c => RANK_IDX[c[0]])
@@ -32,10 +42,13 @@ function evaluate7(cards) {
     const uFlush = [...new Set(flushRanks)];
     if (uFlush[0] === 0) uFlush.push(13);
     for (let k = uFlush.length - 1; k >= 4; k--) {
-      if (uFlush[k] - uFlush[k - 4] === 4) return true;
+      if (uFlush[k] - uFlush[k - 4] === 4) {
+        sfHigh = uFlush[k];
+        break;
+      }
     }
-    return false;
-  })();
+  }
+  const isStraightFlush = sfHigh !== -1;
 
   // ── frequency map ──
   const freq = {};
@@ -51,11 +64,10 @@ function evaluate7(cards) {
   const topRank = entries[0].r; // rank index of primary card (0=Ace)
 
   if (isStraightFlush) {
-    // sfHigh = uniqueRanks[straightHighIdx] = lowest-rank-index card in the straight
+    // sfHigh は上で flushSuit のカードのみから正しく算出済み
     // RANK_IDX: A=0, K=1, Q=2, J=3, T=4, ...
-    // Royal Flush = T-J-Q-K-A → low card = T(idx=4) → sfHigh=4
-    // A-2-3-4-5 (wheel SF) → low card = A treated as low(idx=13 or 0), handled separately
-    const sfHigh = uniqueRanks[straightHighIdx];
+    // Royal Flush = T-J-Q-K-A → 下端 = T(idx=4) → sfHigh=4
+    // A-2-3-4-5 (wheel SF) → 下端 = Aをlow扱い(idx=13), 最弱SF
     // Royal: sfHigh=4 (Ten is the lowest card, Ace is high)
     const isRoyal = (sfHigh === 4);
     // Score: Royal=1.00, next best SF (K-high, sfHigh=5) ≈ 0.958, lowest SF ≈ 0.90
@@ -108,21 +120,24 @@ function evaluate7(cards) {
   else                                            { bandCeiling = 0.095; }
 
   // ── Layer 2: board interaction adjustment ──
-  const boardAdjustment = computeBoardInteraction(cards, ranks, freq, isStraightFlush, isFlush, isStraight, counts);
+  const isRoyalForBonus = isStraightFlush && sfHigh === 4;
+  const boardAdjustment = computeBoardInteraction(cards, ranks, freq, isStraightFlush, isFlush, isStraight, counts, isRoyalForBonus);
 
   return Math.min(bandCeiling, clamp01(madeScore + boardAdjustment));
 }
 
 
-function computeBoardInteraction(cards, ranks, freq, isSF, isFlush, isStraight, counts) {
+function computeBoardInteraction(cards, ranks, freq, isSF, isFlush, isStraight, counts, isRoyal) {
   if (cards.length < 7) return 0; // only meaningful with full 7-card context
 
   let delta = 0;
 
   // ── Nut-lock bonus: top-of-category hands ──
+  // バグ修正: 従来は「7枚中にA(idx0)とK(idx1)が存在するか」を全スート込みでチェックしていたため、
+  // フラッシュに関与しないオフスートのA/Kが混ざっているだけでロイヤル判定されてしまっていた。
+  // 現在は evaluate7 側で確定した isRoyal（flushSuit内のストレートがT-J-Q-K-Aか）をそのまま使う。
   if (isSF) {
-    const sfRanks = [...ranks].sort((a, b) => a - b);
-    delta += (sfRanks[0] === 0 && sfRanks[1] === 1) ? 0.08 : 0.04; // Royal > other SF
+    delta += isRoyal ? 0.08 : 0.04; // Royal > other SF
   } else if (counts[0] === 4) {
     delta += 0.06;
   }
