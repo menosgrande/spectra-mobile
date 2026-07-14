@@ -525,14 +525,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         <g id="radar-labels"></g>
         <g id="radar-dots"></g>
       </svg>
-      <!-- 5軸の英語説明キャプション（読みやすさ向上） -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 8px;margin-top:4px;padding-top:4px;border-top:1px solid rgba(0,180,255,.08);">
-        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.55);"><span style="color:#00d4ff;font-weight:700;">ENT</span> Entropy — complexity</div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.55);"><span style="color:#ff3b3b;font-weight:700;">POL</span> Polarization — strong/weak gap</div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.55);"><span style="color:#00ff9d;font-weight:700;">COV</span> Coverage — range width</div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.55);"><span style="color:#ffb800;font-weight:700;">DRW</span> Draw Structure — draw richness</div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.55);grid-column:span 2;"><span style="color:#a855f7;font-weight:700;">DOM</span> Dominance — Gini inequality</div>
-      </div>
       <!-- 既存texture互換DOM（非表示・applyTextureが参照） -->
       <div style="display:none;">
         <div id="wet-val"></div><div id="wet-lbl"></div>
@@ -1439,52 +1431,57 @@ function renderNuts(data, features) {
     const pct  = totalCombos > 0 ? (b.combos / totalCombos * 100) : 0;
     const barW = Math.min(100, Math.round(pct));
 
-    // ── 代表ハンド表示 ──
-    let repHtml = '';
-    let subHtml = '';
-
     const isFlushBand = b.name === 'FLUSH' || b.name === 'STRAIGHT FLUSH' || b.name === 'ROYAL FLUSH';
 
-    if (isFlushBand) {
-      // スーテッドのみ → 支配スートで A♣K♣ 形式
-      const suited = b.items.filter(i => i.isSuited).slice(0, 2);
-      const sc  = SCOL[dominantSuit];
-      const sym = SSYM[dominantSuit];
-      repHtml = suited.map(i => {
-        const r1 = i.hand[0], r2 = i.hand[1];
-        return `<span style="color:${sc};letter-spacing:-0.5px">${r1}${sym}${r2}${sym}</span>`;
-      }).join('<span style="color:rgba(255,255,255,.15);margin:0 2px">/</span>');
+    // ── 該当ハンドのチップ表示 ──
+    // 従来は上位2〜3件を略式表示していたが、1役あたり4行程度のスペースを使って
+    // より多くの該当ハンドをチップとして並べる（折り返し表示）。
+    const sortedItems = [...b.items].sort((x, y) => y.combos - x.combos);
+    const CHIP_LIMIT  = 10;
+    const shown       = sortedItems.slice(0, CHIP_LIMIT);
+    const overflow    = sortedItems.length - shown.length;
 
-      // Flush時のみスート内訳サブ行（2枚以上のスートのみ）
-      if (b.name === 'FLUSH' && dominantCount >= 2) {
-        const breakdown = suitsSorted
-          .filter(([, n]) => n >= 2)
-          .map(([s, n]) => {
-            // そのスートのフラッシュコンボ割合を近似
-            const flushCombosForSuit = b.items.filter(i => i.isSuited).length > 0
-              ? Math.round(b.combos * (n / currentBoard.length))
-              : 0;
-            const subPct = totalCombos > 0 ? (flushCombosForSuit / totalCombos * 100) : 0;
-            return `<span style="color:${SCOL[s]}">${SSYM[s]}${n}枚</span><span style="color:rgba(160,200,230,.45)"> ${subPct.toFixed(1)}%</span>`;
-          }).join('<span style="color:rgba(255,255,255,.12);margin:0 3px">·</span>');
-        if (breakdown) {
-          subHtml = `<div style="font-size:7px;margin-top:1px;padding-left:1px;line-height:1.5;opacity:.85">${breakdown}</div>`;
-        }
+    const chipsHtml = shown.map(i => {
+      let label = i.hand;
+      let color = 'rgba(210,225,245,.8)';
+      let border = 'rgba(255,255,255,.10)';
+
+      if (isFlushBand && i.isSuited) {
+        // スーテッド → 支配スートで表示（A♣K♣ 等）
+        const sc  = SCOL[dominantSuit];
+        const sym = SSYM[dominantSuit];
+        label = `${i.hand[0]}${sym}${i.hand[1]}${sym}`;
+        color = sc; border = sc + '55';
+      } else if (i.isPair) {
+        color = 'rgba(255,215,0,.8)'; border = 'rgba(255,215,0,.25)';
+      } else if (i.isSuited) {
+        color = 'rgba(0,212,255,.8)'; border = 'rgba(0,212,255,.25)';
       }
 
-    } else if (b.name === 'STRAIGHT') {
-      // ランクのみ、上位3種
-      const top = b.items.slice(0, 3);
-      repHtml = top.map(i => `<span style="color:rgba(200,220,240,.7)">${i.hand[0]}${i.hand[1]}</span>`)
-        .join('<span style="color:rgba(255,255,255,.12);margin:0 2px">/</span>');
+      return `<span style="display:inline-block;padding:1.5px 4px;margin:0 3px 3px 0;
+        border:1px solid ${border};border-radius:2px;background:rgba(255,255,255,.03);
+        font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:-0.3px;color:${color};">${label}</span>`;
+    }).join('');
 
-    } else {
-      // FH/4カード/3カード/2ペア/1ペア/ハイカード → ランクのみ
-      const top = b.items.slice(0, 3);
-      repHtml = top.map(i => {
-        const r1 = i.hand[0], r2 = i.hand[1];
-        return `<span style="color:rgba(200,220,240,.7)">${r1}${r2}</span>`;
-      }).join('<span style="color:rgba(255,255,255,.12);margin:0 2px">/</span>');
+    const overflowHtml = overflow > 0
+      ? `<span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.35);align-self:center;">+${overflow}</span>`
+      : '';
+
+    // ── フラッシュ帯のみ：スート内訳サブ行 ──
+    let subHtml = '';
+    if (isFlushBand && b.name === 'FLUSH' && dominantCount >= 2) {
+      const breakdown = suitsSorted
+        .filter(([, n]) => n >= 2)
+        .map(([s, n]) => {
+          const flushCombosForSuit = b.items.filter(i => i.isSuited).length > 0
+            ? Math.round(b.combos * (n / currentBoard.length))
+            : 0;
+          const subPct = totalCombos > 0 ? (flushCombosForSuit / totalCombos * 100) : 0;
+          return `<span style="color:${SCOL[s]}">${SSYM[s]}${n}枚</span><span style="color:rgba(160,200,230,.45)"> ${subPct.toFixed(1)}%</span>`;
+        }).join('<span style="color:rgba(255,255,255,.12);margin:0 3px">·</span>');
+      if (breakdown) {
+        subHtml = `<div style="font-size:7px;margin-top:2px;padding-left:1px;line-height:1.5;opacity:.85">${breakdown}</div>`;
+      }
     }
 
     // ── confirmed バッジ ──
@@ -1494,21 +1491,19 @@ function renderNuts(data, features) {
       : '';
 
     return `
-    <div style="margin-bottom:5px;">
+    <div style="margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,.04);">
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px;">
         <div style="display:flex;align-items:center;gap:3px;">
           <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:.5px;color:${b.textColor};">${b.name}</span>
           ${confirmedHtml}
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:9px;">${repHtml}</span>
-          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;color:${b.textColor};min-width:36px;text-align:right;">${pct.toFixed(1)}%</span>
-        </div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;color:${b.textColor};">${pct.toFixed(1)}%</span>
       </div>
-      ${subHtml}
-      <div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin-top:2px;">
+      <div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin-bottom:3px;">
         <div style="height:100%;width:${barW}%;background:${b.color};border-radius:2px;transition:width .5s ease;"></div>
       </div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;">${chipsHtml}${overflowHtml}</div>
+      ${subHtml}
     </div>`;
   }).join('');
 }
@@ -1643,11 +1638,11 @@ const HUD_DEFS = [
    全て0-100スケール。Worker の structureFeatures から受け取る。
 ══════════════════════════════ */
 const RADAR_AXES = [
-  { key:'entropy',       label:'ENT',   color:'#00d4ff' },  // 複雑さ
-  { key:'polarization',  label:'POL',   color:'#ff3b3b' },  // 強弱差
-  { key:'coverage',      label:'COV',   color:'#00ff9d' },  // レンジの広さ
-  { key:'drawStructure', label:'DRW',   color:'#ffb800' },  // ドロー構造
-  { key:'dominance',     label:'DOM',   color:'#a855f7' },  // Gini不平等度
+  { key:'entropy',       label:'ENT',   jp:'複雑さ',   color:'#00d4ff' },  // 複雑さ
+  { key:'polarization',  label:'POL',   jp:'強弱差',   color:'#ff3b3b' },  // 強弱差
+  { key:'coverage',      label:'COV',   jp:'広さ',     color:'#00ff9d' },  // レンジの広さ
+  { key:'drawStructure', label:'DRW',   jp:'ドロー',   color:'#ffb800' },  // ドロー構造
+  { key:'dominance',     label:'DOM',   jp:'偏り',     color:'#a855f7' },  // Gini不平等度
 ];
 const RADAR_CX = 80, RADAR_CY = 62, RADAR_R = 44;
 
@@ -1677,15 +1672,15 @@ function buildRadarGrid() {
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     poly.setAttribute('points', pts);
     poly.setAttribute('fill', 'none');
-    poly.setAttribute('stroke', 'rgba(0,180,255,0.3)');
+    poly.setAttribute('stroke', 'rgba(255,255,255,0.35)');
     poly.setAttribute('stroke-width', '0.5');
     gridEl.appendChild(poly);
-    // 層ラベル（25/50/75/100）— 視認性向上のため濃度・サイズを上げる
+    // 層ラベル（25/50/75/100）— レーダースコープ風に白で表示
     if (l < LAYERS) {
       const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       lbl.setAttribute('x', (RADAR_CX + 2).toFixed(1));
       lbl.setAttribute('y', (RADAR_CY - r + 3).toFixed(1));
-      lbl.setAttribute('fill', 'rgba(140,200,240,0.55)');
+      lbl.setAttribute('fill', 'rgba(255,255,255,0.6)');
       lbl.setAttribute('font-size', '6');
       lbl.setAttribute('font-family', "'Share Tech Mono',monospace");
       lbl.textContent = l * 25;
@@ -1704,11 +1699,11 @@ function buildRadarGrid() {
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', RADAR_CX); line.setAttribute('y1', RADAR_CY);
     line.setAttribute('x2', x2.toFixed(1)); line.setAttribute('y2', y2.toFixed(1));
-    line.setAttribute('stroke', 'rgba(0,180,255,0.2)');
+    line.setAttribute('stroke', 'rgba(255,255,255,0.3)');
     line.setAttribute('stroke-width', '0.5');
     axesEl.appendChild(line);
 
-    // ラベル（軸先端の外側）
+    // ラベル（軸先端の外側）— 3文字ラベル＋日本語を1行で併記
     const offset = 11;
     const lx = RADAR_CX + (RADAR_R + offset) * Math.cos(a);
     const ly = RADAR_CY + (RADAR_R + offset) * Math.sin(a);
@@ -1716,11 +1711,11 @@ function buildRadarGrid() {
     txt.setAttribute('x', lx.toFixed(1));
     txt.setAttribute('y', (ly + 2.5).toFixed(1));
     txt.setAttribute('text-anchor', 'middle');
-    txt.setAttribute('fill', ax.color);
     txt.setAttribute('font-size', '6.5');
-    txt.setAttribute('font-family', "'Orbitron',monospace");
     txt.setAttribute('letter-spacing', '0.5');
-    txt.textContent = ax.label;
+    txt.innerHTML =
+      `<tspan font-family="'Orbitron',monospace" fill="${ax.color}">${ax.label}</tspan>` +
+      `<tspan font-family="'Rajdhani',sans-serif" fill="rgba(220,235,250,.6)" font-size="6" dx="2">${ax.jp}</tspan>`;
     lblsEl.appendChild(txt);
   });
 }
