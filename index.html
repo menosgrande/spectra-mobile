@@ -519,8 +519,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         <div id="radar-street-lbl" style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.25);">--</div>
       </div>
       <svg id="radar-svg" viewBox="0 0 160 130" width="100%" style="display:block;overflow:visible;">
-        <g id="radar-grid" opacity="0.2"></g>
-        <g id="radar-axes" opacity="0.25"></g>
+        <g id="radar-grid" opacity="0.75"></g>
+        <g id="radar-axes" opacity="0.6"></g>
         <polygon id="radar-shape" points="" fill="rgba(0,212,255,0.1)" stroke="#00d4ff" stroke-width="1.5" stroke-linejoin="round"/>
         <g id="radar-labels"></g>
         <g id="radar-dots"></g>
@@ -619,6 +619,8 @@ let workerReady    = false;
 let calcTimer      = null;
 let evalCache      = new Map();
 let lastHeatmapData= [];     // For tooltip access
+let lastNutsFeatures = null;   // renderNuts再描画（帯の折りたたみ）用にfeaturesをキャッシュ
+let collapsedNutBands = new Set(['HIGH CARD']); // 折りたたみ状態（デフォルトHIGH CARDのみ畳む）
 let camStream      = null;
 
 /* ══════════════════════════════
@@ -1279,6 +1281,49 @@ function drawColor(type) {
   return 'rgba(160,200,230,.7)';
 }
 
+// ── 同ランクの suited/offsuit をまとめる ──
+// 同じ帯の中で ATs と ATo が両方とも存在する（＝ボードにフラッシュ関連が無く
+// スート違いでも強さが同じ）場合、チップが倍増して見づらいので
+// 「AT s/o」の1チップにまとめる。ペアはそもそも対象外（常に単独）。
+function mergeSuitedOffsuit(items) {
+  const map = new Map();
+  for (const it of items) {
+    const key = it.hand.slice(0, 2); // "AT" 等（ランク2文字、pairも同様に2文字）
+    if (!map.has(key)) {
+      map.set(key, {
+        key, combos: 0, isPair: it.isPair,
+        suitedCombos: 0, offsuitCombos: 0,
+        drawType: null, outs: 0,
+        bestRankIdx: Math.min(RANK_IDX[key[0]] ?? 12, RANK_IDX[key[1]] ?? 12)
+      });
+    }
+    const g = map.get(key);
+    g.combos += it.combos;
+    if (!it.isPair) {
+      if (it.isSuited) {
+        g.suitedCombos += it.combos;
+        if (!g.drawType) { g.drawType = it.drawType; g.outs = it.outs; }
+      } else {
+        g.offsuitCombos += it.combos;
+      }
+    }
+  }
+  return [...map.values()].map(g => {
+    let label, isSuited, isMerged = false;
+    if (g.isPair) {
+      label = g.key; isSuited = false;
+    } else if (g.suitedCombos > 0 && g.offsuitCombos > 0) {
+      // 両方存在 → 統合し、ドロータグは片方だけに偏るため曖昧なので出さない
+      label = g.key + ' s/o'; isSuited = false; isMerged = true; g.drawType = null;
+    } else if (g.suitedCombos > 0) {
+      label = g.key + 's'; isSuited = true;
+    } else {
+      label = g.key + 'o'; isSuited = false;
+    }
+    return { ...g, hand: g.key, label, isSuited, isMerged };
+  });
+}
+
 /* ══════════════════════════════
    具体スート推定：169ハンド表記 → ボードと矛盾しない代表コンボ
    例: AKo + board[Ah,Kd,Ts] → Ac Ks（ボードのスートを避ける）
@@ -1366,6 +1411,8 @@ function renderNuts(data, features) {
   nutsEl.style.display  = 'flex';
   if (secLbl) secLbl.innerHTML = 'HAND DISTRIBUTION <span style="font-size:6.5px;opacity:.6">[COMBO %]</span>';
 
+  lastNutsFeatures = features; // 帯の折りたたみ切替時の再描画用にキャッシュ
+
   const SSYM = { s:'♠', h:'♥', d:'♦', c:'♣' };
   const SCOL = { s:'#a0a8c0', h:'#e04060', d:'#4080e0', c:'#30b060' };
 
@@ -1400,10 +1447,14 @@ function renderNuts(data, features) {
   ];
 
   // ── 集計 ──
+  // density===0（ボードでブロックされ実質不可能なコンボ、例: KKKボードでのKK）は
+  // この時点で除外される。個々のハンドの combos>0 チェックとあわせて二重に保証。
   const live = data.filter(h => (h.density ?? 1) > 0);
   let totalCombos = 0;
   const bands = HAND_BANDS.map(b => ({ ...b, combos: 0, items: [] }));
 
+  // ── CURRENT NUTS（今この瞬間の最強ハンド） ──
+  let bestHand = null;
   live.forEach(h => {
     const isPair    = h.hand.length === 2 && h.hand[0] === h.hand[1];
     const isSuited  = h.hand.endsWith('s');
@@ -1414,8 +1465,10 @@ function renderNuts(data, features) {
     const bi = bands.findIndex(b => score >= b.min);
     if (bi >= 0 && combos > 0) {
       bands[bi].combos += combos;
-      bands[bi].items.push({ hand: h.hand, combos, isSuited, isPair });
+      bands[bi].items.push({ hand: h.hand, combos, isSuited, isPair, drawType: h.drawType, outs: h.outs });
     }
+    const bestScore = bestHand ? (bestHand.madeStrength ?? bestHand.rawScore ?? 0) : -1;
+    if (combos > 0 && score > bestScore) bestHand = h;
   });
 
   // ── 表示対象フィルター ──
@@ -1427,7 +1480,16 @@ function renderNuts(data, features) {
     return;
   }
 
-  nutsEl.innerHTML = activeBands.map(b => {
+  const nutsSummaryHtml = bestHand
+    ? `<div style="margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.08);
+         font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:.5px;color:rgba(255,215,0,.85);">
+         ▸ CURRENT NUTS
+         <span style="font-family:'Share Tech Mono',monospace;font-size:9px;font-weight:700;color:#fff;margin-left:4px;">${bestHand.hand}</span>
+         <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(255,215,0,.6);margin-left:4px;">(${bestHand.handName})</span>
+       </div>`
+    : '';
+
+  nutsEl.innerHTML = nutsSummaryHtml + activeBands.map(b => {
     const pct  = totalCombos > 0 ? (b.combos / totalCombos * 100) : 0;
     const barW = Math.min(100, Math.round(pct));
 
@@ -1436,13 +1498,56 @@ function renderNuts(data, features) {
     // ── 該当ハンドのチップ表示 ──
     // 従来は上位2〜3件を略式表示していたが、1役あたり4行程度のスペースを使って
     // より多くの該当ハンドをチップとして並べる（折り返し表示）。
-    const sortedItems = [...b.items].sort((x, y) => y.combos - x.combos);
+    // s/o統合: 同じ帯内でATs/AToが両方あれば「AT s/o」の1チップに統合してノイズを減らす。
+    const mergedItems = mergeSuitedOffsuit(b.items);
+    const sortedItems = [...mergedItems].sort((x, y) => y.combos - x.combos);
     const CHIP_LIMIT  = 10;
+
+    // ── フラッシュ帯のみ: ボードのフラッシュカードを超えるか否かで2分割 ──
+    // ボードに既にA♣等の高いフラッシュカードが乗っていると、それより低いキッカーの
+    // スーテッドハンドは実質「ボードのAがトップカード」になり、同グループ同士で
+    // チョップが多発する。これを可視化するため、ボードの最高フラッシュカードより
+    // 上/下でチップを分けて表示する。
+    let flushSplitHtml = null;
+    if (isFlushBand && b.name === 'FLUSH') {
+      const boardFlushRanks = currentBoard
+        .filter(c => c[1] === dominantSuit)
+        .map(c => RANK_IDX[c[0]]);
+      const boardTopFlushRank = boardFlushRanks.length ? Math.min(...boardFlushRanks) : null;
+
+      if (boardTopFlushRank !== null) {
+        const suitedOnly = sortedItems.filter(i => i.isSuited);
+        const beatsBoard  = suitedOnly.filter(i => i.bestRankIdx < boardTopFlushRank);
+        const chopRisk    = suitedOnly.filter(i => i.bestRankIdx >= boardTopFlushRank);
+
+        const renderGroup = (arr, limit) => arr.slice(0, limit).map(i => {
+          const sc = SCOL[dominantSuit], sym = SSYM[dominantSuit];
+          const label = `${i.key[0]}${sym}${i.key[1]}${sym}`;
+          return `<span style="display:inline-block;padding:1.5px 4px;margin:0 3px 3px 0;
+            border:1px solid ${sc}55;border-radius:2px;background:rgba(255,255,255,.03);
+            font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:-0.3px;color:${sc};">${label}</span>`;
+        }).join('');
+
+        const boardTopIsAce = boardTopFlushRank === 0;
+        const chopNote = boardTopIsAce
+          ? `<span style="color:rgba(255,180,0,.8)">⚠ ボードの${SSYM[dominantSuit]}Aがキッカー確定 → 同士討ちはチョップ濃厚</span>`
+          : `<span style="color:rgba(160,200,230,.4)">キッカーはボード基準（同士討ちはチョップ寄り）</span>`;
+
+        flushSplitHtml = `
+          <div style="margin-top:2px;">
+            <div style="font-size:6px;color:rgba(160,200,230,.4);margin-bottom:1px;">▸ ボード超え（キッカーで差がつく）</div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;">${beatsBoard.length ? renderGroup(beatsBoard, CHIP_LIMIT) : '<span style="font-size:7px;color:rgba(160,200,230,.3);">--</span>'}</div>
+            <div style="font-size:6px;color:rgba(160,200,230,.4);margin:3px 0 1px;">▸ ボード以下（${chopNote}）</div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;">${chopRisk.length ? renderGroup(chopRisk, CHIP_LIMIT) : '<span style="font-size:7px;color:rgba(160,200,230,.3);">--</span>'}</div>
+          </div>`;
+      }
+    }
+
     const shown       = sortedItems.slice(0, CHIP_LIMIT);
     const overflow    = sortedItems.length - shown.length;
 
     const chipsHtml = shown.map(i => {
-      let label = i.hand;
+      let label = i.label ?? i.hand;
       let color = 'rgba(210,225,245,.8)';
       let border = 'rgba(255,255,255,.10)';
 
@@ -1458,31 +1563,25 @@ function renderNuts(data, features) {
         color = 'rgba(0,212,255,.8)'; border = 'rgba(0,212,255,.25)';
       }
 
+      // ── ドロー重複タグ ──
+      // このハンドがドローも持っている場合、種類とアウツ概算を小さく併記する。
+      // 例: 「T9s FD·9o」= フラッシュドローも持っていて、あと9枚くれば強くなる、の目安。
+      // ※特定のランクが来たら何に化けるかまでの厳密な算出は未実装（別タスク）
+      const drawBadge = i.drawType
+        ? `<span style="color:${drawColor(i.drawType)};font-size:6px;margin-left:2px;opacity:.9;">${i.drawType}${i.outs ? '·' + i.outs + 'o' : ''}</span>`
+        : '';
+
       return `<span style="display:inline-block;padding:1.5px 4px;margin:0 3px 3px 0;
         border:1px solid ${border};border-radius:2px;background:rgba(255,255,255,.03);
-        font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:-0.3px;color:${color};">${label}</span>`;
+        font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:-0.3px;color:${color};">${label}${drawBadge}</span>`;
     }).join('');
 
     const overflowHtml = overflow > 0
       ? `<span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.35);align-self:center;">+${overflow}</span>`
       : '';
 
-    // ── フラッシュ帯のみ：スート内訳サブ行 ──
-    let subHtml = '';
-    if (isFlushBand && b.name === 'FLUSH' && dominantCount >= 2) {
-      const breakdown = suitsSorted
-        .filter(([, n]) => n >= 2)
-        .map(([s, n]) => {
-          const flushCombosForSuit = b.items.filter(i => i.isSuited).length > 0
-            ? Math.round(b.combos * (n / currentBoard.length))
-            : 0;
-          const subPct = totalCombos > 0 ? (flushCombosForSuit / totalCombos * 100) : 0;
-          return `<span style="color:${SCOL[s]}">${SSYM[s]}${n}枚</span><span style="color:rgba(160,200,230,.45)"> ${subPct.toFixed(1)}%</span>`;
-        }).join('<span style="color:rgba(255,255,255,.12);margin:0 3px">·</span>');
-      if (breakdown) {
-        subHtml = `<div style="font-size:7px;margin-top:2px;padding-left:1px;line-height:1.5;opacity:.85">${breakdown}</div>`;
-      }
-    }
+    // ── フラッシュ帯以外：subHtmlは使わない（フラッシュ帯はflushSplitHtmlに統合済み）──
+    const subHtml = '';
 
     // ── confirmed バッジ ──
     // 「確定」表示：PAIREDボードのONE PAIR、FLUSHコンプリートボードのFLUSH等
@@ -1490,22 +1589,42 @@ function renderNuts(data, features) {
       ? `<span style="font-family:'Orbitron',monospace;font-size:5.5px;color:${b.textColor};opacity:.7;margin-left:3px;letter-spacing:.5px">CONFIRMED</span>`
       : '';
 
+    // ── 帯の折りたたみ ──
+    // collapsedNutBands に含まれる帯は、ヘッダー＋バーの2行のみ表示（チップ一覧は畳む）
+    const isCollapsed = collapsedNutBands.has(b.name);
+    const caret = isCollapsed ? '▸' : '▾';
+
     return `
     <div style="margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,.04);">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px;cursor:pointer;"
+           onclick="toggleNutBand('${b.name}')">
         <div style="display:flex;align-items:center;gap:3px;">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:6px;color:rgba(160,200,230,.4);width:7px;display:inline-block;">${caret}</span>
           <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:.5px;color:${b.textColor};">${b.name}</span>
           ${confirmedHtml}
         </div>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;color:${b.textColor};">${pct.toFixed(1)}%</span>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.4);" title="${b.combos} live combos">(${b.combos})</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;color:${b.textColor};">${pct.toFixed(1)}%</span>
+        </div>
       </div>
       <div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin-bottom:3px;">
         <div style="height:100%;width:${barW}%;background:${b.color};border-radius:2px;transition:width .5s ease;"></div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;align-items:center;">${chipsHtml}${overflowHtml}</div>
-      ${subHtml}
+      ${isCollapsed ? '' : (flushSplitHtml !== null
+        ? flushSplitHtml
+        : `<div style="display:flex;flex-wrap:wrap;align-items:center;">${chipsHtml}${overflowHtml}</div>${subHtml}`)}
     </div>`;
   }).join('');
+}
+
+function toggleNutBand(name) {
+  // 帯ヘッダークリックで折りたたみ/展開を切替、直近データで再描画
+  if (collapsedNutBands.has(name)) collapsedNutBands.delete(name);
+  else collapsedNutBands.add(name);
+  if (lastHeatmapData && lastHeatmapData.length) {
+    renderNuts(lastHeatmapData, lastNutsFeatures);
+  }
 }
 
 
@@ -1672,7 +1791,7 @@ function buildRadarGrid() {
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     poly.setAttribute('points', pts);
     poly.setAttribute('fill', 'none');
-    poly.setAttribute('stroke', 'rgba(255,255,255,0.35)');
+    poly.setAttribute('stroke', 'rgba(255,255,255,0.55)');
     poly.setAttribute('stroke-width', '0.5');
     gridEl.appendChild(poly);
     // 層ラベル（25/50/75/100）— レーダースコープ風に白で表示
@@ -1680,7 +1799,7 @@ function buildRadarGrid() {
       const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       lbl.setAttribute('x', (RADAR_CX + 2).toFixed(1));
       lbl.setAttribute('y', (RADAR_CY - r + 3).toFixed(1));
-      lbl.setAttribute('fill', 'rgba(255,255,255,0.6)');
+      lbl.setAttribute('fill', 'rgba(255,255,255,0.85)');
       lbl.setAttribute('font-size', '6');
       lbl.setAttribute('font-family', "'Share Tech Mono',monospace");
       lbl.textContent = l * 25;
@@ -1699,7 +1818,7 @@ function buildRadarGrid() {
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', RADAR_CX); line.setAttribute('y1', RADAR_CY);
     line.setAttribute('x2', x2.toFixed(1)); line.setAttribute('y2', y2.toFixed(1));
-    line.setAttribute('stroke', 'rgba(255,255,255,0.3)');
+    line.setAttribute('stroke', 'rgba(255,255,255,0.5)');
     line.setAttribute('stroke-width', '0.5');
     axesEl.appendChild(line);
 
