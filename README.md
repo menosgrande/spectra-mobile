@@ -1,4 +1,4 @@
-# SPECTRA v3.6 — Board Intelligence OS
+# SPECTRA v3.6.1 — Board Intelligence OS
 
 テキサスホールデムのボードテクスチャ・レンジ構造・戦況を解析するポーカー分析ツール。
 
@@ -222,11 +222,15 @@ Villain Positions (cols): UTG / HJ / CO / BTN / SB / BB
 LEFT (200px)        CENTER (1fr)         RIGHT (220px)
 ─────────────       ──────────────       ──────────────
 Board Input         Situation Badge      Position Matrix
-Hero Hand           Board Cards          Board Texture
-                    3D Heatmap           Board Intelligence
-                    NUTS Table           HUD Signals
-                    River Polar View     (Board Diagnostics)
+Hero Hand           Board Cards          Structure Radar (5軸)
+NUTS Table          3D Heatmap           Board Texture
+(全ストリート共通)   HUD Signals          Board Intelligence
+                                          (Board Diagnostics)
 ```
+
+**v3.6.1 変更:** リバー専用の「River Polar View（PURE VALUE / BLUFF CATCH / BLUFF・FOLD 3分割）」は廃止。
+リバーもFLOP/TURNと同じ役ごとのコンボ%分布リスト（NUTS Table）をそのまま継続表示する
+（`renderNuts()` 内の `isRiver` フラグは恒久的に `false` 固定）。
 
 モバイルはタブ切替（BOARD / HEAT / INTEL）。
 
@@ -254,3 +258,5 @@ Hero Hand           Board Cards          Board Texture
 | P1.5 | BOARD_INTELLIGENCE API 統一（4回→1回 postMessage） |
 | P2-A | 1800行モノリス → 9モジュール分割（importScripts構成） |
 | P2-B | bestCombo 追跡、Narrative 定量化、band ceiling 修正、デッドコンボ黒化 |
+| P2-C | **strength.js**: Royal/Straight Flushのスコア算出バグ修正（flushSuit以外のカードが混ざると誤判定していた `sfHigh` を、flushSuit限定の計算に変更）。あわせて `computeBoardInteraction` のロイヤルボーナス判定も同様に修正 |
+| P2-D | UI: リバー専用「River Polar View」廃止、NUTS Tableを全ストリート共通に統一。Structure Radar（5軸）に目盛り視認性向上＋英語凡例（ENT/POL/COV/DRW/DOM フルネーム）を追加 |

@@ -525,6 +525,14 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         <g id="radar-labels"></g>
         <g id="radar-dots"></g>
       </svg>
+      <!-- 5軸の英語説明キャプション（読みやすさ向上） -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 8px;margin-top:4px;padding-top:4px;border-top:1px solid rgba(0,180,255,.08);">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.55);"><span style="color:#00d4ff;font-weight:700;">ENT</span> Entropy — complexity</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.55);"><span style="color:#ff3b3b;font-weight:700;">POL</span> Polarization — strong/weak gap</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.55);"><span style="color:#00ff9d;font-weight:700;">COV</span> Coverage — range width</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.55);"><span style="color:#ffb800;font-weight:700;">DRW</span> Draw Structure — draw richness</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.55);grid-column:span 2;"><span style="color:#a855f7;font-weight:700;">DOM</span> Dominance — Gini inequality</div>
+      </div>
       <!-- 既存texture互換DOM（非表示・applyTextureが参照） -->
       <div style="display:none;">
         <div id="wet-val"></div><div id="wet-lbl"></div>
@@ -1349,7 +1357,7 @@ function comboToHtml(combo) {
 }
 
 function renderNuts(data, features) {
-  const isRiver = currentBoard.length === 5;
+  const isRiver = false; // リバーもFLOP/TURNと同じ役一覧を継続表示する（PURE VALUE 3分割は廃止）
   const nutsEl  = document.getElementById('nuts-list');
   const polarEl = document.getElementById('river-polar');
   const secLbl  = document.getElementById('nuts-sec-label');
@@ -1672,13 +1680,13 @@ function buildRadarGrid() {
     poly.setAttribute('stroke', 'rgba(0,180,255,0.3)');
     poly.setAttribute('stroke-width', '0.5');
     gridEl.appendChild(poly);
-    // 層ラベル（25/50/75/100）
+    // 層ラベル（25/50/75/100）— 視認性向上のため濃度・サイズを上げる
     if (l < LAYERS) {
       const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       lbl.setAttribute('x', (RADAR_CX + 2).toFixed(1));
       lbl.setAttribute('y', (RADAR_CY - r + 3).toFixed(1));
-      lbl.setAttribute('fill', 'rgba(0,180,255,0.2)');
-      lbl.setAttribute('font-size', '5');
+      lbl.setAttribute('fill', 'rgba(140,200,240,0.55)');
+      lbl.setAttribute('font-size', '6');
       lbl.setAttribute('font-family', "'Share Tech Mono',monospace");
       lbl.textContent = l * 25;
       gridEl.appendChild(lbl);

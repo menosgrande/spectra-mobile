@@ -230,6 +230,10 @@ initEngine()
 
 ## NUTS テーブル（renderNuts）
 
+**v3.6.1:** `isRiver` は恒久的に `false` 固定。リバー到達時も river-polar（PURE VALUE/BLUFF CATCH/BLUFF・FOLD の3分割）へは切り替えず、
+FLOP/TURNと同じ役ごとのコンボ%分布リストを継続表示する。`renderRiverPolar()` / `#river-polar` はコードとDOMは残存するが、
+到達経路がなくなったため常に非表示（`display:none`）のままとなる。
+
 ```
 入力: rangeMatrix (169アイテム)
 
@@ -253,6 +257,25 @@ formatCombo("AhKh")
 
 ---
 
+## Structure Radar（5軸SVGチャート・renderStructureRadar）
+
+`data.structureFeatures`（0-100の5軸）をペンタゴン形のSVGにプロットする。データソースは`computeStructureFeatures()`（range_matrix.js）。
+
+```
+軸構成（RADAR_AXES）:
+  ENT  Entropy         rawScore分布の複雑さ
+  POL  Polarization    上位25% - 下位25%の強弱差
+  COV  Coverage        density>0のハンド数 / 169
+  DRW  DrawStructure   drawType の豊富さ・複合度
+  DOM  Dominance       rawScore分布のGini係数（不平等度）
+```
+
+**v3.6.1:** 目盛りライン（25/50/75）の視認性を強化（`rgba(0,180,255,0.2)`→`rgba(140,200,240,0.55)`、font-size 5→6）。
+また、略語だけでは意味が伝わりにくいため、チャート下部に5軸それぞれの英語フルネーム＋簡単な説明を凡例として常時表示する
+（`ENT Entropy — complexity` など）。
+
+---
+
 ## 主要定数
 
 ```js
@@ -273,23 +296,27 @@ STREET_COLORS = { PREFLOP:'#00d4ff', FLOP:'#00ff9d', TURN:'#ffb800', RIVER:'#ff3
 
 ## デプロイ構成（GitHub Pages）
 
+**v3.6.1 訂正:** 実際のリポジトリ構成は `worker/` フォルダを介さないフラット構成。
+`spectra-worker.js` は `index.html` と同階層に置き、`core/` フォルダのみ別に切る。
+
 ```
 /                     ← リポジトリルート
   index.html
-  worker/
-    spectra-worker.js
-    core/
-      utils.js
-      texture.js
-      position.js
-      strength.js
-      range_matrix.js
-      board_intel.js
-      interpretations.js
-      narrative.js
-      board_intelligence.js
+  spectra-worker.js
+  core/
+    utils.js
+    texture.js
+    position.js
+    strength.js
+    range_matrix.js
+    board_intel.js
+    interpretations.js
+    narrative.js
+    board_intelligence.js
 ```
 
-**注意:** ルート直下に旧 `spectra-worker.js` が残っていると `new Worker('spectra-worker.js')` が旧版を読む可能性がある。削除すること。
-
-現在の参照パス: `new Worker('worker/spectra-worker.js')`
+**注意:** 過去に `new Worker('worker/spectra-worker.js')` という誤ったパス参照により、
+`spectra-worker.js` が404 → `onerror`/3秒タイムアウト経由で `startFallback()` に落ちる
+（≒Workerエンジンが一切機能せずUIのみの空回り状態になる）バグがあった。
+現在の正しい参照パス: `new Worker('spectra-worker.js')`（index.htmlと同階層を直接参照）。
+`spectra-worker.js` 側の `importScripts('./core/utils.js', ...)` は変更不要（自身と同階層のcore/を見るため）。
