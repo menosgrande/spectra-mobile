@@ -628,7 +628,7 @@ function initEngine() {
   setBrainMsg('LOADING JS ENGINE...','spectra-worker.js',20);
 
   try {
-    spectraWorker = new Worker('worker/spectra-worker.js');
+    spectraWorker = new Worker('spectra-worker.js');
     spectraWorker.onmessage = onWorkerMessage;
     spectraWorker.onerror   = (e) => {
       console.warn('[SPECTRA] Worker error, using fallback:', e.message);
