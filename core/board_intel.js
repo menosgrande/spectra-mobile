@@ -122,12 +122,19 @@ function classifyNutDynamics(board, context) {
   const connectivity = classifyConnectivity(board);
   const pairStruct = classifyPairStructure(board);
 
+  // バグ修正: context.positions('BTN_VS_BB'等の文字列)を見ていたが、
+  // 実際にUIから渡されるcontextはcontext.heroPos/context.villainPosのみで、
+  // context.positionsはWorkerのフォールバックデフォルトにしか存在しない。
+  // そのため実運用では常にundefinedとの比較になり、
+  // 常にNEUTRAL/NUT_ADV_VILLAIN固定になってしまっていた（実際のポジションを無視）。
+  const isBtnVsBb = context.heroPos === 'BTN' && context.villainPos === 'BB';
+
   if ((hasAce || hasKing) && connectivity === 'LOW_CONNECTED' && pairStruct === 'UNPAIRED') {
-    return context.positions === 'BTN_VS_BB' ? 'NUT_ADV_HERO' : 'NEUTRAL';
+    return isBtnVsBb ? 'NUT_ADV_HERO' : 'NEUTRAL';
   }
 
   if (connectivity === 'HIGHLY_CONNECTED' && (pairStruct === 'PAIRED' || pairStruct === 'DOUBLE_PAIRED')) {
-    return context.positions === 'BTN_VS_BB' ? 'NEUTRAL' : 'NUT_ADV_VILLAIN';
+    return isBtnVsBb ? 'NEUTRAL' : 'NUT_ADV_VILLAIN';
   }
 
   return 'NEUTRAL';

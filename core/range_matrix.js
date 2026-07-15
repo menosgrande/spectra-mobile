@@ -190,6 +190,16 @@ function eval169(board, hero) {
       const madeStr     = computeMadeStrength(rawEval7, board);
       const rawScore    = computeProjectedRawScore(madeStr, potStrength);
 
+      // バグ修正: activeCombosは「dead cardでブロックされていないコンボ数」であって、
+      // 「rawEval7と同じ役に到達するコンボ数」ではない。通常スートは対称なので
+      // 問題にならないが、ボード自体に濃いフラッシュ関連（3+同スート等）がある場合、
+      // スーテッドハンド4通りのうち実際にボードと同スートが揃うのは1通りだけ、
+      // というケースが起きる（例: 4-flushボード+スーテッドハンド=ロイヤルは
+      // 実質1コンボしかないのに、activeCombosは4のまま＝表示上「Live: 4」の誤表示）。
+      // → 同じ役名(getHandName)に到達したコンボだけを数え直す。
+      const topHandName    = getHandName(rawEval7);
+      const topClassCombos = scores.filter(s => getHandName(s) === topHandName).length;
+
       results.push({
         hand:             hand,
         rawScore:         rawScore,
@@ -198,6 +208,7 @@ function eval169(board, hero) {
         class:            classifyHandClass(rawScore),
         handName:         getHandName(rawScore),
         activeCombos:     activeCombos,
+        topClassCombos:   topClassCombos,
         totalCombos:      totalCombos,
         potential:        potStrength,    // alias: UI/rangeEngine との互換
         drawType:         classifyDraw(hand, board),
@@ -222,7 +233,9 @@ function evalRange169(board, hero, context) {
     class:             item.class,
     handName:          item.handName,
     drawType:          item.drawType,     // UI: renderNuts で使用
-    outs:              item.outs          // UI: アウツ表示で使用
+    outs:              item.outs,         // UI: アウツ表示で使用
+    topClassCombos:    item.topClassCombos, // UI: renderNutsのLive Combo表示で使用（同じ役に到達したコンボ数）
+    totalCombos:       item.totalCombos     // UI: renderNutsでのbaseTotal算出に使用
   }));
 }
 

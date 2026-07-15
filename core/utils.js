@@ -34,6 +34,17 @@ const HAND_TYPES = {
 
 let evalCache = new Map();
 
+// バグ修正候補（レビュー指摘）: evalCacheが無制限に増え続ける可能性があったため、
+// 上限を設けてFIFO（Mapは挿入順を保持する）で古いエントリから削除するようにする。
+const EVAL_CACHE_MAX = 500;
+function cacheSet(key, value) {
+  if (evalCache.size >= EVAL_CACHE_MAX && !evalCache.has(key)) {
+    const oldestKey = evalCache.keys().next().value;
+    evalCache.delete(oldestKey);
+  }
+  evalCache.set(key, value);
+}
+
 function clamp01(x) {
   return Math.max(0, Math.min(1, x));
 }
