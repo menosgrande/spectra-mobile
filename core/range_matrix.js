@@ -13,8 +13,13 @@ function classifyPotential(hand, board) {
     const suitCounts = {};
     board.forEach(c => suitCounts[c[1]] = (suitCounts[c[1]] || 0) + 1);
     const maxSuitOnBoard = Math.max(...Object.values(suitCounts));
-    // Suited hand has FD potential if 2+ of same suit on board (would need 1 match)
-    hasFlushDraw = maxSuitOnBoard >= 2;
+    // バグ修正: maxSuitOnBoard>=2なら常に「ドロー」として+0.45していたが、
+    // board側に既に3枚以上同スートがある場合、スーテッドハンド（2枚）と合わせて
+    // 5枚以上になり、フラッシュは既に完成している（ドローではない）。
+    // 例: 4-flushボード+スーテッドハンド = ロイヤル/フラッシュ完成なのに
+    // 「まだドロー中」として二重にpotentialを加算していた。
+    // → ちょうど2枚（=まだ1枚足りない、本物のドロー）の時だけ加算する。
+    hasFlushDraw = maxSuitOnBoard === 2;
   }
 
   // ── Straight draw potential ──
@@ -112,7 +117,10 @@ function classifyDraw(hand, board) {
     const suitCounts = {};
     board.forEach(c => suitCounts[c[1]] = (suitCounts[c[1]] || 0) + 1);
     const maxSuitCount = Math.max(...Object.values(suitCounts));
-    if (maxSuitCount >= 2) return 'FD';
+    // バグ修正: board側に既に3枚以上同スートがあれば、スーテッドハンド(2枚)と
+    // 合わせて5枚以上=フラッシュは既に完成しておりドローではない。
+    // 「まだ1枚足りない」ちょうど2枚の時だけFDタグを付ける。
+    if (maxSuitCount === 2) return 'FD';
     if (maxSuitCount === 1) return 'BD-FD';
   }
 

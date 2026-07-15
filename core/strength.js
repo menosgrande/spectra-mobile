@@ -17,7 +17,11 @@ function evaluate7(cards) {
   // Ace-low straight: A(0) plays as rank 13 after K(1)
   if (uniqueRanks[0] === 0) uniqueRanks.push(13);
   let straightHighIdx = -1; // index of lowest card in best straight
-  for (let k = uniqueRanks.length - 1; k >= 4; k--) {
+  // バグ修正: 従来は高indexから降順にチェックしており、6枚以上ランクが連続する
+  // ケース（例: A-K-Q-J-T-9の6枚が全部同スート）で、より弱い窓(K-Q-J-T-9)に
+  // 先に一致してそこで停止し、より強い窓(A-K-Q-J-T=ロイヤル)を見逃していた。
+  // 昇順(=最良の窓から)に変更し、最初に見つかった時点で確定させる。
+  for (let k = 4; k < uniqueRanks.length; k++) {
     if (uniqueRanks[k] - uniqueRanks[k - 4] === 4) {
       straightHighIdx = k;
       break;
@@ -41,7 +45,8 @@ function evaluate7(cards) {
       .sort((a, b) => a - b);
     const uFlush = [...new Set(flushRanks)];
     if (uFlush[0] === 0) uFlush.push(13);
-    for (let k = uFlush.length - 1; k >= 4; k--) {
+    // 同様に昇順（最良の窓から）でチェックする
+    for (let k = 4; k < uFlush.length; k++) {
       if (uFlush[k] - uFlush[k - 4] === 4) {
         sfHigh = uFlush[k];
         break;
@@ -197,6 +202,9 @@ function classifyHandClass(score) {
 
 
 function getHandName(rawScore) {
+  // NUTS表側のHAND_BANDS（ROYAL FLUSH min:0.955）と揃えるため、
+  // ロイヤル（madeScore=1.00で成立）を先に区別する
+  if (rawScore >= 0.955) return 'ROYAL FLUSH';
   if (rawScore >= 0.90) return 'STRAIGHT FLUSH';
   if (rawScore >= 0.80) return 'FOUR OF A KIND';
   if (rawScore >= 0.70) return 'FULL HOUSE';
