@@ -93,6 +93,11 @@ const cacheKey = board.join(',') + '|' + heroPos + '|' + villainPos
 - ポジション変更・アーキタイプ変更でキャッシュミス → 再計算
 - `evalCache`（Worker内部の`Map`）はWorkerライフタイム中に保持
 
+**v3.6.2 修正:** 従来`evalCache`は無制限に増え続ける可能性があった（長時間セッションでメモリ増加）。
+`utils.js`に`cacheSet(key, value)`ヘルパーを追加し、上限`EVAL_CACHE_MAX=500`件を超えたら
+最も古いエントリ（Mapの挿入順で先頭）から削除するFIFO方式に変更。`evalCache.set()`の直接呼び出しは
+`spectra-worker.js`内の2箇所とも`cacheSet()`に置き換え済み。
+
 ---
 
 ## Board Input（5スロット）
@@ -191,6 +196,10 @@ buildPosMatrix() が呼ばれるタイミング:
   blended = baseAdv × 0.5 + lastRangeAdv × 0.5  (選択セルのみ)
 ```
 
+**保留中の課題（未着手）:** Position Matrixのクリックが唯一のHero/Villain位置選択手段になっている点、
+および「表示されるポジションが実際の状況と違う」という指摘（詳細未確認・スクリーンショット待ち）。
+着手時は本セクションと合わせて見直すこと。
+
 ---
 
 ## Mobile タブ状態
@@ -210,10 +219,10 @@ switchMobTab(tab):
 
 ```
 initEngine()
-  └─ new Worker('worker/spectra-worker.js')
+  └─ new Worker('spectra-worker.js')
   └─ worker.postMessage({ type: 'INIT' })
       ↓ (Worker内でimportScripts完了後)
-  └─ onWorkerMessage({ type: 'INIT_OK', version: '3.6' })
+  └─ onWorkerMessage({ type: 'INIT_OK', version: '3.6.2' })
   └─ workerReady = true
   └─ finalizeBrainReady()
       ├─ brain-overlay を非表示
@@ -234,26 +243,59 @@ initEngine()
 FLOP/TURNと同じ役ごとのコンボ%分布リストを継続表示する。`renderRiverPolar()` / `#river-polar` はコードとDOMは残存するが、
 到達経路がなくなったため常に非表示（`display:none`）のままとなる。
 
+**v3.6.2: 構成が大きく変わった。** 現在の`renderNuts(data, features)`の出力は以下の通り：
+
+```
+[CURRENT NUTS要約行]  ← 今この瞬間の最強ハンドを1行で表示
+  bestHand.hand を getRepresentativeCombo()+comboToHtml() で具体スート化して表示
+  （例: "AKs" ではなく "A♠K♠" と表示。ボードと矛盾しない組み合わせを1つ選ぶ）
+
+[役帯ごとのブロック（1帯あたり約4行）]
+  1行目: ▸/▾ 折りたたみアイコン + 役名 + (CONFIRMEDバッジ) … (コンボ実数) + %
+  2行目: 割合バー
+  3〜4行目: 該当ハンドのチップ一覧（最大10件、+N件で省略表示）
+```
+
+**帯の集計処理:**
+
 ```
 入力: rangeMatrix (169アイテム)
 
 処理:
-  1. getDisplayStrength() 降順でソート
-  2. density > 0 のみ（デッドコンボ除外）
-  3. 上位7件を表示
-
-各行:
-  rank | strength% | hand + bestCombo(colored suits) | handName | drawType
+  1. density > 0 のみ（デッドコンボ除外。例: KKKボードでのKKは自動的に除外される）
+  2. HAND_BANDS の閾値（ROYAL FLUSH ~ HIGH CARD）でスコアを帯に振り分け
+  3. 各帯の items に { hand, combos, isSuited, isPair, drawType, outs } を格納
+     combosは h.topClassCombos を優先使用（無ければ density*baseTotal にフォールバック）
 ```
 
-**bestCombo 表示形式:**
+**v3.6.2 バグ修正: `topClassCombos`（Worker側 range_matrix.js の eval169）**
 
-```js
-formatCombo("AhKh")
-  → <span style="color:#e04060">A♥</span><span style="color:#e04060">K♥</span>
-```
+同じ169ハンド内のコンボ（suited4通り/offsuit12通り）は`rawEval7 = Math.max(...scores)`で代表スコアを決めるが、
+従来の`activeCombos`はカードのブロック有無だけで数えており「代表スコアと同じ役に到達したコンボ数」ではなかった。
+ボードに濃いフラッシュ（3+同スート）がある場合、スーテッド4通りのうち実際にボードと同スートが揃うのは1通りだけ、
+という非対称が起きる（例: 4-flushボード+スーテッドハンド=ロイヤルは実質1コンボしかないのに、
+NUTSテーブルには「Live: 4」と誤表示されていた）。
+`topClassCombos`（代表スコアと同じ役名(`getHandName`)に到達したコンボ数のみをカウント）を新設し、
+NUTSテーブルのLive Combo表示・帯集計はこちらを優先する。
+※副作用として、残り3コンボ分の「本当はストレートである」実態はどの帯にもカウントされなくなる
+（169ハンド＝1行という構造上の制約。正確に分離するには combo単位でのテーブル行分割が必要で、これは未対応）。
 
-スーテッドの場合: domainSuit（ボード上最多スート）と一致するコンボを優先選択。
+**チップ表示の加工処理（表示直前に適用）:**
+
+- **s/o統合（`mergeSuitedOffsuit()`）**: 同じ帯の中に `ATs` と `ATo` が両方存在する場合（＝フラッシュ関連が絡まずスート違いでも同スコア）、
+  「AT s/o」の1チップにまとめてコンボ数を合算する。ペアは対象外（常に単独）。ドロータグは統合時は曖昧になるため出さない。
+- **ドロー重複タグ**: そのハンドが`drawType`を持つ場合、種類とアウツ概算を小さく併記（例: `T9s FD·9o`）。
+  ホバーで`DRAW_TYPE_EXPLAIN`辞書による日本語説明が出る。
+- **FLUSH帯のみ: ボード基準の2分割**: ボード上の支配スート（`dominantSuit`）の最高ランクを`boardTopFlushRank`として算出し、
+  スーテッドハンドを「ボード超え（キッカーで差がつく）」「ボード以下（同士討ちはチョップ寄り）」の2グループに分けて表示。
+  `boardTopFlushRank`がAce(0)の場合は「⚠ ボードの♠Aがキッカー確定 → 同士討ちはチョップ濃厚」の注記を出す。
+  この分割は通常のスート内訳サブ行（旧仕様）を置き換えている。
+
+**帯の折りたたみ:** `collapsedNutBands`（グローバルSet、デフォルト`['HIGH CARD']`）に含まれる帯はヘッダー＋バーの2行のみ表示。
+ヘッダークリックで`toggleNutBand(name)`が呼ばれ、`lastNutsFeatures`（renderNuts呼び出し時にキャッシュ）を使って再描画する。
+
+**CURRENT NUTS表示について:** `bestHand`は`live`配列（density>0）の中で`madeStrength`（無ければ`rawScore`）が最大のものを採用。
+`handName`はWorker側の`getHandName()`が返す文字列をそのまま使う（v3.6.2でROYAL FLUSH区分を追加済み、閾値0.955）。
 
 ---
 
@@ -273,6 +315,22 @@ formatCombo("AhKh")
 **v3.6.1:** 目盛りライン（25/50/75）の視認性を強化（`rgba(0,180,255,0.2)`→`rgba(140,200,240,0.55)`、font-size 5→6）。
 また、略語だけでは意味が伝わりにくいため、チャート下部に5軸それぞれの英語フルネーム＋簡単な説明を凡例として常時表示する
 （`ENT Entropy — complexity` など）。
+
+---
+
+## 初心者向けツールチップ（v3.6.2〜）
+
+専門用語に`title`属性でホバー説明を付与する仕組み。新規追加時はここに追記すること。
+
+```
+DRAW_TYPE_EXPLAIN  … FD/OESD/GSD/BD-FDの説明（NUTSチップのドロータグに適用）
+HUD_DEFS[].explain … attack/value/bluff/cappedの説明（Board Intelligence内のHUDバッジに適用）
+各パネル見出しのtitle属性 … HERO HAND / POSITION MATRIX / STRUCTURE RADAR /
+                            HERO OUTS / BOARD INTELLIGENCE / 3D HEATMAP / NUTS(nuts-sec-label)
+```
+
+NUTSパネルのチップ・ラベル類は他パネルより一段階大きいフォントサイズを採用している
+（v3.6.2で「文字が小さい」という指摘を受けて底上げ済み。他パネルは未対応、今後の課題）。
 
 ---
 

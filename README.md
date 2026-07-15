@@ -1,4 +1,4 @@
-# SPECTRA v3.6.1 — Board Intelligence OS
+# SPECTRA v3.6.2 — Board Intelligence OS
 
 テキサスホールデムのボードテクスチャ・レンジ構造・戦況を解析するポーカー分析ツール。
 
@@ -11,18 +11,17 @@ Fold/Call/Raise の推奨・GTOアクション・EV比較は**提示しない**�
 
 ```
 index.html                  ← UI本体（単一ファイル）
-worker/
-  spectra-worker.js         ← Worker エントリーポイント（API窓口のみ）
-  core/
-    utils.js                ← 定数・ユーティリティ関数
-    texture.js              ← ボードテクスチャ分類
-    position.js             ← ポジションプロファイル・アーキタイプ
-    strength.js             ← ハンド強度評価エンジン
-    range_matrix.js         ← 169ハンド評価・ドロー分類・レンジ統計
-    board_intel.js          ← ボードフィーチャー抽出・アグレッションシグナル
-    interpretations.js      ← 意味付けエンジン（Interpretation生成）
-    narrative.js            ← Narrative生成・HUD計算
-    board_intelligence.js   ← オーケストレーター（analyzeBoard）
+spectra-worker.js            ← Worker エントリーポイント（API窓口のみ）
+core/
+  utils.js                  ← 定数・ユーティリティ関数
+  texture.js                ← ボードテクスチャ分類
+  position.js               ← ポジションプロファイル・アーキタイプ
+  strength.js               ← ハンド強度評価エンジン
+  range_matrix.js           ← 169ハンド評価・ドロー分類・レンジ統計
+  board_intel.js            ← ボードフィーチャー抽出・アグレッションシグナル
+  interpretations.js        ← 意味付けエンジン（Interpretation生成）
+  narrative.js              ← Narrative生成・HUD計算
+  board_intelligence.js     ← オーケストレーター（analyzeBoard）
 ```
 
 ### importScripts 読込順（依存グラフ順）
@@ -260,3 +259,10 @@ NUTS Table          3D Heatmap           Board Texture
 | P2-B | bestCombo 追跡、Narrative 定量化、band ceiling 修正、デッドコンボ黒化 |
 | P2-C | **strength.js**: Royal/Straight Flushのスコア算出バグ修正（flushSuit以外のカードが混ざると誤判定していた `sfHigh` を、flushSuit限定の計算に変更）。あわせて `computeBoardInteraction` のロイヤルボーナス判定も同様に修正 |
 | P2-D | UI: リバー専用「River Polar View」廃止、NUTS Tableを全ストリート共通に統一。Structure Radar（5軸）に目盛り視認性向上＋英語凡例（ENT/POL/COV/DRW/DOM フルネーム）を追加 |
+| P2-E | **range_matrix.js**: `classifyPotential`/`classifyDraw` の二重計上バグ修正。既に完成済みのストレート（ホイール含む）・フラッシュに対して、追加でドローの伸びしろ(OESD/GSD/FD)を加算してしまい、最終スコアが本来の役の上限を飛び越えて別カテゴリ扱いされる不具合を修正 |
+| P2-F | **strength.js**: ①ホイール(A-2-3-4-5)がストレート帯の下限を割り込みTHREE OF A KIND扱いになる境界バグを床clampで修正 ②同スートが6枚以上連続する盤面（4-flushボード等）で、最強のストレートフラッシュ（ロイヤル含む）に辿り着く前に弱い窓で判定が停止していたループ方向バグを昇順探索に修正 ③`getHandName`にROYAL FLUSH区分(閾値0.955)を追加 |
+| P2-G | **NUTS Table 拡張**: CURRENT NUTS要約行（具体スート表示）、コンボ実数併記、ドロー重複タグ（種類+アウツ概算）、帯の折りたたみ、suited/offsuit統合表示（例: 「AT s/o」）、FLUSH帯のボード基準チョップ判定（ボード超え/以下の2分割）を追加 |
+| P2-H | **可読性・初心者向けパス**: NUTSパネルのチップ・ラベル類のフォントサイズ全体的に底上げ。ドロータグ・HUDシグナル・各パネル見出しに日本語ツールチップ（title属性）を追加。レーダー目盛りを白系に変更しレーダースコープ風の見た目に。未使用だった`nuts-sec-label`要素を実装（従来HTML未実装でJSからの書き込みが無効化されていた） |
+| P2-I | **range_matrix.js**: `eval169`のコンボ数カウントバグ修正。同じ169ハンド内の4通り(suited)/12通り(offsuit)のコンボは`rawEval7 = Math.max(...scores)`で代表スコアを決めているが、コンボ数(`activeCombos`)はカードのブロック有無だけで数えており「代表スコアと同じ役に到達したコンボ数」ではなかった。通常は問題にならないが、ボードに濃いフラッシュ（3+同スート等）がある場合、スーテッド4通りのうち実際にボードと同スートが揃うのは1通りだけ、という非対称が起きる（例: 4-flushボード+スーテッドハンド=ロイヤルは実質1コンボしかないのに、NUTSテーブルには「Live: 4」と誤表示されていた）。新たに`topClassCombos`（代表スコアと同じ役名(getHandName)に到達したコンボ数のみ）を計算し、NUTSテーブルのLive Combo表示はこちらを優先するように修正 |
+| P2-J | **外部レビュー対応**: (1) `board_intel.js`の`classifyNutDynamics`が`context.positions === 'BTN_VS_BB'`という、実際のUI呼び出しでは存在しないフィールドを見ていたバグを修正（`context.heroPos === 'BTN' && context.villainPos === 'BB'`に変更）。実運用では常にfalse側に倒れ、ポジションに関わらずNUT_ADV_VILLAIN固定/NEUTRAL固定になっていた。(2) `utils.js`の`evalCache`が無制限に増え続ける可能性があったため、`cacheSet()`ヘルパーを追加しFIFOで上限500件に制限。(3) バージョン表記の混在（index.html内`v3.0 BATTLE OS`、worker内`3.6`、README`3.6.1`）を`v3.6.2`に統一 |
+

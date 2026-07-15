@@ -1,5 +1,5 @@
 /**
- * SPECTRA v3.6 Worker — Entry Point
+ * SPECTRA v3.6.2 Worker — Entry Point
  *
  * このファイルは「公開APIの窓口」のみを担う。
  * 計算・評価・意味生成はすべて core/ モジュールが行う。
@@ -21,7 +21,7 @@ importScripts(
   './core/board_intelligence.js'
 );
 
-console.log('[SPECTRA v3.6] All modules loaded OK');
+console.log('[SPECTRA v3.6.2] All modules loaded OK');
 
 /* ══════════════════════════════
    PUBLIC API
@@ -36,7 +36,7 @@ self.onmessage = function (e) {
     if (type === 'INIT') {
       self.postMessage({
         type: 'INIT_OK',
-        version: '3.6',
+        version: '3.6.2',
         capabilities: ['BOARD_INTELLIGENCE', 'EVAL_169', 'TEXTURE']
       });
       return;
@@ -68,7 +68,7 @@ self.onmessage = function (e) {
       intel.texture = calcBoardTexture(board);
 
       const ms = Math.round(performance.now() - t0);
-      evalCache.set(cacheKey, intel);
+      cacheSet(cacheKey, intel);
 
       self.postMessage({
         type: 'BOARD_INTELLIGENCE',
@@ -98,7 +98,7 @@ self.onmessage = function (e) {
 
       const results = eval169(board);
       const ms      = Math.round(performance.now() - t0);
-      evalCache.set(cacheKey, results);
+      cacheSet(cacheKey, results);
 
       self.postMessage({
         type: 'EVAL_169',
