@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>SPECTRA v3.6.2 — Board Intelligence OS</title>
+<title>SPECTRA v3.7 — Board Intelligence OS</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════
-   SPECTRA v3.6.2 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
+   SPECTRA v3.7 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
    ─ Hue: 勝率（赤=強→青緑=弱）
    ─ Saturation: コンボ密度（鮮=存在する→灰=幻のハンド）
    ─ Lightness: 将来性・ドロー力（白=アウツ多→暗=死手）
@@ -338,7 +338,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 <!-- BRAIN OVERLAY -->
 <div id="brain-overlay">
-  <div class="brain-title">SPECTRA v3.6.2</div>
+  <div class="brain-title">SPECTRA v3.7</div>
   <div class="brain-msg" id="brain-msg">INITIALIZING JS ENGINE...</div>
   <div class="brain-prog-wrap"><div class="brain-prog" id="brain-prog" style="width:8%"></div></div>
   <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);margin-top:4px;" id="brain-sub">loading pure javascript worker</div>
@@ -355,7 +355,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 <!-- HEADER -->
 <div id="hdr">
-  <div><div class="logo-t">SPECTRA</div><div class="logo-s">BOARD INTELLIGENCE OS v3.6.2</div></div>
+  <div><div class="logo-t">SPECTRA</div><div class="logo-s">BOARD INTELLIGENCE OS v3.7</div></div>
   <div class="hdr-mid">SPECTRA</div>
   <div class="hdr-r">
     <div class="conn-dot"></div>
@@ -590,14 +590,14 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <span class="analyzing">● ANALYZING BOARD... LIVE</span>
   <span id="ftr-hash">HASH: N/A</span>
   <span id="calc-time" style="color:rgba(0,212,255,.5);">CALC: --ms</span>
-  <span>SPECTRA BOARD INTELLIGENCE OS v3.6.2</span>
+  <span>SPECTRA BOARD INTELLIGENCE OS v3.7</span>
 </div>
 
 </div><!-- /root -->
 
 <script>
 /* ═══════════════════════════════════════════════════
-   SPECTRA v3.6.2 — PURE JS ENGINE (Python完全追放)
+   SPECTRA v3.7 — PURE JS ENGINE (Python完全追放)
    Worker: spectra-worker.js に丸投げ
    Fallback: Worker未使用時はinlineで簡易計算
 ═══════════════════════════════════════════════════ */
@@ -767,8 +767,6 @@ function calc3DHSL(item) {
   const eq   = Math.max(0, Math.min(100, getDisplayStrength(item)));
   const pot  = Math.max(0, Math.min(1,   item.potential      || 0));
   const made = Math.max(0, Math.min(1,   item.madeStrength   || eq / 100));
-  const ac   = item.activeCombos || 0;
-  const tc   = item.totalCombos  || 0;
 
   // ─ Street detection ─
   const boardLen = (typeof currentBoard !== 'undefined') ? currentBoard.length : 3;
@@ -779,7 +777,14 @@ function calc3DHSL(item) {
   const hue = Math.round((1 - eq / 100) * 180);
 
   // ─ Saturation: デッドコンボは灰色へ ─
-  const density = tc > 0 ? ac / tc : 1;
+  // バグ修正: item.activeCombos は元々UI側のrangeMatrixには渡っていない
+  // フィールドで、常にundefined→0だった。以前はitem.totalCombosも同様に
+  // undefined→0だったため tc>0 が常にfalseとなり density=1(デフォルト最大彩度)に
+  // フォールバックして「たまたま」正常に見えていた。
+  // topClassCombosの修正でtotalComtosを新たに渡すようにしたところ、
+  // tcだけ実数を持つようになり、ac(常に0)/tc = 0 で彩度が常に最低になっていた。
+  // → 既に正しく計算済みのitem.density（0-1の比率）をそのまま使う。
+  const density = Math.max(0, Math.min(1, item.density ?? 1));
   const sat = Math.round(Math.max(15, density * 95));
 
   // ─ Lightness: ストリートで意味が変わる ─
@@ -1038,7 +1043,7 @@ function render3DHeatmap(data) {
       : fallbackColor(getDisplayStrength(item));
     cell.dataset.eq   = getDisplayStrength(item).toFixed(1);
     cell.dataset.pot  = item.potential !== undefined ? (item.potential * 100).toFixed(0) : '0';
-    cell.dataset.den  = item.totalCombos > 0 ? ((item.activeCombos / item.totalCombos) * 100).toFixed(0) : '100';
+    cell.dataset.den  = item.density !== undefined ? (item.density * 100).toFixed(0) : '100';
     cell.dataset.draw = item.drawType || '--';
     cell.dataset.hand = item.hand || '';
   });

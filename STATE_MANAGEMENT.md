@@ -222,7 +222,7 @@ initEngine()
   └─ new Worker('spectra-worker.js')
   └─ worker.postMessage({ type: 'INIT' })
       ↓ (Worker内でimportScripts完了後)
-  └─ onWorkerMessage({ type: 'INIT_OK', version: '3.6.2' })
+  └─ onWorkerMessage({ type: 'INIT_OK', version: '3.7' })
   └─ workerReady = true
   └─ finalizeBrainReady()
       ├─ brain-overlay を非表示
@@ -295,7 +295,8 @@ NUTSテーブルのLive Combo表示・帯集計はこちらを優先する。
 ヘッダークリックで`toggleNutBand(name)`が呼ばれ、`lastNutsFeatures`（renderNuts呼び出し時にキャッシュ）を使って再描画する。
 
 **CURRENT NUTS表示について:** `bestHand`は`live`配列（density>0）の中で`madeStrength`（無ければ`rawScore`）が最大のものを採用。
-`handName`はWorker側の`getHandName()`が返す文字列をそのまま使う（v3.6.2でROYAL FLUSH区分を追加済み、閾値0.955）。
+`handName`はv3.7以降、Worker側`evaluate7()`が判定した実際のカテゴリ（`category`/`categoryName`）がそのまま`eval169`→`evalRange169`経由で渡ってくる。
+以前のようにスコア数値から`getHandName()`で逆算する経路はなくなったため、ボード補正等でスコアが揺れても役名がズレることは構造的に起きない（詳細は`strength.js`のP2-K/v3.7の項を参照）。
 
 ---
 
