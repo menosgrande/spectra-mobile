@@ -233,7 +233,15 @@ initEngine()
       └─ buildPosMatrix()      Position Matrix 生成
 ```
 
-**フォールバック:** Worker起動失敗 or 4秒タイムアウト → `startFallback()` でUIのみモードに移行。
+**フォールバック:** Worker起動失敗 or 3秒タイムアウト or Worker実行時例外(`ENGINE_ERROR`) → `startFallback()` でUIのみモードに移行。
+
+**v3.7.1 修正:** 以前は`startFallback()`が`spectraWorker`をnull化していなかったため、
+fallback発動後も`triggerUpdate()`が`if(spectraWorker)`分岐に入り続け、壊れた/応答しないWorkerへ
+postMessageし続けてしまっていた（importScripts失敗時は`self.onmessage`自体が設定されないため応答が
+一切返らず、スピナーが固まる）。現在は`startFallback()`内で`spectraWorker.terminate()`と
+`spectraWorker = null`を行うため、以降`triggerUpdate()`は正しく`else`側（inline fallback）に入る。
+あわせて、Worker側の`ENGINE_ERROR`（実行時例外）を`onWorkerMessage()`が無視していたバグも修正し、
+受信時に`startFallback()`を呼ぶようにした。
 
 ---
 
@@ -296,7 +304,8 @@ NUTSテーブルのLive Combo表示・帯集計はこちらを優先する。
 
 **CURRENT NUTS表示について:** `bestHand`は`live`配列（density>0）の中で`madeStrength`（無ければ`rawScore`）が最大のものを採用。
 `handName`はv3.7以降、Worker側`evaluate7()`が判定した実際のカテゴリ（`category`/`categoryName`）がそのまま`eval169`→`evalRange169`経由で渡ってくる。
-以前のようにスコア数値から`getHandName()`で逆算する経路はなくなったため、ボード補正等でスコアが揺れても役名がズレることは構造的に起きない（詳細は`strength.js`のP2-K/v3.7の項を参照）。
+以前のようにスコア数値から`getHandName()`で逆算する経路はなくなったため、ボード補正等でスコアが揺れて役名が誤表示される問題は構造上発生しなくなった（詳細は`strength.js`のP2-K/v3.7の項を参照）。
+※ただし`detectHandCategory()`自体の役判定ロジックに誤りがあれば、当然それはそのまま役名に反映される。防げるのは「スコアと役名の不整合」のみで、役判定ロジック自体の正しさを保証するものではない。
 
 ---
 

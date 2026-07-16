@@ -636,21 +636,32 @@ function initEngine() {
     spectraWorker.onerror   = (e) => {
       console.warn('[SPECTRA] Worker error, using fallback:', e.message);
       workerReady = false;
-      startFallback();
+      startFallback(`worker error: ${e.message || 'unknown'}`);
     };
     spectraWorker.postMessage({ type: 'INIT' });
     // Timeout: if no READY within 3s, use fallback
     setTimeout(() => {
-      if (!workerReady) startFallback();
+      if (!workerReady) startFallback('init timeout (3s)');
     }, 3000);
   } catch(e) {
-    startFallback();
+    startFallback(`worker init exception: ${e.message || 'unknown'}`);
   }
 }
 
-function startFallback() {
+function startFallback(reason = 'inline js eval') {
+  // バグ修正: 従来はworkerReady=trueにしてfinalizeBrainReady()を呼ぶだけで、
+  // spectraWorkerの参照をnull化していなかった。そのためtriggerUpdate()の
+  // if(spectraWorker)分岐に入り続け、壊れたWorkerへpostMessageし続けてしまい
+  // （importScriptsが失敗している場合は self.onmessage 自体が設定されないため
+  // 応答が一切返らず、CALCULATINGスピナーが永久に残る）、
+  // 「見た目上はfallback」なのに実際にはfallbackが有効化されていない状態になっていた。
+  if (spectraWorker) {
+    try { spectraWorker.terminate(); } catch (_) {}
+    spectraWorker = null;
+  }
   workerReady = true;
-  setBrainMsg('FALLBACK ENGINE READY','inline js eval',100);
+  document.getElementById('hm-spin')?.classList.remove('active');
+  setBrainMsg('FALLBACK ENGINE READY', reason, 100);
   finalizeBrainReady();
 }
 
@@ -665,6 +676,16 @@ function onWorkerMessage(e) {
   }
 
   switch(type) {
+    // バグ修正: spectra-worker.jsは実行時例外をcatchしてENGINE_ERRORを
+    // postMessageで返すが、以前はここに対応するcaseが無かったため、
+    // Worker内で例外が起きるとUI側は何もせず、スピナーが解放されず
+    // fallbackにも切り替わらない、という不整合が起きていた。
+    case 'ENGINE_ERROR':
+      console.warn('[SPECTRA] Worker runtime error, switching to fallback:', data?.message || 'unknown error');
+      workerReady = false;
+      startFallback(`worker runtime error: ${data?.message || 'unknown error'}`);
+      break;
+
     // ── P1.5: BOARD_INTELLIGENCE is the unified entry ──
     // All rendering flows from this single response
     case 'BOARD_INTELLIGENCE':

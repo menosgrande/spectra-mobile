@@ -245,6 +245,40 @@ NUTS Table          3D Heatmap           Board Texture
 
 ---
 
+## テスト
+
+`tests/engine.test.js` — Node標準の`assert`のみで書かれたリグレッションテストスイート（フレームワーク不使用）。
+`core/*.js`をWorkerと同じ読込順で結合してevalし、実際のWorker挙動をそのまま再現してテストする。
+
+```bash
+node tests/engine.test.js
+```
+
+配置は `tests/` を `core/` と同じ階層（リポジトリルート）に置く想定：
+
+```
+index.html
+spectra-worker.js
+core/
+  utils.js ...
+tests/
+  engine.test.js
+```
+
+現在18ケース。主な内容：
+
+- 役判定（ロイヤル取り逃がし・ホイール境界6パターン・トリップス誤認 など、このセッションで発見・修正したバグの再発防止）
+- 169マトリクス・ドロー分類（フラッシュ完成済みハンドの二重カウント、topClassCombos、デッドコンボ除外）
+- Nut Dynamics（`context.heroPos`/`context.villainPos`を正しく見ているか）
+- 統合テスト（`analyzeBoard()`が例外なく動くか）
+
+**注意:** これは`detectHandCategory()`/`scoreHandCategory()`の**回帰防止**テストであり、
+役判定ロジックそのものの網羅的な正しさ（例: 全カード組み合わせに対する既存評価器との突き合わせ）は
+保証しない。外部レビューで提案された「100〜200ケースの単体テスト」「ランダム7枚×既存評価器との
+突き合わせ」まではまだ未着手（今後の課題）。
+
+---
+
 ## 開発履歴（フェーズ）
 
 | Phase | 内容 |
@@ -266,5 +300,7 @@ NUTS Table          3D Heatmap           Board Texture
 | P2-I | **range_matrix.js**: `eval169`のコンボ数カウントバグ修正。同じ169ハンド内の4通り(suited)/12通り(offsuit)のコンボは`rawEval7 = Math.max(...scores)`で代表スコアを決めているが、コンボ数(`activeCombos`)はカードのブロック有無だけで数えており「代表スコアと同じ役に到達したコンボ数」ではなかった。通常は問題にならないが、ボードに濃いフラッシュ（3+同スート等）がある場合、スーテッド4通りのうち実際にボードと同スートが揃うのは1通りだけ、という非対称が起きる（例: 4-flushボード+スーテッドハンド=ロイヤルは実質1コンボしかないのに、NUTSテーブルには「Live: 4」と誤表示されていた）。新たに`topClassCombos`（代表スコアと同じ役名(getHandName)に到達したコンボ数のみ）を計算し、NUTSテーブルのLive Combo表示はこちらを優先するように修正 |
 | P2-J | **外部レビュー対応**: (1) `board_intel.js`の`classifyNutDynamics`が`context.positions === 'BTN_VS_BB'`という、実際のUI呼び出しでは存在しないフィールドを見ていたバグを修正（`context.heroPos === 'BTN' && context.villainPos === 'BB'`に変更）。実運用では常にfalse側に倒れ、ポジションに関わらずNUT_ADV_VILLAIN固定/NEUTRAL固定になっていた。(2) `utils.js`の`evalCache`が無制限に増え続ける可能性があったため、`cacheSet()`ヘルパーを追加しFIFOで上限500件に制限。(3) バージョン表記の混在（index.html内`v3.0 BATTLE OS`、worker内`3.6`、README`3.6.1`）を`v3.7`に統一 |
 | P2-K | **リグレッション修正（P2-I由来）**: `calc3DHSL()`と`render3DHeatmap()`が`item.activeCombos`を参照していたが、これはUI側のrangeMatrixには元々存在しないフィールド（`density`という比率のみが渡っていた）。以前は`item.totalCombos`も同様に存在しなかったため`tc>0`判定が常にfalseとなりデフォルト値にフォールバックして「たまたま」正常に見えていたが、P2-Iで`totalCombos`をUIに渡すよう変更した際にこの副作用が表面化し、ヒートマップの彩度が常に最低（`0/tc=0`）になる、`data-den`ツールチップがNaNになる、という2つのリグレッションを引き起こしていた。両箇所とも既存の`item.density`（正しく計算済みの比率）を直接使うように修正 |
-| **v3.7** | **設計リファクタ: 役判定とスコアリングの分離**（外部レビュー指摘への対応）。以前の`evaluate7()`は「役判定」と「連続値スコアリング（ボード補正・キッカー補正込み）」を1つの関数内で混在させており、これがこのセッション中に見つかった一連のバグ（ロイヤルフラッシュ取り逃がし、ホイールがカテゴリ閾値を割り込む、トリップスがストレート名で表示される等）の共通原因だった——いずれも「最終的な連続値スコアから`getHandName()`で役名を逆算する」設計が引き金。`strength.js`を`detectHandCategory(cards)`（純粋な役判定、スコアなし）と`scoreHandCategory(cat, cards)`（判定済みカテゴリに対する連続値スコア計算）に分離し、`evaluate7(cards)`は`{ score, category, categoryName }`を返すオーケストレーターに変更。`range_matrix.js`の`eval169()`は数値スコア配列から`Math.max()`で最高値を取って`getHandName()`で逆算する方式をやめ、判定済みオブジェクトの中から最高スコアのものを選んでその`category`をそのまま使う方式に変更（`topClassCombos`の比較も同様に、数値の逆算ではなく`category`の直接比較に変更）。`getHandName()`は使用箇所がなくなったためレガシー関数としてコメントを付けて残置。既存の全リグレッションテスト（Royal/SF判定、ホイール境界、トリップス誤認、コンボ数バグ、Nut Dynamics）は全て同じ結果を維持することを確認済み——動作は変えず、構造だけを直した |
+| **v3.7** | **設計リファクタ: 役判定とスコアリングの分離**（外部レビュー指摘への対応）。以前の`evaluate7()`は「役判定」と「連続値スコアリング（ボード補正・キッカー補正込み）」を1つの関数内で混在させており、これがこのセッション中に見つかった一連のバグ（ロイヤルフラッシュ取り逃がし、ホイールがカテゴリ閾値を割り込む、トリップスがストレート名で表示される等）の共通原因だった——いずれも「最終的な連続値スコアから`getHandName()`で役名を逆算する」設計が引き金。`strength.js`を`detectHandCategory(cards)`（純粋な役判定、スコアなし）と`scoreHandCategory(cat, cards)`（判定済みカテゴリに対する連続値スコア計算）に分離し、`evaluate7(cards)`は`{ score, category, categoryName }`を返すオーケストレーターに変更。`range_matrix.js`の`eval169()`は数値スコア配列から`Math.max()`で最高値を取って`getHandName()`で逆算する方式をやめ、判定済みオブジェクトの中から最高スコアのものを選んでその`category`をそのまま使う方式に変更（`topClassCombos`の比較も同様に、数値の逆算ではなく`category`の直接比較に変更）。`getHandName()`は使用箇所がなくなったためレガシー関数としてコメントを付けて残置。既存の全リグレッションテスト（Royal/SF判定、ホイール境界、トリップス誤認、コンボ数バグ、Nut Dynamics）は全て同じ結果を維持することを確認済み——動作は変えず、構造だけを直した。**なお、この分離が防ぐのは「スコア補正による役名の食い違い」のみで、`detectHandCategory()`自体の役判定ロジックの誤りまでは防げない**（外部レビューでの指摘通り、別問題として残る） |
+| **v3.7 追補** | 外部レビュー指摘への追加対応。(1) `category`を生の文字列リテラル(`'ROYAL_FLUSH'`等)で直接書くとタイポに気づきにくいため、`HAND_CATEGORY`定数オブジェクトを導入し`HAND_CATEGORY.ROYAL_FLUSH`のように参照するよう統一。(2) このセッション中に書き溜めたアドホックな検証コードを`tests/engine.test.js`として正式なリグレッションテストスイートに整理（フレームワーク不使用、Node標準の`assert`のみ。`node tests/engine.test.js`で実行。18ケース、詳細は「テスト」節を参照） |
+| **v3.7.1** | **index.html: Worker障害時のfallback遷移バグ修正**（外部レビュー指摘）。`startFallback()`が`workerReady=true`にするだけで`spectraWorker`をnull化していなかったため、`triggerUpdate()`の`if(spectraWorker)`分岐に入り続け、壊れた/応答しないWorkerへpostMessageし続けてしまっていた（importScripts失敗時は`self.onmessage`自体が設定されないため応答が一切返らず、CALCULATINGスピナーが解放されないまま固まる）。「見た目上はfallback」なのに実際にはfallbackが有効化されていない状態だった。`startFallback()`で`spectraWorker.terminate()`＋`spectraWorker = null`を行うよう修正。あわせて、Worker側(`spectra-worker.js`)が実行時例外を`ENGINE_ERROR`としてpostMessageしていたにもかかわらず`onWorkerMessage()`の`switch`に対応する`case`が無く握りつぶされていたバグも修正（`ENGINE_ERROR`受信時に`startFallback()`を呼ぶcaseを追加）。通常時のWorker成功フロー・公開APIは変更なし |
 
