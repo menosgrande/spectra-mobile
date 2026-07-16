@@ -139,7 +139,7 @@ function eval169(board, hero) {
     for (let j = 0; j < 13; j++) {
       const r1 = RANKS[i];
       const r2 = RANKS[j];
-      let hand, combos = [], scores = [], activeCombos = 0;
+      let hand, evals = [], activeCombos = 0;
 
       if (i === j) {
         // Pair
@@ -150,8 +150,7 @@ function eval169(board, hero) {
             const c2 = r1 + SUITS[s2];
             if (!deadSet.has(c1) && !deadSet.has(c2)) {
               activeCombos++;
-              const score = evaluate7([c1, c2, ...board]);
-              scores.push(score);
+              evals.push(evaluate7([c1, c2, ...board]));
             }
           }
         }
@@ -163,8 +162,7 @@ function eval169(board, hero) {
           const c2 = r2 + SUITS[s];
           if (!deadSet.has(c1) && !deadSet.has(c2)) {
             activeCombos++;
-            const score = evaluate7([c1, c2, ...board]);
-            scores.push(score);
+            evals.push(evaluate7([c1, c2, ...board]));
           }
         }
       } else {
@@ -177,28 +175,41 @@ function eval169(board, hero) {
             const c2 = r1 + SUITS[s2];
             if (!deadSet.has(c1) && !deadSet.has(c2)) {
               activeCombos++;
-              const score = evaluate7([c1, c2, ...board]);
-              scores.push(score);
+              evals.push(evaluate7([c1, c2, ...board]));
             }
           }
         }
       }
 
       const totalCombos = i === j ? 6 : (i < j ? 4 : 12);
-      const rawEval7    = scores.length ? Math.max(...scores) : 0;
+
+      // ── 代表コンボ（最高スコア）を選ぶ ──
+      // 設計リファクタ（v3.7）: 以前は数値スコアの配列からMath.maxで
+      // 最高値を取り、その数値からgetHandName()で役名を「逆算」していた。
+      // これはボード補正やポテンシャル加算で数値が閾値を跨ぐたびに
+      // 役名がズレるバグの温床だった（ロイヤル取り逃がし・トリップスが
+      // ストレート扱い等、いずれもこの1session内で発見・修正済み）。
+      // 今は evaluate7() が判定した「本物のカテゴリ」をそのまま運ぶため、
+      // 数値がどれだけ揺れても役名がズレることは構造的に起きない。
+      let best = null;
+      for (const e of evals) {
+        if (!best || e.score > best.score) best = e;
+      }
+      const rawEval7 = best ? best.score : 0;
+
       const potStrength = classifyPotential(hand, board);
       const madeStr     = computeMadeStrength(rawEval7, board);
       const rawScore    = computeProjectedRawScore(madeStr, potStrength);
 
+      // ── Live Combo数 ──
       // バグ修正: activeCombosは「dead cardでブロックされていないコンボ数」であって、
-      // 「rawEval7と同じ役に到達するコンボ数」ではない。通常スートは対称なので
+      // 「代表コンボと同じ役に到達したコンボ数」ではない。通常スートは対称なので
       // 問題にならないが、ボード自体に濃いフラッシュ関連（3+同スート等）がある場合、
       // スーテッドハンド4通りのうち実際にボードと同スートが揃うのは1通りだけ、
       // というケースが起きる（例: 4-flushボード+スーテッドハンド=ロイヤルは
       // 実質1コンボしかないのに、activeCombosは4のまま＝表示上「Live: 4」の誤表示）。
-      // → 同じ役名(getHandName)に到達したコンボだけを数え直す。
-      const topHandName    = getHandName(rawEval7);
-      const topClassCombos = scores.filter(s => getHandName(s) === topHandName).length;
+      // 代表コンボの category と直接一致するコンボだけを数える（スコアの逆算比較ではない）。
+      const topClassCombos = best ? evals.filter(e => e.category === best.category).length : 0;
 
       results.push({
         hand:             hand,
@@ -206,7 +217,7 @@ function eval169(board, hero) {
         madeStrength:     madeStr,
         potentialStrength: potStrength,
         class:            classifyHandClass(rawScore),
-        handName:         getHandName(rawScore),
+        handName:         best ? best.categoryName : 'HIGH CARD', // ← getHandName()による逆算をやめ、判定済みcategoryをそのまま使う
         activeCombos:     activeCombos,
         topClassCombos:   topClassCombos,
         totalCombos:      totalCombos,

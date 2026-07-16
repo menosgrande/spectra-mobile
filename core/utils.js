@@ -7,7 +7,9 @@
  * Legacy API : EVAL_169 / TEXTURE  (backward compat, internally delegated)
  *
  * Evaluation stack:
- *   evaluate7()          → 0-1 continuous score (two-layer: made + board interaction)
+ *   evaluate7()          → { score, category, categoryName }（v3.7〜: 役判定と
+ *                           連続値スコアリングを分離。category は判定結果そのもの
+ *                           なのでスコアの揺れで役名がズレることはない）
  *   classifyHandClass()  → NUTS / TOP_PAIR_PLUS / MIDDLE_PAIR / WEAK_PAIR / AIR
  *   evalRange169()       → 169-hand matrix { hand, rawScore, potential, density, class }
  *   computeRangeAdvantage() → -1..+1 (+ = hero advantage)
