@@ -18,8 +18,31 @@
                                      { score, category, categoryName }
                                      を返す（category は判定結果そのもの
                                      なので、スコアがどれだけ揺れても
-                                     役名とズレることは構造的に起きない）
+                                     「スコアと役名が食い違う」バグは
+                                     構造上発生しなくなる。
+                                     ※ただし detectHandCategory() 自体の
+                                     役判定ロジックが誤っていれば、それは
+                                     そのまま役名に反映される——この分離が
+                                     防ぐのはスコアとの不整合のみで、
+                                     役判定ロジック自体の正しさを保証する
+                                     ものではない）
 ══════════════════════════════ */
+
+// レビュー指摘対応: category を生の文字列リテラルで書くとタイポに気づきにくいため、
+// 定数オブジェクトを経由して参照する（HAND_CATEGORY.ROYAL_FLUSH のように使う）。
+// 値そのものは内部識別子として従来通りの文字列を維持（CATEGORY_DISPLAYのキーと一致させる）。
+const HAND_CATEGORY = {
+  ROYAL_FLUSH:     'ROYAL_FLUSH',
+  STRAIGHT_FLUSH:  'STRAIGHT_FLUSH',
+  FOUR_OF_A_KIND:  'FOUR_OF_A_KIND',
+  FULL_HOUSE:      'FULL_HOUSE',
+  FLUSH:           'FLUSH',
+  STRAIGHT:        'STRAIGHT',
+  THREE_OF_A_KIND: 'THREE_OF_A_KIND',
+  TWO_PAIR:        'TWO_PAIR',
+  ONE_PAIR:        'ONE_PAIR',
+  HIGH_CARD:       'HIGH_CARD'
+};
 
 const CATEGORY_DISPLAY = {
   ROYAL_FLUSH:     'ROYAL FLUSH',
@@ -95,29 +118,29 @@ function detectHandCategory(cards) {
   let secondaryRank = null;    // フルハウスの組ランク／ツーペアの2組目
 
   if (isStraightFlush) {
-    category = (sfHigh === 4) ? 'ROYAL_FLUSH' : 'STRAIGHT_FLUSH';
+    category = (sfHigh === 4) ? HAND_CATEGORY.ROYAL_FLUSH : HAND_CATEGORY.STRAIGHT_FLUSH;
     primaryRank = sfHigh;
   } else if (counts[0] === 4) {
-    category = 'FOUR_OF_A_KIND';
+    category = HAND_CATEGORY.FOUR_OF_A_KIND;
   } else if (counts[0] === 3 && counts[1] >= 2) {
-    category = 'FULL_HOUSE';
+    category = HAND_CATEGORY.FULL_HOUSE;
     secondaryRank = entries[1].r;
   } else if (isFlush) {
-    category = 'FLUSH';
+    category = HAND_CATEGORY.FLUSH;
     const flushCards = cards.filter(c => c[1] === flushSuit).map(c => RANK_IDX[c[0]]).sort((a, b) => a - b);
     primaryRank = flushCards[0]; // 最高フラッシュカード
   } else if (isStraight) {
-    category = 'STRAIGHT';
+    category = HAND_CATEGORY.STRAIGHT;
     primaryRank = uniqueRanks[straightHighIdx];
   } else if (counts[0] === 3) {
-    category = 'THREE_OF_A_KIND';
+    category = HAND_CATEGORY.THREE_OF_A_KIND;
   } else if (counts[0] === 2 && counts[1] === 2) {
-    category = 'TWO_PAIR';
+    category = HAND_CATEGORY.TWO_PAIR;
     secondaryRank = entries[1].r;
   } else if (counts[0] === 2) {
-    category = 'ONE_PAIR';
+    category = HAND_CATEGORY.ONE_PAIR;
   } else {
-    category = 'HIGH_CARD';
+    category = HAND_CATEGORY.HIGH_CARD;
   }
 
   return {
@@ -134,28 +157,28 @@ function scoreHandCategory(cat, cards) {
   let madeScore, bandCeiling;
 
   switch (category) {
-    case 'ROYAL_FLUSH':
+    case HAND_CATEGORY.ROYAL_FLUSH:
       madeScore = 1.00;
       bandCeiling = 1.00;
       break;
-    case 'STRAIGHT_FLUSH':
+    case HAND_CATEGORY.STRAIGHT_FLUSH:
       // 次に良いSF(K-high)≈0.958、最弱SF(wheel)≈0.90
       madeScore = 0.90 + (1 - primaryRank / 12) * 0.054;
       bandCeiling = 0.954; // Royal帯(0.955+)に侵入しない
       break;
-    case 'FOUR_OF_A_KIND':
+    case HAND_CATEGORY.FOUR_OF_A_KIND:
       madeScore = 0.80 + (1 - primaryRank / 12) * 0.09;
       bandCeiling = 0.895;
       break;
-    case 'FULL_HOUSE':
+    case HAND_CATEGORY.FULL_HOUSE:
       madeScore = 0.70 + (1 - primaryRank / 12) * 0.09;
       bandCeiling = 0.795;
       break;
-    case 'FLUSH':
+    case HAND_CATEGORY.FLUSH:
       madeScore = 0.58 + (1 - primaryRank / 12) * 0.09;
       bandCeiling = 0.675;
       break;
-    case 'STRAIGHT':
+    case HAND_CATEGORY.STRAIGHT:
       // ホイール(A-2-3-4-5)はAceがlow扱い(idx=13)になるため通常域(4〜12)を
       // 超えて式に代入すると0.47を割り込みTHREE OF A KIND帯と誤認されうる。
       // この後のcomputeMadeStrength()内boardHazardペナルティも吸収できるよう
@@ -163,15 +186,15 @@ function scoreHandCategory(cat, cards) {
       madeScore = Math.max(0.49, 0.47 + (1 - primaryRank / 12) * 0.10);
       bandCeiling = 0.575;
       break;
-    case 'THREE_OF_A_KIND':
+    case HAND_CATEGORY.THREE_OF_A_KIND:
       madeScore = 0.38 + (1 - primaryRank / 12) * 0.08;
       bandCeiling = 0.465;
       break;
-    case 'TWO_PAIR':
+    case HAND_CATEGORY.TWO_PAIR:
       madeScore = 0.26 + (1 - primaryRank / 12) * 0.07 + (1 - secondaryRank / 12) * 0.04;
       bandCeiling = 0.375;
       break;
-    case 'ONE_PAIR':
+    case HAND_CATEGORY.ONE_PAIR:
       madeScore = 0.10 + (1 - primaryRank / 12) * 0.15;
       bandCeiling = 0.255;
       break;
@@ -182,8 +205,8 @@ function scoreHandCategory(cat, cards) {
   madeScore = clamp01(madeScore);
 
   // ── Layer 2: board interaction adjustment ──
-  const isRoyal = category === 'ROYAL_FLUSH';
-  const isSF     = category === 'ROYAL_FLUSH' || category === 'STRAIGHT_FLUSH';
+  const isRoyal = category === HAND_CATEGORY.ROYAL_FLUSH;
+  const isSF     = category === HAND_CATEGORY.ROYAL_FLUSH || category === HAND_CATEGORY.STRAIGHT_FLUSH;
   const ranks    = cards.map(c => RANK_IDX[c[0]]);
   const boardAdjustment = computeBoardInteraction(cards, ranks, freq, isSF, isFlush, isStraight, counts, isRoyal);
 
