@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>SPECTRA v3.7 — Board Intelligence OS</title>
+<title>SPECTRA v3.7.2 — Board Intelligence OS</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════
-   SPECTRA v3.7 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
+   SPECTRA v3.7.2 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
    ─ Hue: 勝率（赤=強→青緑=弱）
    ─ Saturation: コンボ密度（鮮=存在する→灰=幻のハンド）
    ─ Lightness: 将来性・ドロー力（白=アウツ多→暗=死手）
@@ -142,22 +142,21 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .cam-lbl{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:rgba(0,212,255,.7);}
 .cam-lbl span{color:#00d4ff;}
 
-#cam-wrap{flex:1;position:relative;background:#000;border:1px solid rgba(0,180,255,.25);border-radius:3px;overflow:hidden;min-height:0;}
-#cam-video{width:100%;height:100%;object-fit:cover;display:none;}
-#cam-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
-#cam-placeholder{position:absolute;inset:0;background:radial-gradient(ellipse at center,#0a1830 0%,#020810 70%);display:flex;align-items:center;justify-content:center;}
-#table-oval{width:80%;height:76%;border:3px solid #1e2d45;border-radius:120px;background:radial-gradient(ellipse,#0d1f35 0%,#070f1c 100%);position:relative;display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(0,0,0,.8),inset 0 0 30px rgba(0,0,0,.6);}
-#table-oval::before{content:'';position:absolute;inset:6px;border:1px solid rgba(0,180,255,.08);border-radius:114px;}
-.pl-chip{width:28px;height:28px;border-radius:50%;background:#0f1e30;border:1px solid #1e2d45;display:flex;align-items:center;justify-content:center;font-size:8px;color:#3a5070;font-family:'Share Tech Mono',monospace;}
-.pl-cards{display:flex;gap:2px;}
-.pl-card-back{width:9px;height:13px;background:#1a2a40;border:1px solid #243550;border-radius:1px;}
-#pl-top{position:absolute;top:-17px;display:flex;flex-direction:column;align-items:center;gap:2px;}
-#pl-left{position:absolute;left:-18px;display:flex;align-items:center;gap:2px;}
-#pl-right{position:absolute;right:-18px;display:flex;align-items:center;gap:2px;}
-#pl-bot{position:absolute;bottom:-17px;display:flex;flex-direction:column;align-items:center;gap:2px;}
+/* v3.7.2: 各セクション見出しの隣に置く「？」ヘルプバッジ。
+   titleツールチップだけだと気付かれにくい、というフィードバックにより
+   視覚的に「押せそう/見れそう」なマークを常設する。 */
+.help-q{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:11px;height:11px;border-radius:50%;
+  border:1px solid rgba(0,180,255,.45);
+  color:rgba(0,180,255,.75);
+  font-size:8px;font-family:'Share Tech Mono',monospace;font-weight:700;
+  margin-left:4px;cursor:help;vertical-align:middle;line-height:1;
+  flex-shrink:0;
+}
 
 /* ─── BOARD CARDS ─── */
-#board-area{display:flex;flex-direction:column;padding:4px 2px;flex-shrink:0;}
+#board-area{display:flex;flex-direction:column;justify-content:center;padding:4px 2px;flex:1;min-height:0;}
 .board-slot{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;}
 .slot-inputs select{
   flex:1;min-width:0;background:#0c1828;
@@ -318,7 +317,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   #main{display:flex !important;flex-direction:column !important;padding:0;gap:0;flex:none;}
   #main>.pnl{display:none;overflow-y:auto;overflow-x:hidden;border-radius:0;border-left:none;border-right:none;min-height:calc(100dvh - 46px - 37px);flex-shrink:0;}
   #main>.pnl.mob-active{display:flex;}
-  #cam-wrap{min-height:140px;max-height:180px;flex:0 0 160px;}
   .card-suit-bg{font-size:clamp(36px,14vw,64px);}
   .card-rank-center{font-size:clamp(18px,6vw,32px);}
   #board-area>div:last-child{overflow-x:auto;padding-bottom:4px;}
@@ -329,7 +327,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   #hm-grid{grid-template-columns:14px repeat(13,1fr);gap:2px;}
   .hm-c{font-size:7px;}
   #ftr{display:none;}
-  #table-oval{width:90%;height:70%;}
 }
 </style>
 </head>
@@ -338,7 +335,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 <!-- BRAIN OVERLAY -->
 <div id="brain-overlay">
-  <div class="brain-title">SPECTRA v3.7</div>
+  <div class="brain-title">SPECTRA v3.7.2</div>
   <div class="brain-msg" id="brain-msg">INITIALIZING JS ENGINE...</div>
   <div class="brain-prog-wrap"><div class="brain-prog" id="brain-prog" style="width:8%"></div></div>
   <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);margin-top:4px;" id="brain-sub">loading pure javascript worker</div>
@@ -355,7 +352,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 <!-- HEADER -->
 <div id="hdr">
-  <div><div class="logo-t">SPECTRA</div><div class="logo-s">BOARD INTELLIGENCE OS v3.7</div></div>
+  <div><div class="logo-t">SPECTRA</div><div class="logo-s">BOARD INTELLIGENCE OS v3.7.2</div></div>
   <div class="hdr-mid">SPECTRA</div>
   <div class="hdr-r">
     <div class="conn-dot"></div>
@@ -399,7 +396,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       <div id="fb-hero-pos"></div><div id="fb-villain-pos"></div><div id="fb-situation"></div>
     </div>
 
-    <!-- HERO HAND（サブ的要素・コンパクト） -->
+    <!-- HERO HAND（v3.7.2でコメントアウト。実装は残す。再度使う場合はコメントを外すだけでよい）
     <div id="hero-section">
       <div title="自分の手札を選択すると、ヒートマップ上での自分の位置が光ります" style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1.5px;color:rgba(255,215,0,.45);margin-bottom:3px;cursor:help;">▐ HERO HAND</div>
       <div class="hero-selects">
@@ -409,10 +406,11 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         <select id="hero-s2" onchange="onHeroChanged()"><option value="">-</option></select>
       </div>
     </div>
+    -->
 
     <!-- NUTS TABLE：Heatmapの補完情報 -->
     <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-height:0;overflow-y:auto;">
-      <div id="nuts-sec-label" title="現在の盤面で、どの役がどれくらいの確率で成立しているかの一覧です" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.4);cursor:help;">HAND DISTRIBUTION</div>
+      <div id="nuts-sec-label" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.4);">HAND DISTRIBUTION<span class="help-q" title="現在の盤面で、どの役がどれくらいの確率で成立しているかの一覧です">?</span></div>
 
       <!-- フロップ/ターン: TOP MADE + TOP DRAWS + BOARD PROFILE -->
       <div id="nuts-list">
@@ -441,21 +439,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <!-- CENTER -->
   <div class="pnl mob-active" id="center-pnl">
     <div class="cam-hdr">
-      <div class="cam-lbl" id="cam-lbl-txt">▐ MANUAL BOARD INPUT <span>[SIMULATOR MODE]</span></div>
+      <div class="cam-lbl" id="cam-lbl-txt">▐ BOARD INPUT</div>
       <div id="board-hash" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,212,255,.6)">BOARD: --</div>
-    </div>
-
-    <div id="cam-wrap">
-      <video id="cam-video" autoplay playsinline muted></video>
-      <canvas id="cam-canvas"></canvas>
-      <div id="cam-placeholder">
-        <div id="table-oval">
-          <div id="pl-top"><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div><div class="pl-chip">D</div></div>
-          <div id="pl-left"><div class="pl-chip">P1</div><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div></div>
-          <div id="pl-right"><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div><div class="pl-chip">P3</div></div>
-          <div id="pl-bot"><div class="pl-chip">P2</div><div class="pl-cards"><div class="pl-card-back"></div><div class="pl-card-back"></div></div></div>
-        </div>
-      </div>
     </div>
 
     <div id="board-area"></div>
@@ -497,7 +482,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       </div>
       <!-- RANGE PROFILE -->
       <div id="range-profile-block" style="padding:5px 8px;border-radius:3px;border:1px solid rgba(0,180,255,.1);background:rgba(0,5,15,.4);margin-bottom:4px;display:none;">
-        <div style="font-family:'Orbitron',monospace;font-size:6px;letter-spacing:1px;color:rgba(0,180,255,.3);margin-bottom:3px;">RANGE PROFILE</div>
+        <div style="font-family:'Orbitron',monospace;font-size:6px;letter-spacing:1px;color:rgba(0,180,255,.3);margin-bottom:3px;">RANGE PROFILE<span class="help-q" title="Hero側のレンジが今どんな性質か（バリュー寄り/ブラフ寄り/レンジが割れているか等）を表すHUD指標です">?</span></div>
         <div id="range-profile-hud" style="display:flex;flex-direction:column;gap:3px;"></div>
       </div>
       <!-- Narrative -->
@@ -507,7 +492,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     <!-- ══ L2: POSITION MATRIX（教科書・静的） ══ -->
     <div style="padding:5px 6px;border:1px solid rgba(0,180,255,.12);border-radius:3px;background:rgba(0,5,15,.3);flex-shrink:0;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span title="Hero(縦)とVillain(横)のポジションの組み合わせで、レンジの有利不利を表す早見表です" style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);cursor:help;">▐ POSITION MATRIX</span>
+        <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);">▐ POSITION MATRIX<span class="help-q" title="Hero(縦)とVillain(横)のポジションの組み合わせで、レンジの有利不利を表す早見表です">?</span></span>
         <span style="font-family:'Share Tech Mono',monospace;font-size:6px;color:rgba(160,200,230,.2);">click to select</span>
       </div>
       <div id="pos-matrix-wrap"></div>
@@ -516,7 +501,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     <!-- ══ STRUCTURE RADAR（Feature可視化・5軸） ══ -->
     <div style="background:rgba(0,0,0,.25);border:1px solid rgba(0,180,255,.1);border-radius:3px;padding:6px;flex-shrink:0;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-        <div title="盤面の性質を5つの軸でグラフ化したものです。詳しくは軸ラベルの日本語を参照" style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);cursor:help;">▐ STRUCTURE RADAR</div>
+        <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);">▐ STRUCTURE RADAR<span class="help-q" title="盤面の性質を5つの軸でグラフ化したものです。詳しくは軸ラベルの日本語を参照">?</span></div>
         <div id="radar-street-lbl" style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.25);">--</div>
       </div>
       <svg id="radar-svg" viewBox="0 0 160 130" width="100%" style="display:block;overflow:visible;">
@@ -534,11 +519,12 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       </div>
     </div>
 
-    <!-- HERO OUTS -->
+    <!-- HERO OUTS（v3.7.2でコメントアウト。実装は残す。再度使う場合はコメントを外すだけでよい）
     <div id="outs-panel" style="display:none;">
       <div title="次のカードで役が強くなる可能性（ドロー）の一覧です" style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);margin-bottom:4px;cursor:help;">▐ HERO OUTS</div>
       <div id="outs-list"></div>
     </div>
+    -->
 
     <!-- ══ BOARD INTELLIGENCE（折りたたみ・詳細） ══ -->
     <div style="flex-shrink:0;">
@@ -548,7 +534,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         color:rgba(0,212,255,.35);padding:4px 0;
         border-top:1px solid rgba(0,180,255,.08);
         display:flex;align-items:center;justify-content:space-between;">
-        <span>▐ BOARD INTELLIGENCE</span>
+        <span>▐ BOARD INTELLIGENCE<span class="help-q" title="盤面の細かい性質（テクスチャ・レンジ有利不利など）とHUD指標の詳細です">?</span></span>
         <span id="bi-toggle-icon" style="font-size:9px;">▼</span>
       </div>
       <div id="bi-panel" style="display:none;background:rgba(0,0,0,.2);border:1px solid rgba(0,180,255,.08);border-radius:3px;padding:6px;margin-top:3px;">
@@ -567,7 +553,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     </div>
 
     <!-- ══ L3: 3D HEATMAP（主役・大きく） ══ -->
-    <div title="169通りの手札を強さ別に色分けした一覧です。赤=強い、青緑=弱い" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:rgba(0,212,255,.6);flex-shrink:0;cursor:help;">▐ 3D HEATMAP</div>
+    <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:rgba(0,212,255,.6);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札を強さ別に色分けした一覧です。赤=強い、青緑=弱い">?</span></div>
     <div id="hm-legend" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;">
       <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:hsl(0,80%,50%);">STRENGTH</span>
       <div style="width:55px;height:4px;border-radius:2px;background:linear-gradient(90deg,hsl(0,90%,45%),hsl(180,50%,30%));"></div>
@@ -590,14 +576,14 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <span class="analyzing">● ANALYZING BOARD... LIVE</span>
   <span id="ftr-hash">HASH: N/A</span>
   <span id="calc-time" style="color:rgba(0,212,255,.5);">CALC: --ms</span>
-  <span>SPECTRA BOARD INTELLIGENCE OS v3.7</span>
+  <span>SPECTRA BOARD INTELLIGENCE OS v3.7.2</span>
 </div>
 
 </div><!-- /root -->
 
 <script>
 /* ═══════════════════════════════════════════════════
-   SPECTRA v3.7 — PURE JS ENGINE (Python完全追放)
+   SPECTRA v3.7.2 — PURE JS ENGINE (Python完全追放)
    Worker: spectra-worker.js に丸投げ
    Fallback: Worker未使用時はinlineで簡易計算
 ═══════════════════════════════════════════════════ */
@@ -622,7 +608,6 @@ let evalCache      = new Map();
 let lastHeatmapData= [];     // For tooltip access
 let lastNutsFeatures = null;   // renderNuts再描画（帯の折りたたみ）用にfeaturesをキャッシュ
 let collapsedNutBands = new Set(['HIGH CARD']); // 折りたたみ状態（デフォルトHIGH CARDのみ畳む）
-let camStream      = null;
 
 /* ══════════════════════════════
    WORKER INIT
@@ -797,16 +782,16 @@ function calc3DHSL(item) {
   // ─ Hue: 強い手ほど赤 (0) → 弱い手ほど青緑 (180) ─
   const hue = Math.round((1 - eq / 100) * 180);
 
-  // ─ Saturation: デッドコンボは灰色へ ─
-  // バグ修正: item.activeCombos は元々UI側のrangeMatrixには渡っていない
-  // フィールドで、常にundefined→0だった。以前はitem.totalCombosも同様に
-  // undefined→0だったため tc>0 が常にfalseとなり density=1(デフォルト最大彩度)に
-  // フォールバックして「たまたま」正常に見えていた。
-  // topClassCombosの修正でtotalComtosを新たに渡すようにしたところ、
-  // tcだけ実数を持つようになり、ac(常に0)/tc = 0 で彩度が常に最低になっていた。
-  // → 既に正しく計算済みのitem.density（0-1の比率）をそのまま使う。
+  // ─ Saturation: デッドコンボ(density=0)だけ灰色へ。生きてさえいれば鮮やかに ─
+  // バグ修正: 以前は density(0-1)にほぼ線形で彩度を決めていたため、
+  // 「ボードに同ランクが2枚出ていて残りコンボが少ない」ケース（例: board上に
+  // A2枚出ている状態でのAA=クアッズ最有力）のように、本来は非常に強いハンドでも
+  // コンボ希少度だけで彩度が最低値近くまで落ち、色相(Hue)は正しく赤なのに
+  // 彩度不足で色が消えたように見えてしまっていた。
+  // → density===0（本当にデッド）の時だけ灰色寄りにし、生きてさえいれば
+  //   希少度に関わらずしっかり彩度を持たせる。
   const density = Math.max(0, Math.min(1, item.density ?? 1));
-  const sat = Math.round(Math.max(15, density * 95));
+  const sat = density === 0 ? 10 : Math.round(60 + density * 35);
 
   // ─ Lightness: ストリートで意味が変わる ─
   let lum;
@@ -1112,6 +1097,9 @@ function updateHeroCells() {
 ══════════════════════════════ */
 function updateOutsPanel() {
   const panel = document.getElementById('outs-panel');
+  // v3.7.2: HERO OUTSパネルはHTML側でコメントアウト済みのため、要素が存在しない。
+  // heroHandを使う機能自体は残しているので、要素が無い時は静かに何もしない。
+  if (!panel) return;
   if (!heroHand || heroHand.length < 2 || currentBoard.length < 3) {
     panel.style.display = 'none';
     return;
@@ -1126,6 +1114,7 @@ function updateOutsPanel() {
   // Detailed draw detection
   const draws = detectDraws(r1, r2, s1, s2, currentBoard);
   const list = document.getElementById('outs-list');
+  if (!list) return;
 
   if (!draws.length) {
     list.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:rgba(160,200,230,.3);padding:4px 0;">ドローなし / No draws detected</div>';
@@ -1444,7 +1433,7 @@ function renderNuts(data, features) {
 
   polarEl.style.display = 'none';
   nutsEl.style.display  = 'flex';
-  if (secLbl) secLbl.innerHTML = 'HAND DISTRIBUTION <span style="font-size:6.5px;opacity:.6">[COMBO %]</span>';
+  if (secLbl) secLbl.innerHTML = 'HAND DISTRIBUTION <span style="font-size:6.5px;opacity:.6">[COMBO %]</span><span class="help-q" title="現在の盤面で、どの役がどれくらいの確率で成立しているかの一覧です。%はそのボードで生存しているコンボ数ベース">?</span>';
 
   lastNutsFeatures = features; // 帯の折りたたみ切替時の再描画用にキャッシュ
 
@@ -1488,8 +1477,6 @@ function renderNuts(data, features) {
   let totalCombos = 0;
   const bands = HAND_BANDS.map(b => ({ ...b, combos: 0, items: [] }));
 
-  // ── CURRENT NUTS（今この瞬間の最強ハンド） ──
-  let bestHand = null;
   live.forEach(h => {
     const isPair    = h.hand.length === 2 && h.hand[0] === h.hand[1];
     const isSuited  = h.hand.endsWith('s');
@@ -1509,8 +1496,6 @@ function renderNuts(data, features) {
       bands[bi].combos += combos;
       bands[bi].items.push({ hand: h.hand, combos, isSuited, isPair, drawType: h.drawType, outs: h.outs });
     }
-    const bestScore = bestHand ? (bestHand.madeStrength ?? bestHand.rawScore ?? 0) : -1;
-    if (combos > 0 && score > bestScore) bestHand = h;
   });
 
   // ── 表示対象フィルター ──
@@ -1522,20 +1507,10 @@ function renderNuts(data, features) {
     return;
   }
 
-  // "AKs"のような曖昧なsuited表記だと「結局どのスートなのか」が分からないため、
-  // ボードと矛盾しない具体的なスートを1組割り当てて♠♥♦♣で表示する。
-  const bestHandCombo = bestHand ? getRepresentativeCombo(bestHand.hand, currentBoard) : null;
-
-  const nutsSummaryHtml = bestHand
-    ? `<div style="margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.08);
-         font-family:'Orbitron',monospace;font-size:8px;letter-spacing:.5px;color:rgba(255,215,0,.85);">
-         ▸ CURRENT NUTS
-         <span style="font-size:12px;font-weight:700;margin-left:4px;">${bestHandCombo ? comboToHtml(bestHandCombo) : bestHand.hand}</span>
-         <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(255,215,0,.6);margin-left:4px;">(${bestHand.handName})</span>
-       </div>`
-    : '';
-
-  nutsEl.innerHTML = nutsSummaryHtml + activeBands.map(b => {
+  // CURRENT NUTS表示は廃止（v3.7.2）:
+  // 複数ハンドが同点最強の場合に1つしか出せず実態と合わない上、
+  // 一番上の帯を見れば最強役は分かるため冗長だった、というフィードバックにより削除。
+  nutsEl.innerHTML = activeBands.map(b => {
     const pct  = totalCombos > 0 ? (b.combos / totalCombos * 100) : 0;
     const barW = Math.min(100, Math.round(pct));
 
@@ -2779,8 +2754,13 @@ function clearBoard() {
   for (let i=0; i<5; i++) {
     const r = document.getElementById('rsel-'+i);
     const s = document.getElementById('ssel-'+i);
+    // バグ修正: 以前はs.style.colorしかリセットしておらず、clearSlot(i)（個別クリア）
+    // が行っている枠線色・box-shadow・背景色のリセットが漏れていた。
+    // そのためCLEAR ALL後もスート選択時の縁の色や背景色が残ったままになっていた。
     if (r) r.value='';
-    if (s) { s.value=''; s.style.color='rgba(160,200,230,.5)'; }
+    if (s) { s.value=''; s.style.color='rgba(160,200,230,.5)'; s.style.boxShadow='0 0 6px rgba(0,140,255,.15)'; s.style.borderColor='rgba(0,180,255,.35)'; s.style.background='#0c1828'; }
+    const btn = document.getElementById('clr-'+i);
+    if (btn) btn.classList.remove('has-card');
   }
   currentBoard=[];
   renderStreet([]);
@@ -2900,7 +2880,7 @@ updateClock();
 ══════════════════════════════ */
 buildHeatmap();
 buildBoardArea();
-buildHeroSelects();
+// buildHeroSelects(); // v3.7.2: HERO HANDをコメントアウトしたため無効化（関数自体は残置）
 initEngine();
 </script>
 </body>
