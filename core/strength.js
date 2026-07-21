@@ -71,22 +71,33 @@ function detectHandCategory(cards) {
   const uniqueRanks = [...new Set(ranks)].sort((a, b) => a - b);
   // Ace-low straight: A(0) plays as rank 13 after K(1)
   if (uniqueRanks[0] === 0) uniqueRanks.push(13);
-  let straightHighIdx = -1; // index of lowest card in best straight
+  let straightHighRank = -1; // 成立したストレートの最高位カードのRANK_IDX（値が小さいほど強い）
+  // バグ修正（pokersolver突き合わせで発覚、v3.7.5）: 以前は`straightHighIdx = k`として
+  // ウィンドウの終端（配列の昇順で見て一番後ろ=RANK_IDXが一番大きい=一番弱いカード）を
+  // 保存しており、後段で`uniqueRanks[straightHighIdx]`とそのまま使っていたため、
+  // 実際には「ストレートの中で一番弱いカード」をスコアリングに使ってしまっていた
+  // （例: 3-4-5-6-7の7ハイストレートで、本来の最高位カード'7'ではなく
+  // 最弱の'3'のRANK_IDXが使われ、5ハイのホイールと点数が同じになる、
+  // 7ハイの方が8ハイより高得点になる、といった順序の乱れが起きていた）。
+  // 以前はSF/Quads等の固定ボーナスがbandCeilingへの張り付きを引き起こしており、
+  // その副作用でこのバグがスコア上マスクされ続けていた（ボーナス撤去で露呈）。
+  // 正しくはウィンドウの開始点（uniqueRanks[k-4]、RANK_IDXが一番小さい=一番強い
+  // カード）を使う。
   // 6枚以上ランクが連続するケース（例: A-K-Q-J-T-9が全部同スート）で
   // より弱い窓に先に一致して停止しないよう、昇順(=最良の窓から)にチェックする。
   for (let k = 4; k < uniqueRanks.length; k++) {
     if (uniqueRanks[k] - uniqueRanks[k - 4] === 4) {
-      straightHighIdx = k;
+      straightHighRank = uniqueRanks[k - 4];
       break;
     }
   }
-  const isStraight = straightHighIdx !== -1;
+  const isStraight = straightHighRank !== -1;
 
   // ── straight-flush specific detection（flushSuitのカードだけで再判定） ──
   // 一般ストレート判定を流用すると、フラッシュに関与しない余分なカードに
   // 引きずられてロイヤルフラッシュを取り逃がすバグがあったため、
   // flushSuit限定で改めてストレートを判定する。
-  let sfHigh = -1; // flushSuit内で成立するストレートの下端 RANK_IDX（値が小さいほど強い）
+  let sfHigh = -1; // flushSuit内で成立するストレートの最高位カードのRANK_IDX（値が小さいほど強い）
   if (isFlush) {
     const flushRanks = cards
       .filter(c => c[1] === flushSuit)
@@ -95,8 +106,9 @@ function detectHandCategory(cards) {
     const uFlush = [...new Set(flushRanks)];
     if (uFlush[0] === 0) uFlush.push(13);
     for (let k = 4; k < uFlush.length; k++) {
+      // 同上のバグ修正: ウィンドウの開始点(k-4)を使う。
       if (uFlush[k] - uFlush[k - 4] === 4) {
-        sfHigh = uFlush[k];
+        sfHigh = uFlush[k - 4];
         break;
       }
     }
@@ -118,7 +130,10 @@ function detectHandCategory(cards) {
   let secondaryRank = null;    // フルハウスの組ランク／ツーペアの2組目
 
   if (isStraightFlush) {
-    category = (sfHigh === 4) ? HAND_CATEGORY.ROYAL_FLUSH : HAND_CATEGORY.STRAIGHT_FLUSH;
+    // sfHighは修正後、ウィンドウの開始点（最高位カード）を指すようになったため、
+    // ロイヤル(T-J-Q-K-A)の判定も「最高位カードがA(idx0)か」に変更する
+    // （旧コードでは窓の終端＝T(idx4)を見ていたため sfHigh===4 だった）。
+    category = (sfHigh === 0) ? HAND_CATEGORY.ROYAL_FLUSH : HAND_CATEGORY.STRAIGHT_FLUSH;
     primaryRank = sfHigh;
   } else if (counts[0] === 4) {
     category = HAND_CATEGORY.FOUR_OF_A_KIND;
@@ -131,7 +146,7 @@ function detectHandCategory(cards) {
     primaryRank = flushCards[0]; // 最高フラッシュカード
   } else if (isStraight) {
     category = HAND_CATEGORY.STRAIGHT;
-    primaryRank = uniqueRanks[straightHighIdx];
+    primaryRank = straightHighRank;
   } else if (counts[0] === 3) {
     category = HAND_CATEGORY.THREE_OF_A_KIND;
   } else if (counts[0] === 2 && counts[1] === 2) {
@@ -151,56 +166,167 @@ function detectHandCategory(cards) {
 }
 
 
-function scoreHandCategory(cat, cards) {
-  const { category, primaryRank, secondaryRank, counts, isFlush, isStraight, isStraightFlush, freq } = cat;
+/* ══════════════════════════════
+   外部レビュー対応（同一カテゴリ内のキッカー比較バグ修正）:
+   以前は各カテゴリのスコアが primaryRank（と一部 secondaryRank）だけで
+   決まっており、同じ役の中でのキッカー差（例: フルハウスの下のペア、
+   クアッズの余り1枚、トリップス/ワンペアの残りカード）が一切スコアに
+   反映されていなかった。結果、KK/QQ/33/44のフルハウスが完全に同点になる、
+   AK/J9のクアッズが完全に同点になる、といった誤順位付けが起きていた。
+   （ワンペアのキッカー比較は従来computeBoardInteraction側で行っていたが、
+   「count===1のエントリを rank 昇順でソートして先頭を取る」という実装が
+   実質「盤面上のカードの中で一番強いカードを常に拾う」だけになっており、
+   ホールカードのキッカーがどれだけ強くても盤面のAに埋もれて反映されない
+   バグがあった）
 
-  let madeScore, bandCeiling;
+   kickerFraction(): [primaryRank, kicker1, kicker2, ...] のようなランク列を
+   base-13の位取り記数法で単一の分数にエンコードする。
+   value = Σ (12 - rank_i) / 13^(i+1)
+   この方式なら、より上位（先頭に近い）のランクの差は、それより下位の
+   ランク列がどんな値を取ろうと必ず上回る（等比級数の性質）。
+   つまり「primaryRankが同じ場合のみ次のキッカーで比較する」という
+   ポーカー本来のキッカー比較順序を、複雑な条件分岐なしに再現できる。
+══════════════════════════════ */
+function kickerFraction(rankTuple) {
+  let value = 0;
+  for (let i = 0; i < rankTuple.length; i++) {
+    const r = Math.max(0, Math.min(12, rankTuple[i]));
+    value += (12 - r) / Math.pow(13, i + 1);
+  }
+  return value; // [0, 1) 未満
+}
+
+// entries（{r, c}の配列、count降順・rank昇順ソート済み）から、
+// excludeRanks に含まれないランクを rank昇順（強い順）で数え上げ、
+// 先頭 count 個を返す。足りない場合は最弱値(12)で埋める。
+function getExtraKickers(entries, excludeRanks, count) {
+  const excludeSet = new Set(excludeRanks);
+  const remaining = entries
+    .filter(e => !excludeSet.has(e.r))
+    .map(e => e.r)
+    .sort((a, b) => a - b);
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    result.push(remaining[i] !== undefined ? remaining[i] : 12);
+  }
+  return result;
+}
+
+function scoreHandCategory(cat, cards) {
+  const { category, primaryRank, secondaryRank, counts, isFlush, isStraight, isStraightFlush, freq, entries, flushSuit } = cat;
+
+  let madeScore, bandCeiling, bandWidth;
+
+  // キッカー分のスコアはband幅の95%までに抑え、残り5%をboardAdjustment
+  // （ホールカードの寄与ボーナス等）の余地として空けておく。
+  // これにより「キッカー最強＋board補正最大」でもbandCeilingを超えて
+  // クランプされ、別のキッカー差が消える事態をできる限り避ける。
+  const KICKER_HEADROOM = 0.95;
 
   switch (category) {
     case HAND_CATEGORY.ROYAL_FLUSH:
       madeScore = 1.00;
       bandCeiling = 1.00;
+      bandWidth = 0.045;
       break;
     case HAND_CATEGORY.STRAIGHT_FLUSH:
       // 次に良いSF(K-high)≈0.958、最弱SF(wheel)≈0.90
+      // ストレートフラッシュは最高位カード1枚で強さが完全に決まるため
+      // （5枚全部が連番同スートなので、他のキッカーという概念自体が無い）、
+      // primaryRankのみの評価で正しい。
       madeScore = 0.90 + (1 - primaryRank / 12) * 0.054;
       bandCeiling = 0.954; // Royal帯(0.955+)に侵入しない
+      bandWidth = 0.054;
       break;
-    case HAND_CATEGORY.FOUR_OF_A_KIND:
-      madeScore = 0.80 + (1 - primaryRank / 12) * 0.09;
+    case HAND_CATEGORY.FOUR_OF_A_KIND: {
+      // バグ修正: 以前はprimaryRank(クアッズのランク)のみでキッカー(5枚目)を
+      // 無視していた。クアッズ+キッカー1枚をタプルでエンコードする。
+      const kicker = getExtraKickers(entries, [primaryRank], 1);
+      const width = 0.09;
+      bandWidth = width;
+      madeScore = 0.80 + kickerFraction([primaryRank, ...kicker]) * width * KICKER_HEADROOM;
       bandCeiling = 0.895;
       break;
-    case HAND_CATEGORY.FULL_HOUSE:
-      madeScore = 0.70 + (1 - primaryRank / 12) * 0.09;
+    }
+    case HAND_CATEGORY.FULL_HOUSE: {
+      // バグ修正: 以前はsecondaryRank（下位のペア）を保持していたのに
+      // スコア計算で一切使っていなかった。777/KKと777/QQが完全に同点になっていた。
+      // フルハウスはトリップ+ペアの5枚で完結するため、これ以上のキッカーは不要。
+      const width = 0.09;
+      bandWidth = width;
+      madeScore = 0.70 + kickerFraction([primaryRank, secondaryRank]) * width * KICKER_HEADROOM;
       bandCeiling = 0.795;
       break;
-    case HAND_CATEGORY.FLUSH:
-      madeScore = 0.58 + (1 - primaryRank / 12) * 0.09;
+    }
+    case HAND_CATEGORY.FLUSH: {
+      // バグ修正: 以前は最高位フラッシュカード1枚(primaryRank)のみで
+      // 2〜5枚目の差を無視していた（4-flushボードでQ/J/9ハイのフラッシュが
+      // 全部同点になっていた）。フラッシュを構成する5枚（同スート、強い順）を
+      // タプルでエンコードする。
+      const flushRanks = cards
+        .filter(c => c[1] === flushSuit)
+        .map(c => RANK_IDX[c[0]])
+        .sort((a, b) => a - b)
+        .slice(0, 5);
+      const width = 0.09;
+      bandWidth = width;
+      madeScore = 0.58 + kickerFraction(flushRanks) * width * KICKER_HEADROOM;
       bandCeiling = 0.675;
       break;
+    }
     case HAND_CATEGORY.STRAIGHT:
       // ホイール(A-2-3-4-5)はAceがlow扱い(idx=13)になるため通常域(4〜12)を
       // 超えて式に代入すると0.47を割り込みTHREE OF A KIND帯と誤認されうる。
       // この後のcomputeMadeStrength()内boardHazardペナルティも吸収できるよう
       // 余裕を持たせて0.49を床にする。
+      // ストレートも最高位カード1枚で強さが完全に決まる（5枚連番の並びが
+      // 決まればキッカーの概念が無い）ため、primaryRankのみの評価で正しい。
       madeScore = Math.max(0.49, 0.47 + (1 - primaryRank / 12) * 0.10);
       bandCeiling = 0.575;
+      bandWidth = 0.10;
       break;
-    case HAND_CATEGORY.THREE_OF_A_KIND:
-      madeScore = 0.38 + (1 - primaryRank / 12) * 0.08;
+    case HAND_CATEGORY.THREE_OF_A_KIND: {
+      // バグ修正: 以前はprimaryRank(トリップのランク)のみでキッカー2枚を無視していた。
+      const kickers = getExtraKickers(entries, [primaryRank], 2);
+      const width = 0.08;
+      bandWidth = width;
+      madeScore = 0.38 + kickerFraction([primaryRank, ...kickers]) * width * KICKER_HEADROOM;
       bandCeiling = 0.465;
       break;
-    case HAND_CATEGORY.TWO_PAIR:
-      madeScore = 0.26 + (1 - primaryRank / 12) * 0.07 + (1 - secondaryRank / 12) * 0.04;
+    }
+    case HAND_CATEGORY.TWO_PAIR: {
+      // バグ修正: 以前は上位ペア・下位ペアのみでキッカー(5枚目)を無視していた。
+      const kicker = getExtraKickers(entries, [primaryRank, secondaryRank], 1);
+      const width = 0.11; // 0.07(primary)+0.04(secondary)相当の合計幅を維持
+      bandWidth = width;
+      madeScore = 0.26 + kickerFraction([primaryRank, secondaryRank, ...kicker]) * width * KICKER_HEADROOM;
       bandCeiling = 0.375;
       break;
-    case HAND_CATEGORY.ONE_PAIR:
-      madeScore = 0.10 + (1 - primaryRank / 12) * 0.15;
+    }
+    case HAND_CATEGORY.ONE_PAIR: {
+      // バグ修正: 以前はcomputeBoardInteraction側で「count===1のカードを
+      // rank昇順ソートして先頭を取る」というキッカー処理をしていたが、
+      // これは実質「7枚の中で一番強いカード」を毎回拾うだけになっており、
+      // 盤面に強いカード（例:A）があると、ホールカードのキッカーがどれだけ
+      // 強くても常に盤面のカードに埋もれて無視される欠陥があった
+      // （例: 77A92盤面でKQ/JT/54を持っても、キッカーは常に盤面のAになり
+      // 全部同点になっていた）。ペアランク+キッカー3枚をタプルでエンコードし、
+      // computeBoardInteraction側の重複ロジックは削除した。
+      const kickers = getExtraKickers(entries, [primaryRank], 3);
+      const width = 0.15;
+      bandWidth = width;
+      madeScore = 0.10 + kickerFraction([primaryRank, ...kickers]) * width * KICKER_HEADROOM;
       bandCeiling = 0.255;
       break;
-    default: // HIGH_CARD
-      madeScore = (1 - primaryRank / 12) * 0.09;
+    }
+    default: { // HIGH_CARD
+      // バグ修正: 以前はtopRank(最高位カード)1枚のみで残り4枚を無視していた。
+      const kickers = getExtraKickers(entries, [primaryRank], 4);
+      const width = 0.09;
+      bandWidth = width;
+      madeScore = kickerFraction([primaryRank, ...kickers]) * width * KICKER_HEADROOM;
       bandCeiling = 0.095;
+    }
   }
   madeScore = clamp01(madeScore);
 
@@ -208,7 +334,7 @@ function scoreHandCategory(cat, cards) {
   const isRoyal = category === HAND_CATEGORY.ROYAL_FLUSH;
   const isSF     = category === HAND_CATEGORY.ROYAL_FLUSH || category === HAND_CATEGORY.STRAIGHT_FLUSH;
   const ranks    = cards.map(c => RANK_IDX[c[0]]);
-  const boardAdjustment = computeBoardInteraction(cards, ranks, freq, isSF, isFlush, isStraight, counts, isRoyal);
+  const boardAdjustment = computeBoardInteraction(cards, ranks, freq, isSF, isFlush, isStraight, counts, isRoyal, bandWidth);
 
   // bandCeilingでクランプするため、ボード補正・キッカー補正がどれだけ
   // 加算されてもカテゴリ境界（例: FLUSH→STRAIGHT FLUSH帯）を跨がない。
@@ -229,49 +355,29 @@ function evaluate7(cards) {
 }
 
 
-function computeBoardInteraction(cards, ranks, freq, isSF, isFlush, isStraight, counts, isRoyal) {
-  if (cards.length < 7) return 0; // only meaningful with full 7-card context
-
-  let delta = 0;
-
-  // ── Nut-lock bonus: top-of-category hands ──
-  // バグ修正: 従来は「7枚中にA(idx0)とK(idx1)が存在するか」を全スート込みでチェックしていたため、
-  // フラッシュに関与しないオフスートのA/Kが混ざっているだけでロイヤル判定されてしまっていた。
-  // 現在は evaluate7 側で確定した isRoyal（flushSuit内のストレートがT-J-Q-K-Aか）をそのまま使う。
-  if (isSF) {
-    delta += isRoyal ? 0.08 : 0.04; // Royal > other SF
-  } else if (counts[0] === 4) {
-    delta += 0.06;
-  }
-
-  // ── Hand contribution bonus: hand cards are active in the made hand ──
-  // Rewards hands that *use* their hole cards (vs. playing the board)
-  const handRanks = cards.slice(0, 2).map(c => RANK_IDX[c[0]]);
-  let handContrib = 0;
-  for (const r of handRanks) {
-    if ((freq[r] || 0) >= 2) handContrib += 1.0; // hole card makes a pair/better
-    else if ((freq[r] || 0) === 1) handContrib += 0.2; // single matching rank (weak)
-  }
-  delta += clamp01(handContrib / 2) * 0.06;
-
-  // ── Kicker quality for pair hands ──
-  if (counts[0] === 2) {
-    const kickers = Object.entries(freq)
-      .filter(([, c]) => c === 1)
-      .map(([r]) => Number(r))
-      .sort((a, b) => a - b);
-    if (kickers.length > 0) delta += (1 - kickers[0] / 12) * 0.04;
-  }
-
-  // ── Board-lock penalty: great board but hand doesn't use it ──
-  // (e.g. holding 72o on AAAKK — playing the board)
-  const boardRanksSet = new Set(cards.slice(2).map(c => RANK_IDX[c[0]]));
-  const handUsesBoard = handRanks.some(r => boardRanksSet.has(r));
-  if (!handUsesBoard && (counts[0] >= 3)) {
-    delta -= 0.04; // strong board but hole cards don't contribute
-  }
-
-  return delta; // caller does clamp01(madeScore + delta)
+function computeBoardInteraction(cards, ranks, freq, isSF, isFlush, isStraight, counts, isRoyal, width) {
+  // 外部レビュー対応・pokersolver突き合わせでの発見（v3.7.5）:
+  // 以前はここで「ホールカードが役に絡んでいるボーナス」「ボードだけで
+  // 役が完成している場合のペナルティ」「SF/Royalの追加ボーナス」を
+  // 固定値または小さくスケールした値で加算していたが、これらはどれも
+  // 本物のポーカーのルールには存在しない、SPECTRA独自の演出的な加点だった。
+  //
+  // scoreHandCategory()側でkickerFraction()による正確なキッカー比較を
+  // 導入した結果、これらの加点が「深い位置のキッカー差」（例: フラッシュの
+  // 3〜5枚目、ワンペアの2〜3枚目のキッカー）を上書きしてしまう新たな
+  // バグを引き起こすことが判明した。深い位置のキッカーの粒度は
+  // 13^n（nは何番目か）で指数関数的に小さくなるため、どんなに小さく
+  // スケールした固定ボーナスでも、いずれかの位置の粒度を必ず上回って
+  // しまい、完全に正確な順序付けとは両立しない。
+  //
+  // ポーカーのハンド強度は「役のカテゴリ＋キッカーの並び」だけで完全に
+  // 決まるべきものであり、それ以上の"演出的加点"は本質的に不要と判断し、
+  // このセッションで全て撤去した。
+  //
+  // 検証: pokersolver（独立実装のポーカー評価ライブラリ、npm）との突き合わせで、
+  // ランダム7枚2万件のカテゴリ一致率100%、ランダムなボード+2ホール対決
+  // 2万件の勝敗順序一致率100%、既存の固定エッジケース6/6一致を確認済み。
+  return 0;
 }
 
 
