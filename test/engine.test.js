@@ -99,6 +99,94 @@ test('同ボードでKTsは正しくSTRAIGHT（トリップスAAより強い）'
   assert.ok(kts.score > aa.score);
 });
 
+console.log('\n=== 外部レビュー対応: 同一カテゴリ内のキッカー比較 ===');
+
+test('ワンペアのキッカー差: KQ > JT > 54（77A92ボード）', () => {
+  const board = ['7h', '7d', 'Ac', '9s', '2c'];
+  const kq = evaluate7(['Kh', 'Qd', ...board]);
+  const jt = evaluate7(['Jh', 'Td', ...board]);
+  const c54 = evaluate7(['5h', '4d', ...board]);
+  assert.strictEqual(kq.category, 'ONE_PAIR');
+  assert.ok(kq.score > jt.score, `KQ(${kq.score}) should beat JT(${jt.score})`);
+  assert.ok(jt.score > c54.score, `JT(${jt.score}) should beat 54(${c54.score})`);
+});
+
+test('トリップスのキッカー差: KQ > JT > 23（777A9ボード）', () => {
+  const board = ['7h', '7d', '7s', 'Ac', '9c'];
+  const kq = evaluate7(['Kh', 'Qd', ...board]);
+  const jt = evaluate7(['Jh', 'Td', ...board]);
+  const c23 = evaluate7(['2h', '3d', ...board]);
+  assert.strictEqual(kq.category, 'THREE_OF_A_KIND');
+  assert.ok(kq.score > jt.score);
+  assert.ok(jt.score > c23.score);
+});
+
+test('フラッシュの質の差: Qハイ > Jハイ > 9ハイ（4-flushボード AhKh7h2h）', () => {
+  const board = ['Ah', 'Kh', '7h', '2h'];
+  const qh = evaluate7(['Qh', '3d', ...board]);
+  const jh = evaluate7(['Jh', '3d', ...board]);
+  const nh = evaluate7(['9h', '3d', ...board]);
+  assert.strictEqual(qh.category, 'FLUSH');
+  assert.ok(qh.score > jh.score);
+  assert.ok(jh.score > nh.score);
+});
+
+test('フルハウスの下位ペア差: 777/KK > 777/QQ > 777/44 > 777/33', () => {
+  const board = ['7h', '7d', '7s', 'Ac', '2c'];
+  const kk = evaluate7(['Kh', 'Kd', ...board]);
+  const qq = evaluate7(['Qh', 'Qd', ...board]);
+  const c44 = evaluate7(['4h', '4d', ...board]);
+  const c33 = evaluate7(['3h', '3d', ...board]);
+  [kk, qq, c44, c33].forEach(r => assert.strictEqual(r.category, 'FULL_HOUSE'));
+  assert.ok(kk.score > qq.score);
+  assert.ok(qq.score > c44.score);
+  assert.ok(c44.score > c33.score);
+});
+
+test('クアッズのキッカー差: AK > J9 > 32（かつ盤面キッカーとの偶然一致で逆転しない）', () => {
+  const board = ['7h', '7d', '7s', '7c', '2c']; // quads board, board kicker = 2
+  const ak = evaluate7(['Ah', 'Kd', ...board]);
+  const j9 = evaluate7(['Jh', '9d', ...board]);
+  const c32 = evaluate7(['3h', '2d', ...board]); // 2d matches board's kicker card
+  [ak, j9, c32].forEach(r => assert.strictEqual(r.category, 'FOUR_OF_A_KIND'));
+  assert.ok(ak.score > j9.score, `AK(${ak.score}) should beat J9(${j9.score})`);
+  assert.ok(j9.score > c32.score, `J9(${j9.score}) should beat 32(${c32.score}) despite 32 sharing a rank with the board's kicker`);
+});
+
+test('完全に同じキッカー構成は正しく同点になる（チョップ想定）', () => {
+  const board = ['7h', '7d', 'Ac', '9s', '2c'];
+  const kq1 = evaluate7(['Ks', 'Qc', ...board]);
+  const kq2 = evaluate7(['Kc', 'Qs', ...board]);
+  assert.strictEqual(kq1.score, kq2.score, 'identical rank kickers (different suits) should tie exactly');
+});
+
+console.log('\n=== pokersolver突き合わせで発覚: ストレートの高位カード取り違えバグ ===');
+
+test('7ハイストレートは5ハイのホイールより強い（同じ帯の中での順序）', () => {
+  const board = ['5s', '3h', '7d', '4c', 'Jh'];
+  const sevenHigh = evaluate7(['3s', '6c', ...board]); // 3-4-5-6-7 = 7ハイ
+  const wheel = evaluate7(['2c', 'Ac', ...board]);      // A-2-3-4-5 = 5ハイ(ホイール)
+  assert.strictEqual(sevenHigh.category, 'STRAIGHT');
+  assert.strictEqual(wheel.category, 'STRAIGHT');
+  assert.ok(sevenHigh.score > wheel.score,
+    `7-high(${sevenHigh.score}) should beat wheel(${wheel.score})`);
+});
+
+test('キングハイ・ストレートフラッシュは6ハイ・ストレートフラッシュより強い', () => {
+  const kingHigh = evaluate7(['9h', 'Th', 'Jh', 'Qh', 'Kh', '2c', '3c']);
+  const sixHigh  = evaluate7(['2h', '3h', '4h', '5h', '6h', 'Ac', 'Kc']);
+  assert.strictEqual(kingHigh.category, 'STRAIGHT_FLUSH');
+  assert.strictEqual(sixHigh.category, 'STRAIGHT_FLUSH');
+  assert.ok(kingHigh.score > sixHigh.score,
+    `King-high SF(${kingHigh.score}) should beat 6-high SF(${sixHigh.score})`);
+});
+
+test('ロイヤルフラッシュの判定はsfHigh(修正後は最高位カード)がA(idx0)であることを見る', () => {
+  const r = evaluate7(['Ah', 'Kh', 'Qh', 'Jh', 'Th', '9c', '8c']);
+  assert.strictEqual(r.category, 'ROYAL_FLUSH');
+  assert.strictEqual(r.score, 1.0);
+});
+
 
 console.log('\n=== range_matrix.js: 169マトリクス・ドロー分類 ===');
 
