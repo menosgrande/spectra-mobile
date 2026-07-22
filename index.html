@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>SPECTRA v3.7.2 — Board Intelligence OS</title>
+<title>SPECTRA v3.8.1 — Board Intelligence OS</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════
-   SPECTRA v3.7.2 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
+   SPECTRA v3.8.1 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
    ─ Hue: 勝率（赤=強→青緑=弱）
    ─ Saturation: コンボ密度（鮮=存在する→灰=幻のハンド）
    ─ Lightness: 将来性・ドロー力（白=アウツ多→暗=死手）
@@ -335,7 +335,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 <!-- BRAIN OVERLAY -->
 <div id="brain-overlay">
-  <div class="brain-title">SPECTRA v3.7.2</div>
+  <div class="brain-title">SPECTRA v3.8.1</div>
   <div class="brain-msg" id="brain-msg">INITIALIZING JS ENGINE...</div>
   <div class="brain-prog-wrap"><div class="brain-prog" id="brain-prog" style="width:8%"></div></div>
   <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);margin-top:4px;" id="brain-sub">loading pure javascript worker</div>
@@ -352,9 +352,13 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 <!-- HEADER -->
 <div id="hdr">
-  <div><div class="logo-t">SPECTRA</div><div class="logo-s">BOARD INTELLIGENCE OS v3.7.2</div></div>
+  <div><div class="logo-t">SPECTRA</div><div class="logo-s">BOARD INTELLIGENCE OS v3.8.1</div></div>
   <div class="hdr-mid">SPECTRA</div>
   <div class="hdr-r">
+    <button id="challenge-btn" onclick="openChallenge()" title="今日のボードチャレンジ：解析結果を見る前に盤面の性質を推測してみよう"
+      style="font-family:'Orbitron',monospace;font-size:8px;padding:3px 8px;border:1px solid rgba(255,215,0,.35);
+             border-radius:2px;background:rgba(255,215,0,.06);color:rgba(255,215,0,.8);letter-spacing:1px;
+             cursor:pointer;margin-right:6px;">🎯 CHALLENGE</button>
     <div class="conn-dot"></div>
     <span>|</span><span id="fps-d">FPS: --</span>
     <span id="time-d">--:--:--</span>
@@ -367,6 +371,29 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <button class="mob-tab active" id="mtab-board" onclick="mobTab('board')">BOARD</button>
   <button class="mob-tab" id="mtab-nuts" onclick="mobTab('nuts')">NUTS</button>
   <button class="mob-tab" id="mtab-stats" onclick="mobTab('stats')">ANALYTICS</button>
+</div>
+
+<!-- ══ BOARD READ CHALLENGE（日替わり盤面クイズ） ══ -->
+<div id="challenge-overlay" style="display:none;position:fixed;inset:0;z-index:3000;
+     background:rgba(4,8,15,.88);backdrop-filter:blur(6px);
+     align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 12px 40px;">
+  <div style="max-width:560px;width:100%;background:#080e1a;border:1px solid rgba(255,215,0,.25);
+       border-radius:6px;padding:16px;position:relative;">
+    <button onclick="closeChallenge()" style="position:absolute;top:10px;right:10px;width:28px;height:28px;
+      border-radius:50%;background:rgba(255,59,59,.12);border:1px solid rgba(255,59,59,.4);
+      color:#ff8080;font-size:14px;cursor:pointer;line-height:1;">✕</button>
+
+    <div style="font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;color:#ffd700;
+         text-shadow:0 0 10px rgba(255,215,0,.4);margin-bottom:2px;">🎯 BOARD READ CHALLENGE</div>
+    <div id="challenge-date" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.4);margin-bottom:14px;"></div>
+
+    <div id="challenge-board" style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;"></div>
+
+    <div id="challenge-body"></div>
+
+    <div id="challenge-streak" style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);
+         display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.5);"></div>
+  </div>
 </div>
 
 <!-- MAIN -->
@@ -501,12 +528,13 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     <!-- ══ STRUCTURE RADAR（Feature可視化・5軸） ══ -->
     <div style="background:rgba(0,0,0,.25);border:1px solid rgba(0,180,255,.1);border-radius:3px;padding:6px;flex-shrink:0;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-        <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);">▐ STRUCTURE RADAR<span class="help-q" title="盤面の性質を5つの軸でグラフ化したものです。詳しくは軸ラベルの日本語を参照">?</span></div>
+        <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);">▐ STRUCTURE RADAR<span class="help-q" title="盤面の性質を5つの軸でグラフ化したものです。実線=現在のストリート、点線=1つ前のストリート（変化が分かります）">?</span></div>
         <div id="radar-street-lbl" style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.25);">--</div>
       </div>
       <svg id="radar-svg" viewBox="0 0 160 130" width="100%" style="display:block;overflow:visible;">
         <g id="radar-grid" opacity="0.75"></g>
         <g id="radar-axes" opacity="0.6"></g>
+        <polygon id="radar-shape-prev" points="" fill="none" stroke="rgba(180,210,240,.4)" stroke-width="1" stroke-dasharray="2 2" stroke-linejoin="round" style="display:none;"/>
         <polygon id="radar-shape" points="" fill="rgba(0,212,255,0.1)" stroke="#00d4ff" stroke-width="1.5" stroke-linejoin="round"/>
         <g id="radar-labels"></g>
         <g id="radar-dots"></g>
@@ -529,7 +557,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     <!-- ══ BOARD INTELLIGENCE（折りたたみ・詳細） ══ -->
     <div style="flex-shrink:0;">
       <div id="bi-toggle" onclick="toggleBiPanel()" title="盤面の細かい性質（テクスチャ・レンジ有利不利など）とHUD指標の詳細です" style="
-        display:none;cursor:pointer;
+        cursor:pointer;
         font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1.5px;
         color:rgba(0,212,255,.35);padding:4px 0;
         border-top:1px solid rgba(0,180,255,.08);
@@ -559,7 +587,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       <div style="width:55px;height:4px;border-radius:2px;background:linear-gradient(90deg,hsl(0,90%,45%),hsl(180,50%,30%));"></div>
       <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:hsl(180,50%,35%);">弱</span>
       <span style="color:rgba(160,200,230,.2);">|</span>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(255,220,100,.65);">FLEX</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(255,220,100,.65);" title="将来性（ドローの伸びしろ）。明るいほど次のカードで化ける可能性が高い">将来性</span>
       <div style="width:55px;height:4px;border-radius:2px;background:linear-gradient(90deg,hsl(50,80%,65%),hsl(50,40%,25%));"></div>
       <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.35);">なし</span>
     </div>
@@ -576,14 +604,14 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <span class="analyzing">● ANALYZING BOARD... LIVE</span>
   <span id="ftr-hash">HASH: N/A</span>
   <span id="calc-time" style="color:rgba(0,212,255,.5);">CALC: --ms</span>
-  <span>SPECTRA BOARD INTELLIGENCE OS v3.7.2</span>
+  <span>SPECTRA BOARD INTELLIGENCE OS v3.8.1</span>
 </div>
 
 </div><!-- /root -->
 
 <script>
 /* ═══════════════════════════════════════════════════
-   SPECTRA v3.7.2 — PURE JS ENGINE (Python完全追放)
+   SPECTRA v3.8.1 — PURE JS ENGINE (Python完全追放)
    Worker: spectra-worker.js に丸投げ
    Fallback: Worker未使用時はinlineで簡易計算
 ═══════════════════════════════════════════════════ */
@@ -606,6 +634,7 @@ let workerReady    = false;
 let calcTimer      = null;
 let evalCache      = new Map();
 let lastHeatmapData= [];     // For tooltip access
+let _ttHideTimer = null;     // モバイルツールチップの自動非表示タイマー（連続タップでの積み上がり防止用）
 let lastNutsFeatures = null;   // renderNuts再描画（帯の折りたたみ）用にfeaturesをキャッシュ
 let collapsedNutBands = new Set(['HIGH CARD']); // 折りたたみ状態（デフォルトHIGH CARDのみ畳む）
 
@@ -780,7 +809,27 @@ function calc3DHSL(item) {
   const isTurn   = boardLen === 4;
 
   // ─ Hue: 強い手ほど赤 (0) → 弱い手ほど青緑 (180) ─
-  const hue = Math.round((1 - eq / 100) * 180);
+  // バグ修正（外部レビュー指摘）: 以前はeq(=getDisplayStrength=rawScore)を
+  // 元にHueを決めていたが、rawScoreは既にcomputeProjectedRawScore()で
+  // potentialStrength（ドローの伸びしろ）を加算済みの値だった。
+  // 一方Lightness側でも同じpotentialをもう一度加算していたため、
+  // 「今はまだ弱いがドローが強いハンド」がHueの段階で既に赤寄りに
+  // 見えてしまい、"今すでに強い"のか"将来伸びる"のかが色相だけでは
+  // 区別できなくなっていた（potentialの二重反映）。
+  // → Hueは made（現在の役の強さのみ、potentialを含まない）だけを見る。
+  //   potentialはLightness側だけで表現する設計に統一した。
+  //
+  // バグ修正2: 以前は eq(0-100)に対して線形にhueを割り当てていたため
+  // （hue = (1-eq/100)*180）、実際にはかなり強いハンド（例: クアッズ、
+  // made≈82%）でもhueが32°程度にしかならず、赤というより黄土色/オレンジ寄りの
+  // 中途半端な色になり、「勝っているはずなのに負けているように見える」という
+  // 見た目の齟齬があった。線形だと0-100%の強さ全体が0-180°に均等配分される
+  // ため、"本当に強い"部類（トリップス以上）が使える"赤"の面積が狭すぎた。
+  // → べき乗カーブ(0.4)でmadeを圧縮し、強いハンドほど急激に赤(hue低)へ
+  //   寄せるようにする。made=100→hue=0、made=82%→hue≈14°、made=50%→hue≈44°、
+  //   made=20%→hue≈86°、made=0→hue=180、という配分になる。
+  const madeCurved = Math.pow(made, 0.4);
+  const hue = Math.round((1 - madeCurved) * 180);
 
   // ─ Saturation: デッドコンボ(density=0)だけ灰色へ。生きてさえいれば鮮やかに ─
   // バグ修正: 以前は density(0-1)にほぼ線形で彩度を決めていたため、
@@ -1047,7 +1096,13 @@ function render3DHeatmap(data) {
     cell.style.backgroundColor = item.potential !== undefined
       ? calc3DHSL(item)
       : fallbackColor(getDisplayStrength(item));
-    cell.dataset.eq   = getDisplayStrength(item).toFixed(1);
+    // バグ修正（外部レビュー指摘）: STRENGTH欄は「今の役の強さ」を示す想定なのに
+    // getDisplayStrength(item)=rawScoreを表示しており、rawScoreは既に
+    // potentialStrength（ドローの伸びしろ）を加算済みの値だった。
+    // POTENTIAL欄と情報が重複し、「今すでに強い」のか「将来伸びる」のかが
+    // 数値上でも区別できなくなっていた。madeStrength（現在の強さのみ）を使う。
+    const madeForDisplay = item.madeStrength !== undefined ? item.madeStrength * 100 : getDisplayStrength(item);
+    cell.dataset.eq   = madeForDisplay.toFixed(1);
     cell.dataset.pot  = item.potential !== undefined ? (item.potential * 100).toFixed(0) : '0';
     cell.dataset.den  = item.density !== undefined ? (item.density * 100).toFixed(0) : '100';
     cell.dataset.draw = item.drawType || '--';
@@ -1843,26 +1898,31 @@ function buildRadarGrid() {
     line.setAttribute('stroke-width', '0.5');
     axesEl.appendChild(line);
 
-    // ラベル（軸先端の外側）— 3文字ラベル＋日本語を1行で併記
-    const offset = 11;
+    // ラベル（軸先端の外側）— 3文字コード＋日本語＋現在値(%)を縦に3段で表示
+    // （外部提案: 数値の絶対値がレーダーだけで読めるようにする）
+    const offset = 13;
     const lx = RADAR_CX + (RADAR_R + offset) * Math.cos(a);
     const ly = RADAR_CY + (RADAR_R + offset) * Math.sin(a);
     const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     txt.setAttribute('x', lx.toFixed(1));
-    txt.setAttribute('y', (ly + 2.5).toFixed(1));
+    txt.setAttribute('y', (ly - 2).toFixed(1));
     txt.setAttribute('text-anchor', 'middle');
-    txt.setAttribute('font-size', '6.5');
     txt.setAttribute('letter-spacing', '0.5');
     txt.innerHTML =
-      `<tspan font-family="'Orbitron',monospace" fill="${ax.color}">${ax.label}</tspan>` +
-      `<tspan font-family="'Rajdhani',sans-serif" fill="rgba(220,235,250,.6)" font-size="6" dx="2">${ax.jp}</tspan>`;
+      `<tspan font-family="'Orbitron',monospace" font-size="5.5" fill="${ax.color}" opacity="0.7">${ax.label}</tspan>` +
+      `<tspan x="${lx.toFixed(1)}" dy="7" font-family="'Rajdhani',sans-serif" font-size="6.5" fill="rgba(230,240,250,.85)">${ax.jp}</tspan>` +
+      `<tspan x="${lx.toFixed(1)}" dy="8" id="radar-val-${ax.key}" font-family="'Share Tech Mono',monospace" font-size="7" font-weight="700" fill="${ax.color}">--%</tspan>`;
     lblsEl.appendChild(txt);
   });
 }
 
+let _prevStructureFeatures = null; // 前ストリートのstructureFeaturesをキャッシュ（ゴースト残像用）
+let _prevStructureStreet = null;
+
 function renderStructureRadar(sf, street) {
   if (!sf) return;
   const shape  = document.getElementById('radar-shape');
+  const ghost  = document.getElementById('radar-shape-prev');
   const dotsEl = document.getElementById('radar-dots');
   const streetLbl = document.getElementById('radar-street-lbl');
   if (!shape) return;
@@ -1880,6 +1940,34 @@ function renderStructureRadar(sf, street) {
     const p   = radarXY(i, val);
     return `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="2.8" fill="${ax.color}" opacity="0.85"><title>${ax.label}: ${val}</title></circle>`;
   }).join('');
+
+  // ── 軸ラベル直下の現在値を更新（外部提案: 数値をレーダー上で読めるように） ──
+  RADAR_AXES.forEach(ax => {
+    const el = document.getElementById('radar-val-' + ax.key);
+    if (el) el.textContent = (sf[ax.key] ?? 0) + '%';
+  });
+
+  // ── 前ストリートのゴースト残像（外部提案: ストリート間の変化を可視化） ──
+  // ストリートが変わった時だけ、直前のstructureFeaturesを薄い点線で重ねて描く。
+  // 同一ストリート内の再計算（ポジション変更等）では残像を更新しない
+  // （「前のストリートとの比較」という意図から外れるため）。
+  if (ghost) {
+    if (_prevStructureFeatures && _prevStructureStreet && _prevStructureStreet !== street) {
+      const prevPts = RADAR_AXES.map((ax, i) => {
+        const p = radarXY(i, _prevStructureFeatures[ax.key] || 0);
+        return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+      }).join(' ');
+      ghost.setAttribute('points', prevPts);
+      ghost.style.display = '';
+    } else if (!_prevStructureStreet) {
+      ghost.setAttribute('points', '');
+      ghost.style.display = 'none';
+    }
+  }
+  if (_prevStructureStreet !== street) {
+    _prevStructureFeatures = sf;
+    _prevStructureStreet = street;
+  }
 }
 
 function renderConclusion(data) {
@@ -2471,8 +2559,10 @@ function onCellTouch(e) {
   if (!c.dataset.eq) return;
   const r = c.getBoundingClientRect();
   showTooltip(c, r.left, r.top - 10);
-  // Auto-hide after 2.5s on mobile
-  setTimeout(() => tooltip.style.display='none', 2500);
+  // バグ修正（外部レビュー指摘）: 以前はsetTimeoutをキャンセルせず積み上げていたため、
+  // 連続タップ時に古いタイマーが新しいツールチップを消してしまうことがあった。
+  if (_ttHideTimer) clearTimeout(_ttHideTimer);
+  _ttHideTimer = setTimeout(() => { tooltip.style.display='none'; _ttHideTimer = null; }, 2500);
 }
 
 function showTooltip(c, x, y) {
@@ -2783,6 +2873,12 @@ function resetHeatmapUI() {
   document.getElementById('nuts-list').innerHTML =
     '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:rgba(160,200,230,.3);padding:10px 4px;line-height:1.6;">ボードを3枚以上<br>入力するとNUTS<br>が表示されます</div>';
   document.getElementById('calc-time').textContent='CALC: --ms';
+  // バグ修正（外部レビュー指摘）: 直近データの参照(lastHeatmapData/lastNutsFeatures)が
+  // 盤面クリア後も保持されたままになっていた。現時点では実害はないが
+  // （次のWorker応答で上書きされるだけなので）、将来的な再描画トリガーの
+  // 追加時にstale stateの温床になりうるため、盤面クリアと同時にリセットする。
+  lastHeatmapData = [];
+  lastNutsFeatures = null;
 }
 
 /* ══════════════════════════════
@@ -2874,6 +2970,281 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 updateClock();
+
+/* ══════════════════════════════
+   BOARD READ CHALLENGE（日替わり盤面クイズ）
+   設計方針: このツールは「意思決定エンジンではない」というREADMEの方針を
+   壊さないよう、「ベットすべきか」ではなく「盤面の性質をどう読んだか」を
+   問う。採点も「AIによる判定」ではなく、SPECTRA自身が計算した値
+   （analyzeBoard()の出力）とユーザーの回答が一致したかどうかの単純な
+   比較であり、GTOソルバーとの比較やアクション推奨は一切行わない。
+
+   Worker: メインの解析フロー（currentBoard/spectraWorker）に一切干渉
+   しないよう、チャレンジ専用の別Workerインスタンスを使う。
+══════════════════════════════ */
+
+let challengeWorker = null;
+let challengeBoard = [];
+let challengeAnswers = {};   // { texture: 'DRY', range: 'HERO', nut: 'VILLAIN', draw: 'FLUSH' }
+let challengeActual = null;  // analyzeBoard()の実際の値（採点用）
+let challengeContext = { street: 'FLOP', heroPos: 'BTN', villainPos: 'BB', archetype: 'STANDARD', profile: 'BTN_VS_BB' };
+
+const CHALLENGE_QUESTIONS = [
+  { key: 'texture', label: 'テクスチャは？', options: [
+    { v: 'DRY',  label: 'DRY (乾いている)' },
+    { v: 'MID',  label: 'SEMI-WET (中間)' },
+    { v: 'WET',  label: 'WET (濡れている)' },
+  ]},
+  { key: 'range', label: 'レンジ有利なのは？', options: [
+    { v: 'HERO',    label: 'Hero (BTN)' },
+    { v: 'NEUTRAL', label: '互角' },
+    { v: 'VILLAIN', label: 'Villain (BB)' },
+  ]},
+  { key: 'nut', label: 'ナッツ有利なのは？', options: [
+    { v: 'HERO',    label: 'Hero (BTN)' },
+    { v: 'NEUTRAL', label: '互角' },
+    { v: 'VILLAIN', label: 'Villain (BB)' },
+  ]},
+  { key: 'draw', label: '一番強いドローは？', options: [
+    { v: 'FLUSH',    label: 'フラッシュドロー' },
+    { v: 'STRAIGHT', label: 'ストレートドロー' },
+    { v: 'MULTI',    label: '両方（複合ドロー）' },
+    { v: 'NONE',     label: '弱い・ほぼ無い' },
+  ]},
+];
+
+// ── 日替わり盤面: 日付文字列をシードにした決定的な擬似乱数でフロップ3枚を生成 ──
+// 同じ日には誰が開いても同じボードになる（DBやサーバー無しで実現するための工夫）。
+function seededRandom(seedStr) {
+  let h = 0;
+  for (let i = 0; i < seedStr.length; i++) { h = (h * 31 + seedStr.charCodeAt(i)) >>> 0; }
+  return function () {
+    h = (h * 1664525 + 1013904223) >>> 0;
+    return h / 4294967296;
+  };
+}
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function generateDailyBoard() {
+  const rng = seededRandom('SPECTRA-CHALLENGE-' + todayKey());
+  const deck = [];
+  RANKS_LIST.forEach(r => SUITS_LIST.forEach(s => deck.push(r + s)));
+  // Fisher-Yates（シード済み乱数で決定的にシャッフル）
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck.slice(0, 3);
+}
+
+// ── localStorage: 連続日数・履歴 ──
+function loadChallengeState() {
+  try {
+    const raw = localStorage.getItem('spectra_challenge_state');
+    return raw ? JSON.parse(raw) : { lastDate: null, lastResult: null, streak: 0, bestStreak: 0, totalPlays: 0, totalCorrect: 0 };
+  } catch (_) {
+    return { lastDate: null, lastResult: null, streak: 0, bestStreak: 0, totalPlays: 0, totalCorrect: 0 };
+  }
+}
+function saveChallengeState(state) {
+  try { localStorage.setItem('spectra_challenge_state', JSON.stringify(state)); } catch (_) {}
+}
+
+function renderChallengeBoardCards() {
+  const wrap = document.getElementById('challenge-board');
+  wrap.innerHTML = challengeBoard.map(c => {
+    const rank = c[0], suit = c[1];
+    const sym = SUIT_SYM[suit], col = SUIT_COLORS[suit];
+    return `<div style="width:44px;height:60px;border-radius:4px;background:#0c1828;
+      border:1px solid ${col}55;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      color:${col};font-family:'Rajdhani',sans-serif;">
+      <div style="font-size:16px;font-weight:700;">${rank}</div>
+      <div style="font-size:18px;">${sym}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderChallengeQuestions() {
+  const body = document.getElementById('challenge-body');
+  body.innerHTML = CHALLENGE_QUESTIONS.map(q => `
+    <div style="margin-bottom:10px;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:12px;color:rgba(220,235,250,.85);margin-bottom:4px;">${q.label}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;" id="cq-${q.key}">
+        ${q.options.map(o => `<button onclick="pickChallengeAnswer('${q.key}','${o.v}')" id="cq-${q.key}-${o.v}"
+          style="padding:5px 10px;border-radius:3px;border:1px solid rgba(0,180,255,.3);
+          background:rgba(0,20,40,.4);color:rgba(200,220,240,.7);font-family:'Share Tech Mono',monospace;
+          font-size:10px;cursor:pointer;">${o.label}</button>`).join('')}
+      </div>
+    </div>
+  `).join('') + `
+    <button id="challenge-submit" onclick="submitChallenge()" disabled
+      style="margin-top:8px;width:100%;padding:8px;border-radius:3px;border:1px solid rgba(255,215,0,.4);
+      background:rgba(255,215,0,.08);color:rgba(255,215,0,.5);font-family:'Orbitron',monospace;
+      font-size:10px;letter-spacing:1px;cursor:not-allowed;">4問すべて回答すると採点できます</button>
+  `;
+}
+
+function pickChallengeAnswer(key, value) {
+  challengeAnswers[key] = value;
+  const q = CHALLENGE_QUESTIONS.find(q => q.key === key);
+  q.options.forEach(o => {
+    const btn = document.getElementById(`cq-${key}-${o.v}`);
+    if (!btn) return;
+    if (o.v === value) {
+      btn.style.background = 'rgba(255,215,0,.18)';
+      btn.style.borderColor = '#ffd700';
+      btn.style.color = '#ffd700';
+    } else {
+      btn.style.background = 'rgba(0,20,40,.4)';
+      btn.style.borderColor = 'rgba(0,180,255,.3)';
+      btn.style.color = 'rgba(200,220,240,.7)';
+    }
+  });
+  // 4問揃ったら送信ボタンを有効化
+  const submitBtn = document.getElementById('challenge-submit');
+  if (submitBtn && Object.keys(challengeAnswers).length >= CHALLENGE_QUESTIONS.length) {
+    submitBtn.disabled = false;
+    submitBtn.style.cursor = 'pointer';
+    submitBtn.style.color = '#ffd700';
+    submitBtn.textContent = '採点する';
+  }
+}
+
+// ── 実際の値からの正解導出（GTOソルバーではなく、盤面の構造的性質のみを使う） ──
+function deriveChallengeCorrectAnswers(data) {
+  const f = data.features;
+  const texture = (f.texture === 'VERY_DRY' || f.texture === 'DRY') ? 'DRY'
+                 : (f.texture === 'WET' || f.texture === 'VERY_WET') ? 'WET' : 'MID';
+  const range = f.rangeDynamics === 'RANGE_ADV_HERO' ? 'HERO'
+               : f.rangeDynamics === 'RANGE_ADV_VILLAIN' ? 'VILLAIN' : 'NEUTRAL';
+  const nut = f.nutDynamics === 'NUT_ADV_HERO' ? 'HERO'
+             : f.nutDynamics === 'NUT_ADV_VILLAIN' ? 'VILLAIN' : 'NEUTRAL';
+  const hasFlushDraw = f.flushPressure === 'THREE_FLUSH' || f.flushPressure === 'TWO_FLUSH';
+  const hasStraightDraw = f.connectivity === 'HIGHLY_CONNECTED' || f.connectivity === 'CONNECTED';
+  const draw = (hasFlushDraw && hasStraightDraw) ? 'MULTI'
+             : hasFlushDraw ? 'FLUSH'
+             : hasStraightDraw ? 'STRAIGHT' : 'NONE';
+  return { texture, range, nut, draw };
+}
+
+function submitChallenge() {
+  if (!challengeActual) return;
+  const correct = deriveChallengeCorrectAnswers(challengeActual);
+  let score = 0;
+  const detail = CHALLENGE_QUESTIONS.map(q => {
+    const isRight = challengeAnswers[q.key] === correct[q.key];
+    if (isRight) score++;
+    const userLabel = q.options.find(o => o.v === challengeAnswers[q.key])?.label || '--';
+    const correctLabel = q.options.find(o => o.v === correct[q.key])?.label || '--';
+    return { label: q.label, isRight, userLabel, correctLabel };
+  });
+
+  // ── localStorage更新 ──
+  const state = loadChallengeState();
+  const today = todayKey();
+  if (state.lastDate !== today) {
+    // 連続日数判定: 前回が「昨日」なら+1、それ以外は1にリセット
+    const prev = state.lastDate ? new Date(state.lastDate) : null;
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const yKey = `${y.getFullYear()}-${String(y.getMonth()+1).padStart(2,'0')}-${String(y.getDate()).padStart(2,'0')}`;
+    state.streak = (state.lastDate === yKey) ? state.streak + 1 : 1;
+    state.bestStreak = Math.max(state.bestStreak, state.streak);
+    state.totalPlays += 1;
+  }
+  state.lastDate = today;
+  state.lastResult = score;
+  state.totalCorrect += score;
+  saveChallengeState(state);
+
+  renderChallengeResult(score, detail, state);
+}
+
+function renderChallengeResult(score, detail, state) {
+  const body = document.getElementById('challenge-body');
+  const scoreColor = score === 4 ? '#00ff9d' : score >= 2 ? '#ffd700' : '#ff6b6b';
+  body.innerHTML = `
+    <div style="text-align:center;margin-bottom:10px;">
+      <div style="font-family:'Orbitron',monospace;font-size:22px;font-weight:900;color:${scoreColor};">${score} / 4</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.4);letter-spacing:1px;">READ SCORE（SPECTRA自身の計算値との一致数）</div>
+    </div>
+    ${detail.map(d => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;
+           margin-bottom:4px;border-radius:3px;background:${d.isRight ? 'rgba(0,255,157,.06)' : 'rgba(255,59,59,.06)'};
+           border:1px solid ${d.isRight ? 'rgba(0,255,157,.2)' : 'rgba(255,59,59,.2)'};">
+        <span style="font-family:'Rajdhani',sans-serif;font-size:11px;color:rgba(220,235,250,.8);">${d.label}</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:${d.isRight ? '#00ff9d' : '#ff8080'};">
+          ${d.isRight ? '✓ ' + d.userLabel : d.userLabel + ' → ' + d.correctLabel}
+        </span>
+      </div>
+    `).join('')}
+    <div style="margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.35);text-align:center;">
+      また明日、新しいボードが出題されます
+    </div>
+  `;
+  renderChallengeStreak(state);
+}
+
+function renderChallengeStreak(state) {
+  const el = document.getElementById('challenge-streak');
+  const avg = state.totalPlays > 0 ? (state.totalCorrect / state.totalPlays).toFixed(1) : '--';
+  el.innerHTML = `
+    <span>🔥 連続 <b style="color:#ffd700;">${state.streak}</b>日</span>
+    <span>最高 ${state.bestStreak}日</span>
+    <span>平均 ${avg}/4</span>
+    <span>累計 ${state.totalPlays}回</span>
+  `;
+}
+
+function ensureChallengeWorker() {
+  if (challengeWorker) return;
+  try {
+    challengeWorker = new Worker('spectra-worker.js');
+    challengeWorker.onmessage = (e) => {
+      const { type, data } = e.data;
+      if (type === 'BOARD_INTELLIGENCE') {
+        challengeActual = data;
+      }
+    };
+  } catch (_) { challengeWorker = null; }
+}
+
+function openChallenge() {
+  document.getElementById('challenge-overlay').style.display = 'flex';
+  document.getElementById('challenge-date').textContent = '今日のボード — ' + todayKey();
+
+  const state = loadChallengeState();
+  const today = todayKey();
+  challengeBoard = generateDailyBoard();
+  renderChallengeBoardCards();
+  challengeAnswers = {};
+
+  ensureChallengeWorker();
+  challengeActual = null;
+  if (challengeWorker) {
+    challengeWorker.postMessage({ type: 'BOARD_INTELLIGENCE', payload: { board: challengeBoard, context: challengeContext } });
+  }
+
+  if (state.lastDate === today && state.lastResult !== null) {
+    // 本日は既にプレイ済み → 結果のみ再表示（採点はやり直せない）
+    document.getElementById('challenge-body').innerHTML = `
+      <div style="text-align:center;padding:16px 0;">
+        <div style="font-family:'Orbitron',monospace;font-size:22px;font-weight:900;color:#ffd700;">${state.lastResult} / 4</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.4);margin-top:4px;">今日はプレイ済みです。また明日！</div>
+      </div>`;
+    renderChallengeStreak(state);
+  } else {
+    renderChallengeQuestions();
+    renderChallengeStreak(state);
+  }
+}
+
+function closeChallenge() {
+  document.getElementById('challenge-overlay').style.display = 'none';
+}
 
 /* ══════════════════════════════
    INIT

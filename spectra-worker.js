@@ -1,5 +1,5 @@
 /**
- * SPECTRA v3.7 Worker — Entry Point
+ * SPECTRA v3.8.1 Worker — Entry Point
  *
  * このファイルは「公開APIの窓口」のみを担う。
  * 計算・評価・意味生成はすべて core/ モジュールが行う。
@@ -21,7 +21,7 @@ importScripts(
   './core/board_intelligence.js'
 );
 
-console.log('[SPECTRA v3.7] All modules loaded OK');
+console.log('[SPECTRA v3.8.1] All modules loaded OK');
 
 /* ══════════════════════════════
    PUBLIC API
@@ -36,7 +36,7 @@ self.onmessage = function (e) {
     if (type === 'INIT') {
       self.postMessage({
         type: 'INIT_OK',
-        version: '3.7',
+        version: '3.8.1',
         capabilities: ['BOARD_INTELLIGENCE', 'EVAL_169', 'TEXTURE']
       });
       return;
