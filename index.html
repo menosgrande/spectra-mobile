@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>SPECTRA v3.8.1 — Board Intelligence OS</title>
+<title>SPECTRA v3.8.2 — Board Intelligence OS</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════
-   SPECTRA v3.8.1 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
+   SPECTRA v3.8.2 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
    ─ Hue: 勝率（赤=強→青緑=弱）
    ─ Saturation: コンボ密度（鮮=存在する→灰=幻のハンド）
    ─ Lightness: 将来性・ドロー力（白=アウツ多→暗=死手）
@@ -335,7 +335,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 <!-- BRAIN OVERLAY -->
 <div id="brain-overlay">
-  <div class="brain-title">SPECTRA v3.8.1</div>
+  <div class="brain-title">SPECTRA v3.8.2</div>
   <div class="brain-msg" id="brain-msg">INITIALIZING JS ENGINE...</div>
   <div class="brain-prog-wrap"><div class="brain-prog" id="brain-prog" style="width:8%"></div></div>
   <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);margin-top:4px;" id="brain-sub">loading pure javascript worker</div>
@@ -352,7 +352,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 <!-- HEADER -->
 <div id="hdr">
-  <div><div class="logo-t">SPECTRA</div><div class="logo-s">BOARD INTELLIGENCE OS v3.8.1</div></div>
+  <div><div class="logo-t">SPECTRA</div><div class="logo-s">BOARD INTELLIGENCE OS v3.8.2</div></div>
   <div class="hdr-mid">SPECTRA</div>
   <div class="hdr-r">
     <button id="challenge-btn" onclick="openChallenge()" title="今日のボードチャレンジ：解析結果を見る前に盤面の性質を推測してみよう"
@@ -592,6 +592,17 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.35);">なし</span>
     </div>
     <div id="hm-wrap">
+      <div id="hm-view-toggle" style="display:flex;gap:4px;margin-bottom:4px;flex-shrink:0;">
+        <button id="hm-view-hero" onclick="setHeatmapView('HERO')"
+          style="flex:1;padding:4px 6px;border-radius:3px;border:1px solid rgba(0,212,255,.5);
+          background:rgba(0,212,255,.15);color:#00d4ff;font-family:'Orbitron',monospace;
+          font-size:7px;letter-spacing:1px;cursor:pointer;">HERO VIEW</button>
+        <button id="hm-view-villain" onclick="setHeatmapView('VILLAIN')"
+          style="flex:1;padding:4px 6px;border-radius:3px;border:1px solid rgba(160,200,230,.25);
+          background:rgba(0,20,40,.3);color:rgba(160,200,230,.5);font-family:'Orbitron',monospace;
+          font-size:7px;letter-spacing:1px;cursor:pointer;"
+          title="選択中のVillainポジションのレンジに入らないハンドを暗くします（Chen Formulaによる簡易的なレンジ幅推定。GTOソルバーではありません）">VILLAIN VIEW<span class="help-q" title="選択中のVillainポジションが通常オープン/ディフェンドするレンジに入らないハンドを暗く表示します。Chen Formulaという公開されている簡易採点方式でハンドの強さ順位を推定し、ポジション別のおおよそのレンジ幅と照合しています。GTOソルバーで計算した実際のレンジではなく、あくまで目安です">?</span></button>
+      </div>
       <div id="hm-grid"></div>
       <div id="hm-spin">CALCULATING...</div>
     </div>
@@ -604,14 +615,14 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <span class="analyzing">● ANALYZING BOARD... LIVE</span>
   <span id="ftr-hash">HASH: N/A</span>
   <span id="calc-time" style="color:rgba(0,212,255,.5);">CALC: --ms</span>
-  <span>SPECTRA BOARD INTELLIGENCE OS v3.8.1</span>
+  <span>SPECTRA BOARD INTELLIGENCE OS v3.8.2</span>
 </div>
 
 </div><!-- /root -->
 
 <script>
 /* ═══════════════════════════════════════════════════
-   SPECTRA v3.8.1 — PURE JS ENGINE (Python完全追放)
+   SPECTRA v3.8.2 — PURE JS ENGINE (Python完全追放)
    Worker: spectra-worker.js に丸投げ
    Fallback: Worker未使用時はinlineで簡易計算
 ═══════════════════════════════════════════════════ */
@@ -818,18 +829,31 @@ function calc3DHSL(item) {
   // 区別できなくなっていた（potentialの二重反映）。
   // → Hueは made（現在の役の強さのみ、potentialを含まない）だけを見る。
   //   potentialはLightness側だけで表現する設計に統一した。
-  //
-  // バグ修正2: 以前は eq(0-100)に対して線形にhueを割り当てていたため
-  // （hue = (1-eq/100)*180）、実際にはかなり強いハンド（例: クアッズ、
-  // made≈82%）でもhueが32°程度にしかならず、赤というより黄土色/オレンジ寄りの
-  // 中途半端な色になり、「勝っているはずなのに負けているように見える」という
-  // 見た目の齟齬があった。線形だと0-100%の強さ全体が0-180°に均等配分される
-  // ため、"本当に強い"部類（トリップス以上）が使える"赤"の面積が狭すぎた。
-  // → べき乗カーブ(0.4)でmadeを圧縮し、強いハンドほど急激に赤(hue低)へ
-  //   寄せるようにする。made=100→hue=0、made=82%→hue≈14°、made=50%→hue≈44°、
-  //   made=20%→hue≈86°、made=0→hue=180、という配分になる。
-  const madeCurved = Math.pow(made, 0.4);
-  const hue = Math.round((1 - madeCurved) * 180);
+  let hue;
+  if (isRiver) {
+    // 外部フィードバック対応（v3.8.2）: リバーは将来性(flex)が存在しないため、
+    // 連続的なべき乗カーブだと、近い強さの役同士（例: クアッズA vs クアッズK）が
+    // ほぼ同じ色相に収束してしまい「見た目で判別しづらい」という指摘があった。
+    // リバー限定で、役のカテゴリごとに固定の色帯を割り当てるティア制に変更。
+    // 境界値はLightness側の既存ティア（0.70/0.44/0.26/0.10）と揃えることで、
+    // 色相・明度が同じ役の境界で一致して変化する、より「原色に近い・素直な」
+    // 配色になる（ティア内では連続的に微妙な階調も残す）。
+    let tierLo, tierHi, hueLo, hueHi;
+    if (made >= 0.70)      { tierLo = 0.70; tierHi = 1.00; hueLo = 0;   hueHi = 15;  } // SF/Quads/Boat
+    else if (made >= 0.44) { tierLo = 0.44; tierHi = 0.70; hueLo = 20;  hueHi = 40;  } // Flush/Straight/Trips
+    else if (made >= 0.26) { tierLo = 0.26; tierHi = 0.44; hueLo = 55;  hueHi = 75;  } // Two pair
+    else if (made >= 0.10) { tierLo = 0.10; tierHi = 0.26; hueLo = 100; hueHi = 130; } // One pair
+    else                   { tierLo = 0.00; tierHi = 0.10; hueLo = 150; hueHi = 180; } // High card
+    const within = tierHi > tierLo ? (made - tierLo) / (tierHi - tierLo) : 1;
+    hue = Math.round(hueLo + Math.max(0, Math.min(1, within)) * (hueHi - hueLo));
+  } else {
+    // FLOP/TURN: ドロー（将来性）がまだ残っているため、連続的なべき乗カーブで
+    // 強いハンドほど急激に赤へ寄せる（バグ修正2、以前は線形で中途半端な
+    // 黄土色になっていた問題への対応）。made=100→hue=0、made=82%→hue≈14°、
+    // made=50%→hue≈44°、made=20%→hue≈86°、made=0→hue=180。
+    const madeCurved = Math.pow(made, 0.4);
+    hue = Math.round((1 - madeCurved) * 180);
+  }
 
   // ─ Saturation: デッドコンボ(density=0)だけ灰色へ。生きてさえいれば鮮やかに ─
   // バグ修正: 以前は density(0-1)にほぼ線形で彩度を決めていたため、
@@ -1051,6 +1075,10 @@ function estimateOffsuitScore(r1, r2, board) { return 0.15; }
 
 function classifyDrawInline(r1, r2, suited, pair, board) {
   if (!board || board.length < 3) return { drawType: null, potential: 0, outs: 0 };
+  // バグ修正: Worker側と同じ欠陥がこのフォールバック評価エンジンにも
+  // 独立して存在した。リバー(5枚)では次のカードが来ないため、
+  // ドロー・伸びしろの概念自体が存在せず常に0/nullであるべき。
+  if (board.length >= 5) return { drawType: null, potential: 0, outs: 0 };
   const ri1 = RANK_IDX[r1], ri2 = RANK_IDX[r2];
   const boardIdxs = board.map(c => RANK_IDX[c[0]]).sort((a,b) => a-b);
 
@@ -1193,6 +1221,10 @@ function updateOutsPanel() {
 
 function detectDraws(r1, r2, s1, s2, board) {
   const draws = [];
+  // バグ修正: リバー(5枚)では次のカードが来ないため、ドローという概念自体が
+  // 存在しない。現在HERO OUTSパネルはコメントアウトされており到達しないが、
+  // 将来復活させた場合に備えて同じ穴を塞いでおく。
+  if (board.length >= 5) return draws;
   const ri1 = RANK_IDX[r1], ri2 = RANK_IDX[r2];
   const boardIdxs = board.map(c => RANK_IDX[c[0]]);
   const boardSuits = board.map(c => c[1]);
@@ -1372,12 +1404,18 @@ function mergeSuitedOffsuit(items) {
       map.set(key, {
         key, combos: 0, isPair: it.isPair,
         suitedCombos: 0, offsuitCombos: 0,
-        drawType: null, outs: 0,
+        drawType: null, outs: 0, bestScore: 0,
         bestRankIdx: Math.min(RANK_IDX[key[0]] ?? 12, RANK_IDX[key[1]] ?? 12)
       });
     }
     const g = map.get(key);
     g.combos += it.combos;
+    // バグ修正（外部フィードバック）: チップの並び順が生存コンボ数(combos)基準だったため、
+    // 「盤面にブロックされて生存コンボが少ないだけの、実際には最強のハンド」
+    // （例: KKKAAボードでのAA、Aが2枚場に出ているためコンボが少ない）が
+    // K系の弱いハンドより後ろに表示され、「Kの方が強そうに見える」誤解を生んでいた。
+    // 各グループの中で最も強いスコア(bestScore)を記録し、そちらで並べ替える。
+    if ((it.score ?? 0) > g.bestScore) g.bestScore = it.score ?? 0;
     if (!it.isPair) {
       if (it.isSuited) {
         g.suitedCombos += it.combos;
@@ -1549,7 +1587,7 @@ function renderNuts(data, features) {
     const bi = bands.findIndex(b => score >= b.min);
     if (bi >= 0 && combos > 0) {
       bands[bi].combos += combos;
-      bands[bi].items.push({ hand: h.hand, combos, isSuited, isPair, drawType: h.drawType, outs: h.outs });
+      bands[bi].items.push({ hand: h.hand, combos, isSuited, isPair, drawType: h.drawType, outs: h.outs, score });
     }
   });
 
@@ -1576,7 +1614,7 @@ function renderNuts(data, features) {
     // より多くの該当ハンドをチップとして並べる（折り返し表示）。
     // s/o統合: 同じ帯内でATs/AToが両方あれば「AT s/o」の1チップに統合してノイズを減らす。
     const mergedItems = mergeSuitedOffsuit(b.items);
-    const sortedItems = [...mergedItems].sort((x, y) => y.combos - x.combos);
+    const sortedItems = [...mergedItems].sort((x, y) => y.bestScore - x.bestScore);
     const CHIP_LIMIT  = 10;
 
     // ── フラッシュ帯のみ: ボードのフラッシュカードを超えるか否かで2分割 ──
