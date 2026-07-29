@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>SPECTRA v3.8.2 — Board Intelligence OS</title>
+<title>SPECTRA v3.9.1 — Board Intelligence OS</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════
-   SPECTRA v3.8.2 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
+   SPECTRA v3.9.1 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
    ─ Hue: 勝率（赤=強→青緑=弱）
    ─ Saturation: コンボ密度（鮮=存在する→灰=幻のハンド）
    ─ Lightness: 将来性・ドロー力（白=アウツ多→暗=死手）
@@ -32,8 +32,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ─── MAIN ─── */
-#main{display:grid;grid-template-columns:200px 1fr 220px;gap:6px;padding:6px;flex:1;min-height:0;}
-@media(min-width:769px){#main{display:grid !important;grid-template-columns:200px 1fr 220px !important;}}
+#main{display:grid;grid-template-columns:180px 1fr 200px;gap:6px;padding:6px;flex:1;min-height:0;}
+@media(min-width:769px){#main{display:grid !important;grid-template-columns:180px 1fr 200px !important;}}
 
 /* ─── PANEL ─── */
 .pnl{background:#080e1a;border:1px solid rgba(0,180,255,0.15);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow-y:auto;overflow-x:hidden;}
@@ -250,22 +250,61 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 #hm-legend{display:flex;align-items:center;gap:6px;font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.4);flex-shrink:0;}
 .legend-grad{width:80px;height:5px;border-radius:2px;background:linear-gradient(90deg,hsl(0,100%,50%),hsl(60,100%,50%),hsl(180,100%,40%));flex-shrink:0;}
 #hm-grid{
-  display:grid;grid-template-columns:11px repeat(13,1fr);
-  gap:1px;flex:1;min-height:0;align-content:start;
+  display:grid;grid-template-columns:16px repeat(13,1fr);
+  gap:2px;flex:1;min-height:0;align-content:start;
 }
-.hm-hdr{font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(0,212,255,.55);display:flex;align-items:center;justify-content:center;}
+.hm-hdr{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,212,255,.55);display:flex;align-items:center;justify-content:center;}
 .hm-c{
-  font-family:'Share Tech Mono',monospace;font-size:6px;
+  font-family:'Share Tech Mono',monospace;font-size:9.5px;font-weight:700;
   display:flex;align-items:center;justify-content:center;
-  border-radius:1px;aspect-ratio:1/1;
-  transition:background-color .35s ease,box-shadow .35s ease;
-  cursor:pointer;color:rgba(255,255,255,.75);
+  border-radius:2px;aspect-ratio:1/1;
+  transition:background-color .35s ease,box-shadow .35s ease,opacity .25s ease,filter .25s ease;
+  cursor:pointer;color:rgba(255,255,255,.85);
   position:relative;
 }
 /* Hero cell gold outline */
 .hm-c.hero-cell{
   box-shadow:0 0 0 1.5px #ffd700, 0 0 6px rgba(255,215,0,.6) !important;
   z-index:2;
+}
+
+/* v3.9: 背景マスク（ハンドの静的カテゴリ）を枠線スタイルで表現。
+   彩度(Made Strength)とは独立した「構造」情報のため、パターンで文字の
+   可読性を潰さないよう、枠線の太さ/実線・点線・二重線の違いだけで区別する。 */
+.hm-c.cat-pair       { border:2px solid rgba(255,255,255,.5); }
+.hm-c.cat-suited-bw  { border:2px double rgba(255,255,255,.45); }
+.hm-c.cat-connector  { border:1px dashed rgba(255,255,255,.4); }
+.hm-c.cat-offsuit-bw { border:1px dotted rgba(255,255,255,.35); }
+.hm-c.cat-other      { border:1px solid rgba(255,255,255,.06); }
+
+/* v3.9: Draw Potential（将来性）は彩度に混ぜず、右上の小さなドットで独立表現 */
+.hm-pot-dot{
+  position:absolute; top:1px; right:1px;
+  width:4px; height:4px; border-radius:50%;
+  background:transparent; pointer-events:none;
+  box-shadow:none;
+}
+
+/* v3.9: VILLAIN VIEW — 選択中ポジションのレンジ外のハンドを暗くする
+   （Chen Formulaによるヒューリスティックなレンジ幅推定。GTOソルバーではない） */
+.hm-c.villain-out{ opacity:.16; filter:grayscale(.7); }
+
+/* v3.9: ヒートマップ上部のポジションタブ（ブラウザタブ風） */
+.hm-pos-tab{
+  padding:3px 7px;border-radius:3px 3px 0 0;
+  border:1px solid rgba(160,200,230,.2);border-bottom:none;
+  background:rgba(0,20,40,.3);color:rgba(160,200,230,.45);
+  font-family:'Orbitron',monospace;font-size:7px;letter-spacing:.5px;
+  cursor:pointer;transition:all .15s;
+}
+.hm-pos-tab:hover{background:rgba(0,60,100,.35);color:rgba(200,220,240,.8);}
+.hm-pos-tab.active{
+  background:rgba(255,215,0,.15);border-color:rgba(255,215,0,.5);
+  color:#ffd700;box-shadow:0 -1px 6px rgba(255,215,0,.2);
+}
+.hm-pos-tab[data-pos="OFF"].active{
+  background:rgba(0,212,255,.15);border-color:rgba(0,212,255,.5);color:#00d4ff;
+  box-shadow:0 -1px 6px rgba(0,212,255,.2);
 }
 
 /* Tooltip */
@@ -325,7 +364,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   #clear-all-btn{padding:6px 12px !important;font-size:9px !important;}
   .n-eq{font-size:11px;}.n-hand{font-size:18px;}.n-type{font-size:10px;}
   #hm-grid{grid-template-columns:14px repeat(13,1fr);gap:2px;}
-  .hm-c{font-size:7px;}
+  .hm-c{font-size:9px;}
   #ftr{display:none;}
 }
 </style>
@@ -335,7 +374,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 <!-- BRAIN OVERLAY -->
 <div id="brain-overlay">
-  <div class="brain-title">SPECTRA v3.8.2</div>
+  <div class="brain-title">SPECTRA v3.9.1</div>
   <div class="brain-msg" id="brain-msg">INITIALIZING JS ENGINE...</div>
   <div class="brain-prog-wrap"><div class="brain-prog" id="brain-prog" style="width:8%"></div></div>
   <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);margin-top:4px;" id="brain-sub">loading pure javascript worker</div>
@@ -352,7 +391,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 <!-- HEADER -->
 <div id="hdr">
-  <div><div class="logo-t">SPECTRA</div><div class="logo-s">BOARD INTELLIGENCE OS v3.8.2</div></div>
+  <div><div class="logo-t">SPECTRA</div><div class="logo-s">BOARD INTELLIGENCE OS v3.9.1</div></div>
   <div class="hdr-mid">SPECTRA</div>
   <div class="hdr-r">
     <button id="challenge-btn" onclick="openChallenge()" title="今日のボードチャレンジ：解析結果を見る前に盤面の性質を推測してみよう"
@@ -418,8 +457,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       <select id="situation-select"><option value="BTN_VS_BB" selected>BTN vs BB</option><option value="3BET_IP">3-Bet IP</option><option value="SRP_IP">SRP IP</option></select>
       <select id="archetype-select" onchange="onInputChanged();"><option value="STANDARD" selected>Standard</option><option value="TIGHT">Tight</option><option value="LOOSE">Loose</option><option value="GTO">GTO</option><option value="RECREATIONAL">Recreational</option></select>
       <div id="fb-archetype"></div>
-      <select id="hero-pos-select" onchange="lastRangeAdv=null;onInputChanged();updateConfigFeedback();buildPosMatrix();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN" selected>BTN</option><option value="SB">SB</option></select>
-      <select id="villain-pos-select" onchange="lastRangeAdv=null;onInputChanged();updateConfigFeedback();buildPosMatrix();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN">BTN</option><option value="SB">SB</option><option value="BB" selected>BB</option></select>
+      <select id="hero-pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN" selected>BTN</option><option value="SB">SB</option></select>
+      <select id="villain-pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN">BTN</option><option value="SB">SB</option><option value="BB" selected>BB</option></select>
       <div id="fb-hero-pos"></div><div id="fb-villain-pos"></div><div id="fb-situation"></div>
     </div>
 
@@ -516,29 +555,13 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       <div id="conclusion-narrative" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.4);line-height:1.6;border-top:1px solid rgba(0,180,255,.08);padding-top:4px;display:none;"></div>
     </div>
 
-    <!-- ══ L2: POSITION MATRIX（教科書・静的） ══ -->
-    <div style="padding:5px 6px;border:1px solid rgba(0,180,255,.12);border-radius:3px;background:rgba(0,5,15,.3);flex-shrink:0;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);">▐ POSITION MATRIX<span class="help-q" title="Hero(縦)とVillain(横)のポジションの組み合わせで、レンジの有利不利を表す早見表です">?</span></span>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:6px;color:rgba(160,200,230,.2);">click to select</span>
-      </div>
-      <div id="pos-matrix-wrap"></div>
-    </div>
-
-    <!-- ══ STRUCTURE RADAR（Feature可視化・5軸） ══ -->
+    <!-- ══ STRUCTURE RADAR → STAR RATING（5項目・★評価） ══ -->
     <div style="background:rgba(0,0,0,.25);border:1px solid rgba(0,180,255,.1);border-radius:3px;padding:6px;flex-shrink:0;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-        <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);">▐ STRUCTURE RADAR<span class="help-q" title="盤面の性質を5つの軸でグラフ化したものです。実線=現在のストリート、点線=1つ前のストリート（変化が分かります）">?</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);">▐ STRUCTURE RATING<span class="help-q" title="盤面の性質を5項目・5段階の★評価で表します。かっこ内は1つ前のストリートとの比較（▲上昇/▼下降/・変化なし）">?</span></div>
         <div id="radar-street-lbl" style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.25);">--</div>
       </div>
-      <svg id="radar-svg" viewBox="0 0 160 130" width="100%" style="display:block;overflow:visible;">
-        <g id="radar-grid" opacity="0.75"></g>
-        <g id="radar-axes" opacity="0.6"></g>
-        <polygon id="radar-shape-prev" points="" fill="none" stroke="rgba(180,210,240,.4)" stroke-width="1" stroke-dasharray="2 2" stroke-linejoin="round" style="display:none;"/>
-        <polygon id="radar-shape" points="" fill="rgba(0,212,255,0.1)" stroke="#00d4ff" stroke-width="1.5" stroke-linejoin="round"/>
-        <g id="radar-labels"></g>
-        <g id="radar-dots"></g>
-      </svg>
+      <div id="star-rating-list"></div>
       <!-- 既存texture互換DOM（非表示・applyTextureが参照） -->
       <div style="display:none;">
         <div id="wet-val"></div><div id="wet-lbl"></div>
@@ -581,27 +604,30 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     </div>
 
     <!-- ══ L3: 3D HEATMAP（主役・大きく） ══ -->
-    <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:rgba(0,212,255,.6);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札を強さ別に色分けした一覧です。赤=強い、青緑=弱い">?</span></div>
+    <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:rgba(0,212,255,.6);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札の一覧です。色の濃さ=現在の強さ、右上のドット=将来性（ドロー）、枠線=ハンドの形（ペア/ブロードウェイ等、盤面に依存しない静的な分類）">?</span></div>
     <div id="hm-legend" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:hsl(0,80%,50%);">STRENGTH</span>
-      <div style="width:55px;height:4px;border-radius:2px;background:linear-gradient(90deg,hsl(0,90%,45%),hsl(180,50%,30%));"></div>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:hsl(180,50%,35%);">弱</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:hsl(8,90%,55%);">STRENGTH</span>
+      <div style="width:55px;height:4px;border-radius:2px;background:linear-gradient(90deg,hsl(8,12%,26%),hsl(8,94%,26%));"></div>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(200,220,240,.4);">弱→強</span>
       <span style="color:rgba(160,200,230,.2);">|</span>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(255,220,100,.65);" title="将来性（ドローの伸びしろ）。明るいほど次のカードで化ける可能性が高い">将来性</span>
-      <div style="width:55px;height:4px;border-radius:2px;background:linear-gradient(90deg,hsl(50,80%,65%),hsl(50,40%,25%));"></div>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.35);">なし</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(0,212,255,.8);" title="将来性（ドローの伸びしろ）。セル右上のシアン色のドットで独立して表示（強さの色とは混ぜない）">将来性●</span>
+      <span style="color:rgba(160,200,230,.2);">|</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(200,220,240,.4);" title="セルの枠線はハンドの静的カテゴリを表す（盤面に依存しない）。太い実線=ペア／二重線=スーテッドブロードウェイ／破線=スーテッドコネクター系／点線=オフスーツブロードウェイ">枠=形</span>
     </div>
     <div id="hm-wrap">
-      <div id="hm-view-toggle" style="display:flex;gap:4px;margin-bottom:4px;flex-shrink:0;">
-        <button id="hm-view-hero" onclick="setHeatmapView('HERO')"
-          style="flex:1;padding:4px 6px;border-radius:3px;border:1px solid rgba(0,212,255,.5);
-          background:rgba(0,212,255,.15);color:#00d4ff;font-family:'Orbitron',monospace;
-          font-size:7px;letter-spacing:1px;cursor:pointer;">HERO VIEW</button>
-        <button id="hm-view-villain" onclick="setHeatmapView('VILLAIN')"
-          style="flex:1;padding:4px 6px;border-radius:3px;border:1px solid rgba(160,200,230,.25);
-          background:rgba(0,20,40,.3);color:rgba(160,200,230,.5);font-family:'Orbitron',monospace;
-          font-size:7px;letter-spacing:1px;cursor:pointer;"
-          title="選択中のVillainポジションのレンジに入らないハンドを暗くします（Chen Formulaによる簡易的なレンジ幅推定。GTOソルバーではありません）">VILLAIN VIEW<span class="help-q" title="選択中のVillainポジションが通常オープン/ディフェンドするレンジに入らないハンドを暗く表示します。Chen Formulaという公開されている簡易採点方式でハンドの強さ順位を推定し、ポジション別のおおよそのレンジ幅と照合しています。GTOソルバーで計算した実際のレンジではなく、あくまで目安です">?</span></button>
+      <div id="hm-pos-tabs" style="display:flex;align-items:center;gap:2px;margin-bottom:4px;flex-shrink:0;flex-wrap:wrap;">
+        <button class="hm-pos-tab active" data-pos="OFF" onclick="setHeatmapPosTab('OFF')">OFF</button>
+        <button class="hm-pos-tab" data-pos="UTG" onclick="setHeatmapPosTab('UTG')">UTG</button>
+        <button class="hm-pos-tab" data-pos="HJ"  onclick="setHeatmapPosTab('HJ')">HJ</button>
+        <button class="hm-pos-tab" data-pos="CO"  onclick="setHeatmapPosTab('CO')">CO</button>
+        <button class="hm-pos-tab" data-pos="BTN" onclick="setHeatmapPosTab('BTN')">BTN</button>
+        <button class="hm-pos-tab" data-pos="SB"  onclick="setHeatmapPosTab('SB')">SB</button>
+        <button class="hm-pos-tab" data-pos="BB"  onclick="setHeatmapPosTab('BB')">BB</button>
+        <label style="margin-left:6px;display:flex;align-items:center;gap:3px;cursor:pointer;
+               font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(200,220,240,.6);">
+          <input type="checkbox" id="hm-vs3bet" onchange="renderVillainOverlay()" style="cursor:pointer;">
+          vs 3bet<span class="help-q" title="選択中のポジションが3ベットに直面した際のコンティニューレンジ（かなり絞られたレンジ）の目安に切り替えます。Chen Formulaによるヒューリスティックな推定で、GTOソルバーの解ではありません">?</span>
+        </label>
       </div>
       <div id="hm-grid"></div>
       <div id="hm-spin">CALCULATING...</div>
@@ -615,14 +641,14 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <span class="analyzing">● ANALYZING BOARD... LIVE</span>
   <span id="ftr-hash">HASH: N/A</span>
   <span id="calc-time" style="color:rgba(0,212,255,.5);">CALC: --ms</span>
-  <span>SPECTRA BOARD INTELLIGENCE OS v3.8.2</span>
+  <span>SPECTRA BOARD INTELLIGENCE OS v3.9.1</span>
 </div>
 
 </div><!-- /root -->
 
 <script>
 /* ═══════════════════════════════════════════════════
-   SPECTRA v3.8.2 — PURE JS ENGINE (Python完全追放)
+   SPECTRA v3.9.1 — PURE JS ENGINE (Python完全追放)
    Worker: spectra-worker.js に丸投げ
    Fallback: Worker未使用時はinlineで簡易計算
 ═══════════════════════════════════════════════════ */
@@ -772,7 +798,6 @@ function finalizeBrainReady() {
   document.getElementById('brain-badge').style.borderColor = 'rgba(0,255,157,.4)';
   setTimeout(() => document.getElementById('brain-overlay').classList.add('hidden'), 600);
   updateConfigFeedback();
-  buildPosMatrix(); // P3: 初期描画
   buildRadarGrid(); // Structure Radar グリッド初期構築
   if (currentBoard.length >= 3) triggerUpdate();
 }
@@ -784,6 +809,106 @@ function finalizeBrainReady() {
    Priority: rawScore → strength → equity → pct
    Future-proof: adding madeStrength/potentialStrength only requires updating here.
 ══════════════════════════════ */
+/* ══════════════════════════════
+   v3.9: ハンドの静的カテゴリ分類（背景マスク用）
+   盤面に一切依存しない、プリフロップのハンド形そのものの分類。
+   彩度（盤面依存の動的な強さ）と役割を分離するための「構造」情報。
+══════════════════════════════ */
+function classifyHandCategory(hand) {
+  const isPair = hand.length === 2 && hand[0] === hand[1];
+  if (isPair) return 'cat-pair';
+  const suited = hand.endsWith('s');
+  const i1 = RANK_IDX[hand[0]], i2 = RANK_IDX[hand[1]];
+  const isBroadway = i1 <= 4 && i2 <= 4; // 両方 A/K/Q/J/T
+  if (isBroadway) return suited ? 'cat-suited-bw' : 'cat-offsuit-bw';
+  const gap = Math.abs(i1 - i2) - 1;
+  if (suited && gap <= 2) return 'cat-connector'; // スーテッドコネクター/ワンギャッパー/ツーギャッパー
+  return 'cat-other';
+}
+
+/* ══════════════════════════════
+   v3.9: Chen Formula（公開されている簡易プリフロップ採点方式）
+   GTOソルバーではなく、広く知られた決定論的なヒューリスティック採点。
+   VILLAIN VIEWでの「このポジションのレンジに入るか」の目安判定にのみ使う。
+══════════════════════════════ */
+function chenScore(hand) {
+  const RANK_PTS = { A:10, K:8, Q:7, J:6, T:5, 9:4.5, 8:4, 7:3.5, 6:3, 5:2.5, 4:2, 3:1.5, 2:1 };
+  const isPair = hand.length === 2 && hand[0] === hand[1];
+  if (isPair) {
+    return Math.max(RANK_PTS[hand[0]] * 2, 5);
+  }
+  const suited = hand.endsWith('s');
+  const r1 = hand[0], r2 = hand[1];
+  let pts = Math.max(RANK_PTS[r1], RANK_PTS[r2]);
+  if (suited) pts += 2;
+  const i1 = RANK_IDX[r1], i2 = RANK_IDX[r2];
+  const gap = Math.abs(i1 - i2) - 1;
+  if (gap === 1) pts -= 1;
+  else if (gap === 2) pts -= 2;
+  else if (gap === 3) pts -= 4;
+  else if (gap >= 4) pts -= 5;
+  // 両方T以下（ストレート形成のしやすさ）でギャップ1以下ならボーナス
+  if (gap <= 1 && Math.min(i1, i2) >= 4) pts += 1;
+  return pts;
+}
+
+// 169ハンド全体をChenスコア降順で並べ、パーセンタイル(0=最強,1=最弱)を割り当てる
+function build169ChenPercentile() {
+  const hands = [];
+  RANKS_LIST.forEach((r1, i) => RANKS_LIST.forEach((r2, j) => {
+    hands.push(i === j ? r1 + r2 : (i < j ? r1 + r2 + 's' : r2 + r1 + 'o'));
+  }));
+  const scored = hands.map(h => ({ hand: h, score: chenScore(h) }));
+  scored.sort((a, b) => b.score - a.score);
+  const pct = {};
+  scored.forEach((s, idx) => { pct[s.hand] = idx / (scored.length - 1); });
+  return pct;
+}
+const CHEN_PERCENTILE = build169ChenPercentile();
+
+// ポジション別の大まかなオープン/ディフェンドレンジ幅（目安・ヒューリスティック）
+// 参考: 一般的に公開されているレンジ表の中央値付近。GTOソルバーで導出した値ではない。
+const POSITION_RANGE_PCT = { UTG: 0.12, HJ: 0.16, CO: 0.22, BTN: 0.32, SB: 0.25, BB: 0.42 };
+
+// vs 3bet時のコンティニューレンジ幅（大幅に絞られる想定の目安値）
+const POSITION_3BET_RANGE_PCT = { UTG: 0.04, HJ: 0.05, CO: 0.07, BTN: 0.10, SB: 0.08, BB: 0.14 };
+
+function isInVillainRange(hand, villainPos, vs3bet) {
+  const table = vs3bet ? POSITION_3BET_RANGE_PCT : POSITION_RANGE_PCT;
+  const widthPct = table[villainPos] ?? 0.25;
+  return CHEN_PERCENTILE[hand] <= widthPct;
+}
+
+// 'OFF' = フィルターなし（HERO VIEW相当）。UTG〜BB = そのポジションのレンジ幅で暗くする。
+let heatmapPosTab = 'OFF';
+function setHeatmapPosTab(pos) {
+  heatmapPosTab = pos;
+  document.querySelectorAll('.hm-pos-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.pos === pos);
+  });
+  renderVillainOverlay();
+}
+
+// v3.9: プリフロップ（ボード未入力）でも機能するよう、Worker応答を待たず
+// 独立して呼べる関数にした。静的なカテゴリ枠線は既にbuildHeatmap()側で
+// 付与済みなので、ここではvillain-outクラスの付け外しだけを行う。
+function renderVillainOverlay() {
+  const vs3bet = document.getElementById('hm-vs3bet')?.checked || false;
+  for (let i = 0; i < 13; i++) {
+    for (let j = 0; j < 13; j++) {
+      const idx = i * 13 + j;
+      const cell = document.getElementById('hc' + idx);
+      if (!cell) continue;
+      const hand = cell.dataset.hand;
+      if (heatmapPosTab === 'OFF' || !hand) {
+        cell.classList.remove('villain-out');
+      } else {
+        cell.classList.toggle('villain-out', !isInVillainRange(hand, heatmapPosTab, vs3bet));
+      }
+    }
+  }
+}
+
 function getDisplayStrength(item) {
   if (!item) return 0;
   if (item.rawScore    !== undefined) return item.rawScore * 100;
@@ -794,106 +919,40 @@ function getDisplayStrength(item) {
 }
 
 /* ══════════════════════════════
-   3D HSL COLOR ENGINE v2 — ストリート対応版
-   
-   設計思想:
-   - Hue  : made強度（赤=強 / 青緑=弱）
-   - Sat  : コンボ密度（鮮やか=実在する / 灰=デッド）
-   - Lum  : ストリート依存
-       FLOP  : 将来性で明暗（draws = 明るい）
-       TURN  : 将来性は半分だけ反映（1枚残り）
-       RIVER : 将来性を無視。made強度のみで明暗
-               弱い手（one pair以下 ≒ made < 0.26）→ 暗く落とす
-   
-   凡例:
-   FLOP/TURN  Hue=勝率 / Sat=密度 / Lum=将来性
-   RIVER      Hue=勝率 / Sat=密度 / Lum=made強度のみ
+   3D HSL COLOR ENGINE v3.9 — 役割分離版
+   外部フィードバック対応: 「彩度・明度の両方で情報を表現していて、
+   何を意味しているのか直感的に理解しづらい」という指摘を受け、
+   各チャンネルの役割を完全に分離した。
+
+   - 背景マスク（枠線スタイル）: ハンドの静的カテゴリ（盤面非依存）
+     buildHeatmap()で一度だけ付与済み。cat-pair/cat-suited-bw/
+     cat-connector/cat-offsuit-bw/cat-other の5種。
+   - 彩度（Saturation）: 現在のMade Strengthのみ。弱い=くすんだ色、
+     強い=鮮やかな色。potentialは一切混ぜない。
+   - 明度（Lightness）: 固定値。以前はストリートごとに複雑に
+     変化させていたが、「よく分からない明度」の元凶だったため撤廃。
+   - Draw Potential（将来性）: このHSL文字列には含めない。
+     render3DHeatmap()側で、セル右上の独立したドット（シアン系）
+     として別チャンネルで表現する。
 ══════════════════════════════ */
 function calc3DHSL(item) {
-  const eq   = Math.max(0, Math.min(100, getDisplayStrength(item)));
-  const pot  = Math.max(0, Math.min(1,   item.potential      || 0));
-  const made = Math.max(0, Math.min(1,   item.madeStrength   || eq / 100));
-
-  // ─ Street detection ─
-  const boardLen = (typeof currentBoard !== 'undefined') ? currentBoard.length : 3;
-  const isRiver  = boardLen === 5;
-  const isTurn   = boardLen === 4;
-
-  // ─ Hue: 強い手ほど赤 (0) → 弱い手ほど青緑 (180) ─
-  // バグ修正（外部レビュー指摘）: 以前はeq(=getDisplayStrength=rawScore)を
-  // 元にHueを決めていたが、rawScoreは既にcomputeProjectedRawScore()で
-  // potentialStrength（ドローの伸びしろ）を加算済みの値だった。
-  // 一方Lightness側でも同じpotentialをもう一度加算していたため、
-  // 「今はまだ弱いがドローが強いハンド」がHueの段階で既に赤寄りに
-  // 見えてしまい、"今すでに強い"のか"将来伸びる"のかが色相だけでは
-  // 区別できなくなっていた（potentialの二重反映）。
-  // → Hueは made（現在の役の強さのみ、potentialを含まない）だけを見る。
-  //   potentialはLightness側だけで表現する設計に統一した。
-  let hue;
-  if (isRiver) {
-    // 外部フィードバック対応（v3.8.2）: リバーは将来性(flex)が存在しないため、
-    // 連続的なべき乗カーブだと、近い強さの役同士（例: クアッズA vs クアッズK）が
-    // ほぼ同じ色相に収束してしまい「見た目で判別しづらい」という指摘があった。
-    // リバー限定で、役のカテゴリごとに固定の色帯を割り当てるティア制に変更。
-    // 境界値はLightness側の既存ティア（0.70/0.44/0.26/0.10）と揃えることで、
-    // 色相・明度が同じ役の境界で一致して変化する、より「原色に近い・素直な」
-    // 配色になる（ティア内では連続的に微妙な階調も残す）。
-    let tierLo, tierHi, hueLo, hueHi;
-    if (made >= 0.70)      { tierLo = 0.70; tierHi = 1.00; hueLo = 0;   hueHi = 15;  } // SF/Quads/Boat
-    else if (made >= 0.44) { tierLo = 0.44; tierHi = 0.70; hueLo = 20;  hueHi = 40;  } // Flush/Straight/Trips
-    else if (made >= 0.26) { tierLo = 0.26; tierHi = 0.44; hueLo = 55;  hueHi = 75;  } // Two pair
-    else if (made >= 0.10) { tierLo = 0.10; tierHi = 0.26; hueLo = 100; hueHi = 130; } // One pair
-    else                   { tierLo = 0.00; tierHi = 0.10; hueLo = 150; hueHi = 180; } // High card
-    const within = tierHi > tierLo ? (made - tierLo) / (tierHi - tierLo) : 1;
-    hue = Math.round(hueLo + Math.max(0, Math.min(1, within)) * (hueHi - hueLo));
-  } else {
-    // FLOP/TURN: ドロー（将来性）がまだ残っているため、連続的なべき乗カーブで
-    // 強いハンドほど急激に赤へ寄せる（バグ修正2、以前は線形で中途半端な
-    // 黄土色になっていた問題への対応）。made=100→hue=0、made=82%→hue≈14°、
-    // made=50%→hue≈44°、made=20%→hue≈86°、made=0→hue=180。
-    const madeCurved = Math.pow(made, 0.4);
-    hue = Math.round((1 - madeCurved) * 180);
-  }
-
-  // ─ Saturation: デッドコンボ(density=0)だけ灰色へ。生きてさえいれば鮮やかに ─
-  // バグ修正: 以前は density(0-1)にほぼ線形で彩度を決めていたため、
-  // 「ボードに同ランクが2枚出ていて残りコンボが少ない」ケース（例: board上に
-  // A2枚出ている状態でのAA=クアッズ最有力）のように、本来は非常に強いハンドでも
-  // コンボ希少度だけで彩度が最低値近くまで落ち、色相(Hue)は正しく赤なのに
-  // 彩度不足で色が消えたように見えてしまっていた。
-  // → density===0（本当にデッド）の時だけ灰色寄りにし、生きてさえいれば
-  //   希少度に関わらずしっかり彩度を持たせる。
+  const made    = Math.max(0, Math.min(1, item.madeStrength ?? 0));
   const density = Math.max(0, Math.min(1, item.density ?? 1));
-  const sat = density === 0 ? 10 : Math.round(60 + density * 35);
 
-  // ─ Lightness: ストリートで意味が変わる ─
-  let lum;
-
-  if (isRiver) {
-    // RIVER: 将来性は消える。made強度で明暗を決める。
-    // 弱い手（one pair以下: made < 0.25）= 暗く沈める
-    // 強い手（two pair+: made >= 0.26）  = 明るく浮かせる
-    if (made >= 0.70) {
-      lum = 60;                              // SF/Quads/Boat  = 最明
-    } else if (made >= 0.44) {
-      lum = 50;                              // Flush/Straight/Trips
-    } else if (made >= 0.26) {
-      lum = 40;                              // Two pair
-    } else if (made >= 0.10) {
-      lum = 22;                              // One pair → 暗く
-    } else {
-      lum = 14;                              // High card → 最暗（ほぼ灰）
-    }
-  } else if (isTurn) {
-    // TURN: 将来性は1枚分（50%重み）だけ反映
-    const potContrib = pot * 18;             // 最大+18% (FD+OESDで0.85→+15)
-    const madeBase   = Math.round(26 + made * 28); // 26%〜54%
-    lum = Math.round(Math.min(64, madeBase + potContrib));
+  const hue = 8; // 固定色相（暖色）。強さの違いは彩度＋明度で表現する。
+  let sat, lum;
+  if (density === 0) {
+    sat = 4; lum = 12; // 本当にデッドなコンボだけ暗い無彩色にする
   } else {
-    // FLOP: 将来性をフルに使う（従来ロジック改善版）
-    const madeBase   = Math.round(22 + made * 22); // 22%〜44%（made手の最低輝度保証）
-    const potContrib = pot * 26;             // 最大+26%
-    lum = Math.round(Math.min(68, madeBase + potContrib));
+    // バグ修正（外部フィードバック）: 彩度だけで強さを表現すると、人間の目には
+    // 差がほとんど見えず「全部真っ赤」に見えてしまっていた（彩度の知覚差は
+    // 明度の知覚差より弱いため）。彩度と明度を「同じ1つの値(made)」に対して
+    // 両方連動させることで、暗い赤(弱い)〜鮮やかで明るい赤(強い)という
+    // はっきりしたグラデーションにする。2チャンネルとも同じ情報の補強であり、
+    // 別々の意味を持たせているわけではない（背景マスク=構造、彩度+明度=強さ、
+    // ドット=将来性、という3系統の役割分離は維持している）。
+    sat = Math.round(20 + made * 75); // 20%〜95%
+    lum = Math.round(14 + made * 34); // 14%〜48%
   }
 
   return `hsl(${hue},${sat}%,${lum}%)`;
@@ -1135,7 +1194,25 @@ function render3DHeatmap(data) {
     cell.dataset.den  = item.density !== undefined ? (item.density * 100).toFixed(0) : '100';
     cell.dataset.draw = item.drawType || '--';
     cell.dataset.hand = item.hand || '';
+
+    // v3.9: Draw Potential（将来性）は彩度に混ぜず、独立したドットで表現する。
+    // 一定以上のpotentialがある場合のみ、シアン系の小さな発光ドットを表示。
+    const dot = cell.querySelector('.hm-pot-dot');
+    if (dot) {
+      const pot = item.potential || 0;
+      if (pot > 0.15) {
+        const dotOpacity = Math.min(1, 0.35 + pot * 0.65);
+        dot.style.background  = `rgba(0,212,255,${dotOpacity.toFixed(2)})`;
+        dot.style.boxShadow   = `0 0 3px rgba(0,212,255,${(dotOpacity * 0.85).toFixed(2)})`;
+      } else {
+        dot.style.background = 'transparent';
+        dot.style.boxShadow  = 'none';
+      }
+    }
   });
+
+  // v3.9: ポジションタブの選択状態を、盤面更新後も維持する
+  renderVillainOverlay();
 }
 
 /* ══════════════════════════════
@@ -1867,8 +1944,10 @@ const HUD_DEFS = [
 ══════════════════════════════ */
 /* ══════════════════════════════
    STRUCTURE RADAR
-   5軸ペンタゴン: Entropy / Polarization / Coverage / DrawStructure / Dominance
+   5項目・★評価: Entropy / Polarization / Coverage / DrawStructure / Dominance
    全て0-100スケール。Worker の structureFeatures から受け取る。
+   v3.9.1: レーダーチャートは「形が見えにくい」というフィードバックにより
+   撤廃し、5段階の★評価リストに変更した。
 ══════════════════════════════ */
 const RADAR_AXES = [
   { key:'entropy',       label:'ENT',   jp:'複雑さ',   color:'#00d4ff' },  // 複雑さ
@@ -1877,131 +1956,53 @@ const RADAR_AXES = [
   { key:'drawStructure', label:'DRW',   jp:'ドロー',   color:'#ffb800' },  // ドロー構造
   { key:'dominance',     label:'DOM',   jp:'偏り',     color:'#a855f7' },  // Gini不平等度
 ];
-const RADAR_CX = 80, RADAR_CY = 62, RADAR_R = 44;
 
-function radarXY(axisIdx, value100) {
-  const angle = (axisIdx / RADAR_AXES.length) * 2 * Math.PI - Math.PI / 2;
-  const r     = RADAR_R * Math.max(0, Math.min(100, value100)) / 100;
-  return { x: RADAR_CX + r * Math.cos(angle), y: RADAR_CY + r * Math.sin(angle) };
-}
+// buildRadarGrid()は互換のため空実装として残す（finalizeBrainReady()から呼ばれている）
+function buildRadarGrid() {}
 
-function buildRadarGrid() {
-  const gridEl  = document.getElementById('radar-grid');
-  const axesEl  = document.getElementById('radar-axes');
-  const lblsEl  = document.getElementById('radar-labels');
-  if (!gridEl) return;
-
-  const N = RADAR_AXES.length;
-  const LAYERS = 4;
-
-  // グリッドペンタゴン
-  gridEl.innerHTML = '';
-  for (let l = 1; l <= LAYERS; l++) {
-    const r   = RADAR_R * l / LAYERS;
-    const pts = Array.from({length: N}, (_, i) => {
-      const a = (i / N) * 2 * Math.PI - Math.PI / 2;
-      return `${(RADAR_CX + r * Math.cos(a)).toFixed(1)},${(RADAR_CY + r * Math.sin(a)).toFixed(1)}`;
-    }).join(' ');
-    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    poly.setAttribute('points', pts);
-    poly.setAttribute('fill', 'none');
-    poly.setAttribute('stroke', 'rgba(255,255,255,0.55)');
-    poly.setAttribute('stroke-width', '0.5');
-    gridEl.appendChild(poly);
-    // 層ラベル（25/50/75/100）— レーダースコープ風に白で表示
-    if (l < LAYERS) {
-      const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      lbl.setAttribute('x', (RADAR_CX + 2).toFixed(1));
-      lbl.setAttribute('y', (RADAR_CY - r + 3).toFixed(1));
-      lbl.setAttribute('fill', 'rgba(255,255,255,0.85)');
-      lbl.setAttribute('font-size', '6');
-      lbl.setAttribute('font-family', "'Share Tech Mono',monospace");
-      lbl.textContent = l * 25;
-      gridEl.appendChild(lbl);
-    }
-  }
-
-  // 軸線＋ラベル
-  axesEl.innerHTML = '';
-  lblsEl.innerHTML = '';
-  RADAR_AXES.forEach((ax, i) => {
-    const a  = (i / N) * 2 * Math.PI - Math.PI / 2;
-    const x2 = RADAR_CX + RADAR_R * Math.cos(a);
-    const y2 = RADAR_CY + RADAR_R * Math.sin(a);
-
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', RADAR_CX); line.setAttribute('y1', RADAR_CY);
-    line.setAttribute('x2', x2.toFixed(1)); line.setAttribute('y2', y2.toFixed(1));
-    line.setAttribute('stroke', 'rgba(255,255,255,0.5)');
-    line.setAttribute('stroke-width', '0.5');
-    axesEl.appendChild(line);
-
-    // ラベル（軸先端の外側）— 3文字コード＋日本語＋現在値(%)を縦に3段で表示
-    // （外部提案: 数値の絶対値がレーダーだけで読めるようにする）
-    const offset = 13;
-    const lx = RADAR_CX + (RADAR_R + offset) * Math.cos(a);
-    const ly = RADAR_CY + (RADAR_R + offset) * Math.sin(a);
-    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    txt.setAttribute('x', lx.toFixed(1));
-    txt.setAttribute('y', (ly - 2).toFixed(1));
-    txt.setAttribute('text-anchor', 'middle');
-    txt.setAttribute('letter-spacing', '0.5');
-    txt.innerHTML =
-      `<tspan font-family="'Orbitron',monospace" font-size="5.5" fill="${ax.color}" opacity="0.7">${ax.label}</tspan>` +
-      `<tspan x="${lx.toFixed(1)}" dy="7" font-family="'Rajdhani',sans-serif" font-size="6.5" fill="rgba(230,240,250,.85)">${ax.jp}</tspan>` +
-      `<tspan x="${lx.toFixed(1)}" dy="8" id="radar-val-${ax.key}" font-family="'Share Tech Mono',monospace" font-size="7" font-weight="700" fill="${ax.color}">--%</tspan>`;
-    lblsEl.appendChild(txt);
-  });
-}
-
-let _prevStructureFeatures = null; // 前ストリートのstructureFeaturesをキャッシュ（ゴースト残像用）
+let _prevStructureFeatures = null; // 前ストリートのstructureFeaturesをキャッシュ（▲▼比較用）
 let _prevStructureStreet = null;
+
+function valueToStars(value100) {
+  // 0-100 を 1-5 段階の★に変換（20刻み、四捨五入）
+  return Math.max(1, Math.min(5, Math.round(value100 / 20)));
+}
 
 function renderStructureRadar(sf, street) {
   if (!sf) return;
-  const shape  = document.getElementById('radar-shape');
-  const ghost  = document.getElementById('radar-shape-prev');
-  const dotsEl = document.getElementById('radar-dots');
+  const listEl    = document.getElementById('star-rating-list');
   const streetLbl = document.getElementById('radar-street-lbl');
-  if (!shape) return;
+  if (!listEl) return;
 
   if (streetLbl) streetLbl.textContent = street || '--';
 
-  const pts = RADAR_AXES.map((ax, i) => {
-    const p = radarXY(i, sf[ax.key] || 0);
-    return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
-  }).join(' ');
-  shape.setAttribute('points', pts);
+  // ── 前ストリートとの比較（▲上昇/▼下降/・変化なし） ──
+  const hasComparison = _prevStructureFeatures && _prevStructureStreet && _prevStructureStreet !== street;
 
-  dotsEl.innerHTML = RADAR_AXES.map((ax, i) => {
-    const val = sf[ax.key] || 0;
-    const p   = radarXY(i, val);
-    return `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="2.8" fill="${ax.color}" opacity="0.85"><title>${ax.label}: ${val}</title></circle>`;
+  listEl.innerHTML = RADAR_AXES.map(ax => {
+    const val   = sf[ax.key] ?? 0;
+    const stars = valueToStars(val);
+    const starStr = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+
+    let deltaHtml = '';
+    if (hasComparison) {
+      const prevVal = _prevStructureFeatures[ax.key] ?? 0;
+      const diff = val - prevVal;
+      if (diff > 3)       deltaHtml = `<span style="color:#00ff9d;font-size:7px;margin-left:3px;">▲${Math.abs(diff)}</span>`;
+      else if (diff < -3) deltaHtml = `<span style="color:#ff6b6b;font-size:7px;margin-left:3px;">▼${Math.abs(diff)}</span>`;
+      else                deltaHtml = `<span style="color:rgba(160,200,230,.3);font-size:7px;margin-left:3px;">・</span>`;
+    }
+
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:2.5px 0;">
+        <span style="font-family:'Orbitron',monospace;font-size:6.5px;color:${ax.color};width:26px;flex-shrink:0;" title="${ax.label}">${ax.label}</span>
+        <span style="font-family:'Rajdhani',sans-serif;font-size:8.5px;color:rgba(220,235,250,.75);flex:1;">${ax.jp}</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:${ax.color};letter-spacing:1px;">${starStr}</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.4);width:26px;text-align:right;">${val}%</span>
+        ${deltaHtml}
+      </div>`;
   }).join('');
 
-  // ── 軸ラベル直下の現在値を更新（外部提案: 数値をレーダー上で読めるように） ──
-  RADAR_AXES.forEach(ax => {
-    const el = document.getElementById('radar-val-' + ax.key);
-    if (el) el.textContent = (sf[ax.key] ?? 0) + '%';
-  });
-
-  // ── 前ストリートのゴースト残像（外部提案: ストリート間の変化を可視化） ──
-  // ストリートが変わった時だけ、直前のstructureFeaturesを薄い点線で重ねて描く。
-  // 同一ストリート内の再計算（ポジション変更等）では残像を更新しない
-  // （「前のストリートとの比較」という意図から外れるため）。
-  if (ghost) {
-    if (_prevStructureFeatures && _prevStructureStreet && _prevStructureStreet !== street) {
-      const prevPts = RADAR_AXES.map((ax, i) => {
-        const p = radarXY(i, _prevStructureFeatures[ax.key] || 0);
-        return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
-      }).join(' ');
-      ghost.setAttribute('points', prevPts);
-      ghost.style.display = '';
-    } else if (!_prevStructureStreet) {
-      ghost.setAttribute('points', '');
-      ghost.style.display = 'none';
-    }
-  }
   if (_prevStructureStreet !== street) {
     _prevStructureFeatures = sf;
     _prevStructureStreet = street;
@@ -2153,190 +2154,14 @@ function renderRangeAdvantage(data) {
   if (vBtn) vBtn.textContent = heroPct + '%';
   if (vBb)  vBb.textContent  = villainPct + '%';
   drawSparkline(heroPct, villainPct);
-
-  // POS MATRIX に Worker 精密値を反映して再描画
-  lastRangeAdv = adv;
-  buildPosMatrix();
 }
 
 
 /* ══════════════════════════════
-   POSITION MATRIX (5×5)
-   
-   設計:
-   - 縦: HERO POS（UTG/HJ/CO/BTN/SB）
-   - 横: VILLAIN POS（UTG/HJ/CO/BTN/SB/BB）
-   - 各セル: position.js の openWidth × adjustmentFactor から
-             ベースアドバンテージを計算し色分け
-   - ボード入力後: Worker の features.rangeAdvantage で
-             現在選択セルの値を更新
-   - 選択中セル: ハイライト枠
-══════════════════════════════ */
-const POS_MATRIX_ROWS = ['UTG','HJ','CO','BTN','SB'];
-const POS_MATRIX_COLS = ['UTG','HJ','CO','BTN','SB','BB'];
-
-// position.js の POSITION_PROFILE を UI 側に薄く複製（Worker不要）
-const POS_PROFILE_UI = {
-  UTG: { open: 0.6,  adj: 1.0, def: 0.7  },
-  HJ:  { open: 0.8,  adj: 1.1, def: 0.75 },
-  CO:  { open: 1.2,  adj: 1.2, def: 0.85 },
-  BTN: { open: 1.5,  adj: 1.3, def: 0.9  },
-  SB:  { open: 1.3,  adj: 1.2, def: 1.0  },
-  BB:  { open: 0.5,  adj: 1.0, def: 1.1  },
-};
-
-function calcPosBaseAdv(heroPos, villainPos) {
-  const h = POS_PROFILE_UI[heroPos]    || POS_PROFILE_UI.BTN;
-  const v = POS_PROFILE_UI[villainPos] || POS_PROFILE_UI.BB;
-  const heroBase    = h.open * h.adj;
-  const villainBase = v.open * v.adj;
-  // -1..+1 : 正=Hero有利
-  return Math.max(-1, Math.min(1,
-    (heroBase - villainBase) / Math.max(heroBase, villainBase, 0.01)
-  ));
-}
-
-function advToCell(adv, isSelected, isLive, liveAdv) {
-  // adv: -1..+1 (ベース値)
-  // liveAdv: Workerから来た実測値（選択セルのみ上書き）
-  const val = (isSelected && isLive) ? liveAdv : adv;
-
-  // 色: 赤(Hero▲) ← 灰(中立) → 青(Villain▲)
-  let bg, textColor;
-  if (val > 0.18) {
-    const intensity = Math.min(1, (val - 0.18) / 0.82);
-    const r = Math.round(100 + intensity * 120);
-    const g = Math.round(20  + intensity * 10);
-    const b = Math.round(20  + intensity * 10);
-    bg = `rgb(${r},${g},${b})`;
-    textColor = 'rgba(255,200,200,.9)';
-  } else if (val < -0.18) {
-    const intensity = Math.min(1, (-val - 0.18) / 0.82);
-    const r = Math.round(10  + intensity * 10);
-    const g = Math.round(30  + intensity * 20);
-    const b = Math.round(80  + intensity * 110);
-    bg = `rgb(${r},${g},${b})`;
-    textColor = 'rgba(150,200,255,.9)';
-  } else {
-    bg = 'rgba(30,50,80,.5)';
-    textColor = 'rgba(160,200,230,.4)';
-  }
-
-  const border = isSelected
-    ? '2px solid rgba(0,212,255,.9)'
-    : '1px solid rgba(0,180,255,.08)';
-  const shadow = isSelected ? '0 0 8px rgba(0,212,255,.5)' : 'none';
-  const pct    = Math.round(((val + 1) / 2) * 100);
-
-  return { bg, textColor, border, shadow, pct };
-}
-
-// Worker から受け取った rangeAdvantage を保持
-let lastRangeAdv = null;
-
-function buildPosMatrix() {
-  const wrap    = document.getElementById('pos-matrix-wrap');
-  if (!wrap) return;
-  const heroSel = document.getElementById('hero-pos-select')?.value    || 'BTN';
-  const villSel = document.getElementById('villain-pos-select')?.value || 'BB';
-
-  const ROWS = POS_MATRIX_ROWS;           // Hero (縦)
-  const COLS = POS_MATRIX_COLS;           // Villain (横)
-  const cellSize = `1fr`;
-  const cols = `28px repeat(${COLS.length}, ${cellSize})`;
-
-  let html = `<div style="display:grid;grid-template-columns:${cols};gap:1px;font-family:'Share Tech Mono',monospace;">`;
-
-  // ヘッダー行
-  html += `<div style="font-size:6px;color:rgba(160,200,230,.25);text-align:center;padding:2px 0;">H\\V</div>`;
-  COLS.forEach(col => {
-    const isV = col === villSel;
-    html += `<div style="
-      font-size:6px;text-align:center;padding:2px 0;
-      color:${isV ? 'rgba(100,150,255,.9)' : 'rgba(160,200,230,.35)'};
-      font-weight:${isV ? '700' : '400'};
-    ">${col}</div>`;
-  });
-
-  // データ行
-  ROWS.forEach(row => {
-    const isH = row === heroSel;
-    // 行ラベル
-    html += `<div style="
-      font-size:6px;text-align:right;padding:2px 3px 2px 0;
-      color:${isH ? 'rgba(255,215,0,.9)' : 'rgba(160,200,230,.35)'};
-      font-weight:${isH ? '700' : '400'};
-      display:flex;align-items:center;justify-content:flex-end;
-    ">${row}</div>`;
-
-    COLS.forEach(col => {
-      const isSelf     = row === col;
-      const isSelected = row === heroSel && col === villSel;
-      const isHRow     = row === heroSel;
-      const isVCol     = col === villSel;
-
-      if (isSelf) {
-        html += `<div style="background:rgba(0,0,0,.3);border-radius:1px;"></div>`;
-        return;
-      }
-
-      // アドバンテージ計算（Worker値は選択セルのみ上書き）
-      const baseAdv = calcPosBaseAdv(row, col);
-      const adv     = (isSelected && lastRangeAdv !== null) ? lastRangeAdv : baseAdv;
-      const pct     = Math.round(((adv + 1) / 2) * 100);
-
-      // 色
-      let bg, fg;
-      if (adv > 0.18) {
-        const t = Math.min(1, (adv - 0.18) / 0.65);
-        bg = `rgba(${Math.round(120+t*80)},${Math.round(20+t*5)},${Math.round(20+t*5)},${0.4+t*0.4})`;
-        fg = 'rgba(255,180,180,.9)';
-      } else if (adv < -0.18) {
-        const t = Math.min(1, (-adv - 0.18) / 0.65);
-        bg = `rgba(${Math.round(10+t*10)},${Math.round(30+t*20)},${Math.round(100+t*100)},${0.4+t*0.4})`;
-        fg = 'rgba(150,200,255,.9)';
-      } else {
-        bg = 'rgba(20,35,55,.5)';
-        fg = 'rgba(160,200,230,.4)';
-      }
-
-      const border = isSelected
-        ? '1px solid rgba(0,212,255,.8)'
-        : (isHRow || isVCol)
-          ? '1px solid rgba(0,180,255,.12)'
-          : '1px solid rgba(0,180,255,.04)';
-
-      html += `<div
-        onclick="setPosFromMatrix('${row}','${col}')"
-        style="
-          background:${bg};border:${border};border-radius:1px;
-          height:18px;cursor:pointer;
-          display:flex;align-items:center;justify-content:center;
-          font-size:7px;color:${fg};
-          ${isSelected ? 'box-shadow:0 0 6px rgba(0,212,255,.4);font-weight:700;' : ''}
-          transition:all .2s;
-        "
-      >${pct}%</div>`;
-    });
-  });
-
-  html += `</div>`;
-  wrap.innerHTML = html;
-}
-
-function setPosFromMatrix(heroPos, villainPos) {
-  const heroEl    = document.getElementById('hero-pos-select');
-  const villainEl = document.getElementById('villain-pos-select');
-  if (heroEl)    heroEl.value    = heroPos;
-  if (villainEl) villainEl.value = villainPos;
-  lastRangeAdv = null;
-  buildPosMatrix();
-  updateConfigFeedback();
-  // ヒートマップは既存データで色を再計算して再描画（Workerを叩かない）
-  if (lastHeatmapData && lastHeatmapData.length) {
-    render3DHeatmap(lastHeatmapData);
-  }
-}
+/* v3.9.1: POSITION MATRIX（5×6グリッド）は削除済み。
+   面積を取る割に変化が乏しく、Range Profile（勝率バー）やBoard Intelligenceの
+   有利不利表示と情報が重複していたため。ポジション自体の選択は
+   hero-pos-select / villain-pos-select のドロップダウンで引き続き行う。 */
 /* ══════════════════════════════
    設定変更に即時フィードバック（Worker不要・静的テーブル）
 ══════════════════════════════ */
@@ -2568,6 +2393,14 @@ function buildHeatmap() {
       c.title = lbl; c.textContent = lbl.slice(0,2);
       c.style.backgroundColor = '#0d1a2a';
       c.dataset.hand = lbl;
+
+      // v3.9: 背景マスク（静的カテゴリ）は盤面に依存しないため初期構築時に一度だけ付与
+      c.classList.add(classifyHandCategory(lbl));
+
+      // v3.9: Draw Potential用の独立ドット（彩度には混ぜない）
+      const dot = document.createElement('span');
+      dot.className = 'hm-pot-dot';
+      c.appendChild(dot);
 
       // Tooltip events
       c.addEventListener('mousemove', onCellMouseMove);
