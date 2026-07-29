@@ -2,6 +2,11 @@
 
 function classifyPotential(hand, board) {
   if (board.length < 3) return 0;
+  // バグ修正: 以前はboard.length<3のガードしかなく、リバー(5枚)でも
+  // フロップ/ターンと同じロジックでpotentialStrengthを計算していた。
+  // リバーは次のカードが来ないため「ドローの伸びしろ」という概念自体が
+  // 存在せず、常に0であるべき。
+  if (board.length >= 5) return 0;
 
   // ── Flush draw potential ──
   // Suited hands only: hand[2] === 's'
@@ -70,6 +75,9 @@ function classifyPotential(hand, board) {
 
 function classifyDraw(hand, board) {
   if (board.length < 3) return null;
+  // バグ修正: 同上。リバー(5枚)ではドロー概念自体が存在しないため、
+  // FD/OESD/GSD/BD-FDのようなタグを一切付けない。
+  if (board.length >= 5) return null;
 
   // hand format: "AA" (pair), "AKs" (suited), "KAo" (offsuit)
   // hand[0] = rank1, hand[1] = rank2 (or 2nd rank char for pairs = same as [0])
@@ -190,7 +198,8 @@ function eval169(board, hero) {
       // 役名がズレるバグの温床だった（ロイヤル取り逃がし・トリップスが
       // ストレート扱い等、いずれもこの1session内で発見・修正済み）。
       // 今は evaluate7() が判定した「本物のカテゴリ」をそのまま運ぶため、
-      // 数値がどれだけ揺れても役名がズレることは構造的に起きない。
+      // 数値がどれだけ揺れても「スコアと役名が食い違う」バグは構造上発生しない
+      // （detectHandCategory自体の役判定ロジックが誤っていれば話は別）。
       let best = null;
       for (const e of evals) {
         if (!best || e.score > best.score) best = e;
@@ -320,7 +329,14 @@ function computeStructureFeatures(rangeMatrix) {
   const polarization = Math.round((topAvg - botAvg) * 100);
 
   // C. Coverage（density → レンジの広さ）
-  const coverage = Math.round((n / 169) * 100);
+  // バグ修正: 従来は「169ハンドのうち生存コンボが1つでもあるか」を数えていたが、
+  // 同ランクが3枚以上ボードに出るような極端なケース以外ではほぼ全ハンドが
+  // 多少なりとも生き残るため、実質常に100固定になっていた
+  // （レーダーのCOV軸が常に最大表示になる原因）。
+  // → 169ハンド全体の平均density（生存コンボの割合）に変更し、
+  //   カード除去の影響量を連続的に反映するようにする。
+  const avgDensityAll = rangeMatrix.reduce((s, h) => s + (h.density || 0), 0) / 169;
+  const coverage = Math.round(avgDensityAll * 100);
 
   // D. DrawStructure（drawType → ドロー構造）
   // LiveDrawRatio×0.4 + DrawComplexity×0.4 + DrawOverlap×0.2
