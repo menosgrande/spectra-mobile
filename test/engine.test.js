@@ -187,6 +187,25 @@ test('ロイヤルフラッシュの判定はsfHigh(修正後は最高位カー�
   assert.strictEqual(r.score, 1.0);
 });
 
+console.log('\n=== リバー(5枚)ではドロー・ポテンシャルが常に0/nullになる ===');
+
+test('リバーではフラッシュドローっぽい形でもpotential=0・drawType=null', () => {
+  const board = ['9h', '8h', '2c', '5d', 'Kc']; // 5枚 = river
+  const rm = evalRange169(board, [], {});
+  const kqs = rm.find(h => h.hand === 'KQs');
+  assert.strictEqual(kqs.potentialStrength, 0);
+  assert.strictEqual(kqs.drawType, null);
+  assert.strictEqual(kqs.outs, 0);
+});
+
+test('同じ盤面でもターン(4枚)なら引き続きFDが検出される（リバー限定の修正であることを確認）', () => {
+  const boardTurn = ['9h', '8h', '2c', '5d'];
+  const rm = evalRange169(boardTurn, [], {});
+  const kqs = rm.find(h => h.hand === 'KQs');
+  assert.strictEqual(kqs.drawType, 'FD');
+  assert.ok(kqs.potentialStrength > 0);
+});
+
 
 console.log('\n=== range_matrix.js: 169マトリクス・ドロー分類 ===');
 
