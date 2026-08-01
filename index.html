@@ -4,8 +4,15 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>SPECTRA v3.9.1 — Board Intelligence OS</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@600;700;800&family=JetBrains+Mono:wght@600;700;800&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 <style>
+/* 数字専用フォントクラス（0の中に中点が入る高視認性Roboto Mono使用） */
+.num-font, .num-val {
+  font-family: 'Roboto Mono', 'JetBrains Mono', Consolas, monospace !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: 0.2px !important;
+}
 /* ═══════════════════════════════════════════════════════
    SPECTRA v3.9.1 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
    ─ Hue: 勝率（赤=強→青緑=弱）
@@ -23,17 +30,18 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 #root{display:flex;flex-direction:column;width:100vw;height:100vh;}
 
 /* ─── HEADER ─── */
-#hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 14px;border-bottom:1px solid rgba(0,180,255,0.2);background:linear-gradient(90deg,#030810,#060f1e,#030810);flex-shrink:0;height:46px;}
-.logo-t{font-family:'Orbitron',monospace;font-size:17px;font-weight:900;color:#00d4ff;text-shadow:0 0 16px rgba(0,212,255,.6);letter-spacing:3px;}
-.logo-s{font-size:8px;letter-spacing:3px;color:rgba(160,200,230,.4);margin-top:1px;}
-.hdr-mid{font-family:'Orbitron',monospace;font-size:15px;font-weight:700;color:#00d4ff;letter-spacing:4px;text-shadow:0 0 20px rgba(0,212,255,.5);}
-.hdr-r{display:flex;align-items:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(160,200,230,.5);}
-.conn-dot{width:7px;height:7px;border-radius:50%;background:#00ff9d;box-shadow:0 0 8px rgba(0,255,157,.6);animation:pulse 1.8s ease-in-out infinite;}
+#hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;border-bottom:1px solid rgba(0,180,255,0.2);background:linear-gradient(90deg,#030810,#060f1e,#030810);flex-shrink:0;height:46px;overflow:hidden;gap:8px;}
+.logo-t{font-family:'Orbitron',monospace;font-size:16px;font-weight:900;color:#00d4ff;text-shadow:0 0 16px rgba(0,212,255,.6);letter-spacing:2px;white-space:nowrap;}
+.logo-s{font-size:7.5px;letter-spacing:2px;color:rgba(160,200,230,.4);margin-top:1px;white-space:nowrap;}
+.hdr-mid{font-family:'Orbitron',monospace;font-size:14px;font-weight:700;color:#00d4ff;letter-spacing:3px;text-shadow:0 0 20px rgba(0,212,255,.5);white-space:nowrap;}
+.hdr-r{display:flex;align-items:center;gap:8px;font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(160,200,230,.5);white-space:nowrap;flex-shrink:0;}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#00ff9d;box-shadow:0 0 8px rgba(0,255,157,.6);animation:pulse 1.8s ease-in-out infinite;flex-shrink:0;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ─── MAIN ─── */
-#main{display:grid;grid-template-columns:180px 1fr 200px;gap:6px;padding:6px;flex:1;min-height:0;}
-@media(min-width:769px){#main{display:grid !important;grid-template-columns:180px 1fr 200px !important;}}
+#main{display:grid;grid-template-columns:180px 1fr 280px;gap:6px;padding:6px;flex:1;min-height:0;}
+@media(min-width:769px){#main{display:grid !important;grid-template-columns:180px 1fr 280px !important;}}
+@media(min-width:1200px){#main{grid-template-columns:190px 1fr 320px !important;}}
 
 /* ─── PANEL ─── */
 .pnl{background:#080e1a;border:1px solid rgba(0,180,255,0.15);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow-y:auto;overflow-x:hidden;}
@@ -53,13 +61,13 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 /* ─── LEFT: STREET + NUTS ─── */
 #street-box{background:rgba(0,180,255,.06);border:1px solid rgba(0,255,157,.2);border-radius:2px;padding:8px;text-align:center;flex-shrink:0;}
 #street-name{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;color:#00ff9d;text-shadow:0 0 20px rgba(0,255,157,.7);letter-spacing:2px;}
-#street-cnt{font-family:'Share Tech Mono',monospace;font-size:12px;color:rgba(160,200,230,.5);margin-top:2px;}
+#street-cnt{font-family:'JetBrains Mono','Share Tech Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px;font-weight:700;color:rgba(160,200,230,.6);margin-top:2px;}
 
 #nuts-list{display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;}
 .nuts-row{display:flex;align-items:center;gap:5px;padding:4px;border-bottom:1px solid rgba(255,255,255,.05);border-radius:2px;transition:background .2s;}
 .nuts-row:hover{background:rgba(0,180,255,.06);}
-.n-rank{font-family:'Orbitron',monospace;font-size:11px;color:#ffb800;min-width:16px;}
-.n-eq{font-family:'Share Tech Mono',monospace;font-size:10px;color:#00d4ff;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.25);border-radius:2px;padding:2px 5px;min-width:44px;text-align:center;}
+.n-rank{font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px;font-weight:800;color:#ffb800;min-width:18px;}
+.n-eq{font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;font-weight:800;color:#00f0ff;background:rgba(0,200,255,.12);border:1px solid rgba(0,200,255,.35);border-radius:2px;padding:2px 5px;min-width:48px;text-align:center;}
 .n-hand{font-size:16px;font-weight:700;flex:1;}
 .n-type{font-size:8px;color:rgba(160,200,230,.45);text-align:right;line-height:1.3;}
 .n-draw{font-family:'Share Tech Mono',monospace;font-size:8px;margin-top:1px;}
@@ -137,7 +145,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .hero-selects select:focus{border-color:rgba(255,215,0,.8);box-shadow:0 0 10px rgba(255,215,0,.25);}
 
 /* ─── CENTER ─── */
-#center-pnl{padding:5px;gap:4px;}
+#center-pnl{padding:5px;gap:4px;display:flex;flex-direction:column;}
 .cam-hdr{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
 .cam-lbl{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:rgba(0,212,255,.7);}
 .cam-lbl span{color:#00d4ff;}
@@ -156,30 +164,29 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 }
 
 /* ─── BOARD CARDS ─── */
-#board-area{display:flex;flex-direction:column;justify-content:center;padding:4px 2px;flex:1;min-height:0;}
-.board-slot{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;}
-.slot-inputs select{
-  flex:1;min-width:0;background:#0c1828;
-  border:1px solid rgba(0,180,255,.35);border-radius:3px;
-  font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;
-  padding:3px 1px;cursor:pointer;outline:none;text-align:center;
-  transition:border-color .2s,background .2s,box-shadow .2s;
-  box-shadow:0 0 6px rgba(0,140,255,.15);
-}
-.slot-inputs select:focus{border-color:rgba(0,212,255,.9);background:#0f2035;box-shadow:0 0 10px rgba(0,212,255,.3);}
-.rank-sel{color:#e0f0ff;}
+#board-area{display:flex;flex-direction:column;justify-content:flex-start;padding:4px 2px;flex:0 0 auto;}
+.board-slot{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:0;}
+.slot-hdr-lbl{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.5);user-select:none;}
 
 /* ─── CARD DISPLAY ─── */
 .board-card{
-  width:100%;aspect-ratio:2.2/3.2;
+  width:100%;aspect-ratio:2.2/3.2;max-height:110px;
   border:2px solid rgba(0,255,157,.5);border-radius:6px;
-  background:transparent;
+  background:#0c1828;
   display:flex;align-items:center;justify-content:center;
-  position:relative;transition:border-color .3s,box-shadow .3s;
-  overflow:hidden;
+  position:relative;transition:all .2s ease;
+  overflow:hidden;user-select:none;
 }
-.board-card.waiting{border-color:rgba(0,180,255,.15);box-shadow:none;background:transparent;}
-.board-card.active{border-color:rgba(255,255,255,.25);box-shadow:0 0 18px rgba(0,255,157,.2);}
+.board-card.waiting{
+  border:1px dashed rgba(0,180,255,.3);
+  box-shadow:none;background:rgba(0,20,40,.3);
+}
+.board-card.waiting:hover{
+  border-color:rgba(0,212,255,.7);
+  background:rgba(0,212,255,.08);
+  box-shadow:0 0 10px rgba(0,212,255,.2);
+}
+.board-card.active{border-color:rgba(255,255,255,.3);box-shadow:0 0 14px rgba(0,255,157,.25);}
 
 /* HERO CARD: gold neon frame */
 .board-card.hero-card{
@@ -198,24 +205,86 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .board-card.glow-gsd{box-shadow:0 0 12px rgba(255,140,30,.5) !important;}
 .board-card.glow-bd{box-shadow:0 0 8px rgba(220,220,255,.25) !important;}
 
-.card-inner{width:100%;height:100%;border-radius:5px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
-.bg-s{background:#b0b8c8;}
-.bg-h{background:#f0a0a8;}
-.bg-d{background:#90b0e8;}
-.bg-c{background:#90c8a0;}
-.card-suit-bg{font-size:clamp(80px,13vw,140px);line-height:1;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none;}
-.card-suit-bg.sym-s{color:#1a1a22;}
-.card-suit-bg.sym-h{color:#8b0010;}
-.card-suit-bg.sym-d{color:#0a2080;}
-.card-suit-bg.sym-c{color:#0a4010;}
-.card-rank-center{font-size:clamp(30px,4.5vw,52px);font-weight:900;line-height:1;font-family:Georgia,'Times New Roman',serif;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);position:relative;z-index:2;}
-.card-corner-tl{position:absolute;top:4px;left:5px;display:flex;flex-direction:column;align-items:center;z-index:3;line-height:1.1;}
-.card-corner-br{position:absolute;bottom:4px;right:5px;display:flex;flex-direction:column;align-items:center;transform:rotate(180deg);z-index:3;line-height:1.1;}
-.corner-rank{font-size:11px;font-weight:700;font-family:Georgia,serif;color:#fff;line-height:1;text-shadow:0 1px 3px rgba(0,0,0,.4);}
-.corner-suit{font-size:9px;line-height:1;color:rgba(255,255,255,.9);}
-.wait-txt{font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,180,255,.35);letter-spacing:1px;animation:blink2 1.4s step-end infinite;}
-.slot-clr{opacity:0;pointer-events:none;transition:opacity .15s;}
-.slot-clr.has-card{opacity:1;pointer-events:auto;}
+.card-inner{width:100%;height:100%;border-radius:4px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.bg-s{background:linear-gradient(135deg,#9aa4b8,#ccd6e8);}
+.bg-h{background:linear-gradient(135deg,#d83850,#ff8898);}
+.bg-d{background:linear-gradient(135deg,#2868d8,#60a0ff);}
+.bg-c{background:linear-gradient(135deg,#208848,#50d080);}
+.card-suit-bg{font-size:clamp(40px,7vw,85px);line-height:1;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none;opacity:.85;}
+.card-suit-bg.sym-s{color:#121824;}
+.card-suit-bg.sym-h{color:#78000a;}
+.card-suit-bg.sym-d{color:#061458;}
+.card-suit-bg.sym-c{color:#063008;}
+.card-rank-center{font-size:clamp(18px,2.8vw,38px);font-weight:900;line-height:1;font-family:Georgia,'Times New Roman',serif;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.6);position:relative;z-index:2;}
+.card-corner-tl{position:absolute;top:3px;left:4px;display:flex;flex-direction:column;align-items:center;z-index:3;line-height:1;}
+.card-corner-br{position:absolute;bottom:3px;right:4px;display:flex;flex-direction:column;align-items:center;transform:rotate(180deg);z-index:3;line-height:1;}
+.corner-rank{font-size:10px;font-weight:700;font-family:Georgia,serif;color:#fff;line-height:1;text-shadow:0 1px 3px rgba(0,0,0,.5);}
+.corner-suit{font-size:8px;line-height:1;color:rgba(255,255,255,.95);}
+.wait-txt{font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,180,255,.5);letter-spacing:.5px;text-align:center;line-height:1.3;}
+.slot-clr-btn{position:absolute;top:2px;right:2px;z-index:10;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.65);border:1px solid rgba(255,100,100,.5);color:#ff9090;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;line-height:1;transition:all .15s;}
+.slot-clr-btn:hover{background:#ff3b3b;color:#fff;border-color:#fff;transform:scale(1.15);}
+
+/* PRESET BUTTONS */
+.preset-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8.5px;
+  letter-spacing: .5px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 212, 255, .35);
+  background: rgba(0, 212, 255, .08);
+  color: #00d4ff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s ease;
+  user-select: none;
+}
+.preset-btn:hover {
+  background: rgba(0, 212, 255, .25);
+  border-color: #00d4ff;
+  box-shadow: 0 0 10px rgba(0, 212, 255, .4);
+  transform: translateY(-1px);
+}
+
+/* ─── 52-CARD PICKER MODAL ─── */
+#picker-overlay{display:none;position:fixed;inset:0;z-index:9990;background:rgba(3,8,16,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:10px;}
+#picker-dialog{width:100%;max-width:720px;background:rgba(10,18,30,.96);border:1px solid rgba(0,212,255,.4);box-shadow:0 0 35px rgba(0,212,255,.25),0 0 15px rgba(0,0,0,.9);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;max-height:94vh;overflow-y:auto;}
+.picker-hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(0,212,255,.2);padding-bottom:6px;}
+.picker-title{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:2px;color:#00d4ff;display:flex;align-items:center;gap:6px;}
+.picker-close-btn{background:rgba(255,59,59,.15);border:1px solid rgba(255,59,59,.4);color:#ff8080;border-radius:3px;padding:3px 10px;font-family:'Orbitron',monospace;font-size:10px;cursor:pointer;transition:all .15s;}
+.picker-close-btn:hover{background:rgba(255,59,59,.3);color:#fff;}
+.picker-slots{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scroll-behavior:smooth;}
+.picker-slot-btn{flex:1;min-width:55px;padding:6px 2px;border:1px solid rgba(0,180,255,.25);border-radius:4px;background:rgba(0,20,40,.6);color:rgba(200,230,255,.7);font-family:'Orbitron',monospace;font-size:9px;text-align:center;cursor:pointer;transition:all .2s;user-select:none;}
+.picker-slot-btn:hover{border-color:rgba(0,212,255,.6);color:#fff;}
+.picker-slot-btn.active{border-color:#00d4ff;background:rgba(0,212,255,.22);color:#ffffff;box-shadow:0 0 10px rgba(0,212,255,.45);}
+.picker-slot-btn .slot-card-val{font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:bold;margin-top:2px;}
+.picker-grid{display:flex;flex-direction:column;gap:5px;}
+.picker-suit-row{display:flex;gap:3px;align-items:center;}
+.picker-suit-lbl{width:22px;font-size:16px;text-align:center;font-weight:bold;flex-shrink:0;}
+.picker-card-btn{flex:1;min-width:0;aspect-ratio:1/1.2;border:1px solid rgba(255,255,255,.12);border-radius:3px;background:#0d1827;color:#fff;font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:all .15s ease;user-select:none;padding:0;}
+.picker-card-btn:hover:not(.disabled){transform:translateY(-2px) scale(1.1);box-shadow:0 0 10px rgba(0,212,255,.7);z-index:5;border-color:#00d4ff;}
+.picker-card-btn.disabled{opacity:.22;filter:grayscale(90%);cursor:not-allowed;border-color:transparent;background:#080d14;}
+.picker-card-btn .used-tag{position:absolute;bottom:1px;font-size:6px;font-family:'Share Tech Mono',monospace;color:#ffd700;letter-spacing:-0.5px;}
+
+.preset-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8.5px;
+  padding: 3px 8px;
+  border: 1px solid rgba(0, 180, 255, 0.35);
+  border-radius: 3px;
+  background: rgba(0, 20, 40, 0.6);
+  color: rgba(200, 230, 255, 0.85);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s ease;
+  user-select: none;
+}
+.preset-btn:hover {
+  border-color: #00d4ff;
+  background: rgba(0, 212, 255, 0.2);
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.4);
+}
 
 /* ─── STABILIZER ─── */
 #stab-bar{display:flex;align-items:center;gap:7px;padding:4px 8px;border:1px solid rgba(0,255,157,.2);border-radius:2px;background:rgba(0,255,157,.03);font-family:'Share Tech Mono',monospace;font-size:9px;flex-shrink:0;}
@@ -253,14 +322,23 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   display:grid;grid-template-columns:16px repeat(13,1fr);
   gap:2px;flex:1;min-height:0;align-content:start;
 }
-.hm-hdr{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,212,255,.55);display:flex;align-items:center;justify-content:center;}
+.hm-hdr{font-family:'Roboto Mono','JetBrains Mono','Share Tech Mono',monospace;font-size:11px;font-weight:800;color:rgba(0,225,255,.8);display:flex;align-items:center;justify-content:center;}
 .hm-c{
-  font-family:'Share Tech Mono',monospace;font-size:9.5px;font-weight:700;
+  font-family:'Roboto Mono','JetBrains Mono','Share Tech Mono',monospace;
+  font-size: clamp(10px, 1.2vw + 6px, 12.5px);
+  font-weight: 800;
+  letter-spacing: -0.3px;
   display:flex;align-items:center;justify-content:center;
   border-radius:2px;aspect-ratio:1/1;
-  transition:background-color .35s ease,box-shadow .35s ease,opacity .25s ease,filter .25s ease;
-  cursor:pointer;color:rgba(255,255,255,.85);
+  transition:background-color .35s ease,box-shadow .35s ease,opacity .25s ease,filter .25s ease,transform .15s ease;
+  cursor:pointer;color:#ffffff;
+  text-shadow:0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.8);
   position:relative;
+}
+.hm-c:hover{
+  transform:scale(1.18);
+  z-index:10;
+  box-shadow:0 0 10px rgba(0,212,255,.9) !important;
 }
 /* Hero cell gold outline */
 .hm-c.hero-cell{
@@ -277,12 +355,17 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .hm-c.cat-offsuit-bw { border:1px dotted rgba(255,255,255,.35); }
 .hm-c.cat-other      { border:1px solid rgba(255,255,255,.06); }
 
-/* v3.9: Draw Potential（将来性）は彩度に混ぜず、右上の小さなドットで独立表現 */
+/* v3.9.2: Draw Potential（将来性）はセルの右上に大きく見やすい「コーナートライアングルバッジ」で直感表示
+   - シアン(青) = 通常ドロー / ゴールド(黄) = 強力なコンボドロー（伸びしろ特大） */
 .hm-pot-dot{
-  position:absolute; top:1px; right:1px;
-  width:4px; height:4px; border-radius:50%;
-  background:transparent; pointer-events:none;
-  box-shadow:none;
+  position:absolute; top:0; right:0;
+  width:0; height:0;
+  border-style:solid;
+  border-width:0 10px 10px 0;
+  border-color:transparent transparent transparent transparent;
+  pointer-events:none;
+  transition:all .25s ease;
+  z-index:3;
 }
 
 /* v3.9: VILLAIN VIEW — 選択中ポジションのレンジ外のハンドを暗くする
@@ -338,10 +421,16 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 /* ─── MOBILE TABS ─── */
 #mob-tabs{display:none;flex-shrink:0;flex-direction:row;background:#040a14;border-bottom:1px solid rgba(0,180,255,.2);}
-.mob-tab{flex:1;font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1.5px;padding:9px 4px;border:none;background:transparent;color:rgba(160,200,230,.35);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+.mob-tab{flex:1;font-family:'Orbitron',monospace;font-size:8.5px;letter-spacing:1px;padding:7px 4px;border:none;background:transparent;color:rgba(160,200,230,.35);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
 .mob-tab.active{color:#00d4ff;border-bottom-color:#00d4ff;background:rgba(0,212,255,.05);}
 
-/* ─── MOBILE RESPONSIVE ─── */
+/* ─── TABLET & MOBILE RESPONSIVE ─── */
+@media(max-width:1024px){
+  #main{gap:4px;padding:4px;}
+  #board-area{padding:2px 0;gap:2px;}
+  .board-card{max-height:96px;}
+}
+
 @media(max-width:768px){
   html,body{overflow:auto;}
   #root{height:auto;min-height:100dvh;overflow:visible;}
@@ -354,14 +443,16 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   .conn-dot{display:none;}
   #mob-tabs{display:flex;}
   #main{display:flex !important;flex-direction:column !important;padding:0;gap:0;flex:none;}
-  #main>.pnl{display:none;overflow-y:auto;overflow-x:hidden;border-radius:0;border-left:none;border-right:none;min-height:calc(100dvh - 46px - 37px);flex-shrink:0;}
+  #main>.pnl{display:none;overflow-y:auto;overflow-x:hidden;border-radius:0;border-left:none;border-right:none;min-height:0;flex-shrink:0;padding:6px 8px;}
   #main>.pnl.mob-active{display:flex;}
-  .card-suit-bg{font-size:clamp(36px,14vw,64px);}
-  .card-rank-center{font-size:clamp(18px,6vw,32px);}
-  #board-area>div:last-child{overflow-x:auto;padding-bottom:4px;}
-  .slot-inputs select,#board-area select{font-size:16px !important;padding:6px 2px !important;min-height:36px;}
-  .slot-clr{width:30px !important;height:30px !important;font-size:14px !important;}
-  #clear-all-btn{padding:6px 12px !important;font-size:9px !important;}
+  #board-area{justify-content:flex-start;flex:0 0 auto;padding:2px 0;gap:2px;}
+  .board-card{max-height:85px;}
+  .card-suit-bg{font-size:clamp(30px,12vw,52px);}
+  .card-rank-center{font-size:clamp(16px,5vw,26px);}
+  #board-area>div:last-child{overflow-x:auto;padding-bottom:2px;}
+  .slot-inputs select,#board-area select{font-size:15px !important;padding:4px 2px !important;min-height:32px;}
+  .slot-clr{width:28px !important;height:28px !important;font-size:13px !important;}
+  #clear-all-btn{padding:5px 10px !important;font-size:8.5px !important;}
   .n-eq{font-size:11px;}.n-hand{font-size:18px;}.n-type{font-size:10px;}
   #hm-grid{grid-template-columns:14px repeat(13,1fr);gap:2px;}
   .hm-c{font-size:9px;}
@@ -435,6 +526,35 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   </div>
 </div>
 
+<!-- ══ 52-CARD VISUAL DECK PICKER MODAL ══ -->
+<div id="picker-overlay" onclick="onPickerOverlayClick(event)">
+  <div id="picker-dialog" onclick="event.stopPropagation()">
+    <div class="picker-hdr">
+      <div class="picker-title">
+        <span>🃏 52-CARD DECK PICKER</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.5);font-weight:normal;">[ビジュアルカード選択]</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="clearCurrentPickerSlot()" style="background:rgba(255,180,0,.12);border:1px solid rgba(255,180,0,.35);color:#ffca28;border-radius:3px;padding:3px 8px;font-family:'Orbitron',monospace;font-size:9px;cursor:pointer;">消去</button>
+        <button onclick="clearAllPickerCards()" style="background:rgba(255,59,59,.12);border:1px solid rgba(255,59,59,.35);color:#ff8080;border-radius:3px;padding:3px 8px;font-family:'Orbitron',monospace;font-size:9px;cursor:pointer;">全クリア</button>
+        <button class="picker-close-btn" onclick="closeDeckPicker()">✕ 閉じる</button>
+      </div>
+    </div>
+
+    <!-- Active Slot Selector Tabs -->
+    <div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,212,255,.6);margin-bottom:4px;letter-spacing:1px;">対象スロット (タップして切替):</div>
+      <div class="picker-slots" id="modal-picker-slots-container"></div>
+    </div>
+
+    <!-- 52 Cards Grid -->
+    <div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(200,220,240,.5);margin-bottom:4px;letter-spacing:1px;">カードをタップするとセットして自動的に次のスロットへ進みます:</div>
+      <div class="picker-grid" id="modal-picker-grid-container"></div>
+    </div>
+  </div>
+</div>
+
 <!-- MAIN -->
 <div id="main">
 
@@ -454,7 +574,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
     <!-- 非表示Worker用DOM -->
     <div style="display:none;">
-      <select id="situation-select"><option value="BTN_VS_BB" selected>BTN vs BB</option><option value="3BET_IP">3-Bet IP</option><option value="SRP_IP">SRP IP</option></select>
+      <select id="situation-select" onchange="onInputChanged();updateConfigFeedback();"><option value="BTN_VS_BB" selected>BTN vs BB</option><option value="3BET_IP">3-Bet IP</option><option value="SRP_IP">SRP IP</option><option value="4BET_POT">4-Bet Pot</option><option value="LIMP_POT">Limped Pot</option></select>
       <select id="archetype-select" onchange="onInputChanged();"><option value="STANDARD" selected>Standard</option><option value="TIGHT">Tight</option><option value="LOOSE">Loose</option><option value="GTO">GTO</option><option value="RECREATIONAL">Recreational</option></select>
       <div id="fb-archetype"></div>
       <select id="hero-pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN" selected>BTN</option><option value="SB">SB</option></select>
@@ -524,50 +644,71 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       <div id="prog-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#00d4ff,#1a6aff);border-radius:2px;transition:width .7s;"></div>
     </div>
 
-    <!-- ══ L1: BOARD SUMMARY（最重要・最上部・大） ══ -->
-    <div id="conclusion-panel" style="display:none;flex-shrink:0;">
-      <!-- 戦況バッジ（大） -->
+    <!-- ══ L1: BOARD SUMMARY（最重要・最上部・コンパクト） ══ -->
+    <div id="conclusion-panel" style="display:block;flex-shrink:0;">
+      <!-- 戦況バッジ -->
       <div id="tactic-badge" style="
-        padding:10px 12px;border-radius:3px;
+        padding:6px 8px;border-radius:3px;
         border:1px solid rgba(0,212,255,.3);
         background:rgba(0,5,15,.7);
         margin-bottom:4px;transition:all .4s;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-          <div id="tactic-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:rgba(0,180,255,.4);"></div>
-          <div id="tactic-text" style="font-family:'Orbitron',monospace;font-size:13px;font-weight:700;letter-spacing:2px;color:rgba(0,180,255,.6);">WAITING</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <div id="tactic-dot" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:rgba(0,180,255,.4);"></div>
+          <div id="tactic-text" style="font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:1.5px;color:rgba(0,180,255,.6);">WAITING</div>
         </div>
         <div id="tactic-sub" style="
           font-family:'Noto Sans JP','Share Tech Mono',monospace;
-          font-size:10px;line-height:1.6;
+          font-size:9px;line-height:1.4;
           color:rgba(200,220,240,.6);
-          padding:5px 8px;
+          padding:3px 6px;
           background:rgba(0,0,0,.25);
           border-radius:2px;
           border-left:2px solid rgba(0,180,255,.3);
         ">ボードを入力してください</div>
       </div>
-      <!-- RANGE PROFILE -->
-      <div id="range-profile-block" style="padding:5px 8px;border-radius:3px;border:1px solid rgba(0,180,255,.1);background:rgba(0,5,15,.4);margin-bottom:4px;display:none;">
-        <div style="font-family:'Orbitron',monospace;font-size:6px;letter-spacing:1px;color:rgba(0,180,255,.3);margin-bottom:3px;">RANGE PROFILE<span class="help-q" title="Hero側のレンジが今どんな性質か（バリュー寄り/ブラフ寄り/レンジが割れているか等）を表すHUD指標です">?</span></div>
-        <div id="range-profile-hud" style="display:flex;flex-direction:column;gap:3px;"></div>
+    <!-- 2-COLUMN GRID: PROFILE & RATING -->
+    <div id="profile-rating-row" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:4px;margin-bottom:4px;">
+      <!-- LEFT COL: RANGE PROFILE -->
+      <div id="range-profile-block" style="padding:5px 6px;border-radius:4px;border:1px solid rgba(0,180,255,.2);background:linear-gradient(180deg, rgba(0,15,30,.6), rgba(0,6,16,.4));display:flex;flex-direction:column;justify-content:space-between;">
+        <div>
+          <div style="font-family:'Orbitron',monospace;font-size:7px;font-weight:700;letter-spacing:1px;color:#00d4ff;margin-bottom:4px;display:flex;align-items:center;gap:4px;">
+            <span>▐ RANGE PROFILE</span>
+            <span class="help-q" title="Hero側のレンジが今どんな性質か（バリュー寄り/ブラフ寄り/レンジCap等）を表すHUD指標です">?</span>
+          </div>
+          <div id="range-profile-hud" style="display:flex;flex-direction:column;gap:3px;">
+            <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.25);padding:2px 0;">--</div>
+          </div>
+        </div>
       </div>
-      <!-- Narrative -->
-      <div id="conclusion-narrative" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.4);line-height:1.6;border-top:1px solid rgba(0,180,255,.08);padding-top:4px;display:none;"></div>
+
+      <!-- RIGHT COL: STRUCTURE RATING（4項目・★評価） -->
+      <div style="background:linear-gradient(180deg, rgba(0,15,30,.6), rgba(0,6,16,.4));border:1px solid rgba(0,180,255,.2);border-radius:4px;padding:5px 6px;display:flex;flex-direction:column;justify-content:space-between;">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="font-family:'Orbitron',monospace;font-size:7px;font-weight:700;letter-spacing:1px;color:#00d4ff;display:flex;align-items:center;gap:4px;">
+              <span>▐ STRUCTURE RATING</span>
+              <span class="help-q" title="盤面の性質を4項目（ドロー感/二極化/レンジ密度/ナッツ偏り）・5段階の★評価で表します">?</span>
+            </div>
+            <div id="radar-street-lbl" style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.5);font-weight:600;">--</div>
+          </div>
+          <div id="star-rating-list">
+            <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.25);padding:2px 0;">--</div>
+          </div>
+        </div>
+        <!-- 既存texture互換DOM（非表示・applyTextureが参照） -->
+        <div style="display:none;">
+          <div id="wet-val"></div><div id="wet-lbl"></div>
+          <div class="metric"><div class="bar-wrap"><div class="bar-fill" id="bar-con"></div></div><div id="val-con"></div></div>
+          <div class="metric"><div class="bar-wrap"><div class="bar-fill" id="bar-fls"></div></div><div id="val-fls"></div></div>
+        </div>
+      </div>
     </div>
 
-    <!-- ══ STRUCTURE RADAR → STAR RATING（5項目・★評価） ══ -->
-    <div style="background:rgba(0,0,0,.25);border:1px solid rgba(0,180,255,.1);border-radius:3px;padding:6px;flex-shrink:0;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <div style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);">▐ STRUCTURE RATING<span class="help-q" title="盤面の性質を5項目・5段階の★評価で表します。かっこ内は1つ前のストリートとの比較（▲上昇/▼下降/・変化なし）">?</span></div>
-        <div id="radar-street-lbl" style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.25);">--</div>
-      </div>
-      <div id="star-rating-list"></div>
-      <!-- 既存texture互換DOM（非表示・applyTextureが参照） -->
-      <div style="display:none;">
-        <div id="wet-val"></div><div id="wet-lbl"></div>
-        <div class="metric"><div class="bar-wrap"><div class="bar-fill" id="bar-con"></div></div><div id="val-con"></div></div>
-        <div class="metric"><div class="bar-wrap"><div class="bar-fill" id="bar-fls"></div></div><div id="val-fls"></div></div>
-      </div>
+    <!-- FULL WIDTH: TACTICAL INSIGHTS -->
+    <div id="tactical-insights-block" style="background:linear-gradient(135deg, rgba(0,18,36,.65), rgba(0,8,20,.45));border:1px solid rgba(0,212,255,.25);border-radius:4px;padding:5px 6px;margin-bottom:4px;box-shadow:0 2px 8px rgba(0,0,0,.25);"></div>
+
+      <!-- Narrative -->
+      <div id="conclusion-narrative" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.4);line-height:1.6;border-top:1px solid rgba(0,180,255,.08);padding-top:4px;display:none;"></div>
     </div>
 
     <!-- HERO OUTS（v3.7.2でコメントアウト。実装は残す。再度使う場合はコメントを外すだけでよい）
@@ -604,19 +745,19 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     </div>
 
     <!-- ══ L3: 3D HEATMAP（主役・大きく） ══ -->
-    <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:rgba(0,212,255,.6);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札の一覧です。色の濃さ=現在の強さ、右上のドット=将来性（ドロー）、枠線=ハンドの形（ペア/ブロードウェイ等、盤面に依存しない静的な分類）">?</span></div>
+    <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:rgba(0,212,255,.6);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札の一覧です。色の濃さ=現在の強さ、右上の三角マーク◤=将来性・ドロー（青=通常 / 金=コンボドロー）、枠線=ハンドの形（ペア/ブロードウェイ等の静的な分類）">?</span></div>
     <div id="hm-legend" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:hsl(8,90%,55%);">STRENGTH</span>
-      <div style="width:55px;height:4px;border-radius:2px;background:linear-gradient(90deg,hsl(8,12%,26%),hsl(8,94%,26%));"></div>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(200,220,240,.4);">弱→強</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:#00d4ff;font-weight:700;">STRENGTH</span>
+      <div style="width:70px;height:5px;border-radius:2px;background:linear-gradient(90deg, hsl(225,35%,12%), hsl(210,58%,22%), hsl(145,70%,32%), hsl(45,82%,38%), hsl(0,100%,48%));border:1px solid rgba(255,255,255,0.15);"></div>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(200,220,240,.6);">AIR → NUTS</span>
       <span style="color:rgba(160,200,230,.2);">|</span>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(0,212,255,.8);" title="将来性（ドローの伸びしろ）。セル右上のシアン色のドットで独立して表示（強さの色とは混ぜない）">将来性●</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(0,212,255,.9);" title="将来性（ドローの伸びしろ）。セル右上の三角バッジ◤で表示（青=通常のドロー / 金=大化けする強ドロー・コンボドロー）">将来性 ◤<span style="color:#ffb800;margin-left:1px;">◤</span></span>
       <span style="color:rgba(160,200,230,.2);">|</span>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(200,220,240,.4);" title="セルの枠線はハンドの静的カテゴリを表す（盤面に依存しない）。太い実線=ペア／二重線=スーテッドブロードウェイ／破線=スーテッドコネクター系／点線=オフスーツブロードウェイ">枠=形</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(200,220,240,.6);" title="セルの枠線はハンドの静的カテゴリを表す（盤面に依存しない）。太い実線=ペア／二重線=スーテッドブロードウェイ／破線=スーテッドコネクター系／点線=オフスーツブロードウェイ">枠=形</span>
     </div>
     <div id="hm-wrap">
-      <div id="hm-pos-tabs" style="display:flex;align-items:center;gap:2px;margin-bottom:4px;flex-shrink:0;flex-wrap:wrap;">
-        <button class="hm-pos-tab active" data-pos="OFF" onclick="setHeatmapPosTab('OFF')">OFF</button>
+      <div id="hm-pos-tabs" style="display:flex;align-items:center;gap:3px;margin-bottom:4px;flex-shrink:0;flex-wrap:wrap;">
+        <button class="hm-pos-tab active" data-pos="OFF" onclick="setHeatmapPosTab('OFF')" style="margin-right:14px;">OFF</button>
         <button class="hm-pos-tab" data-pos="UTG" onclick="setHeatmapPosTab('UTG')">UTG</button>
         <button class="hm-pos-tab" data-pos="HJ"  onclick="setHeatmapPosTab('HJ')">HJ</button>
         <button class="hm-pos-tab" data-pos="CO"  onclick="setHeatmapPosTab('CO')">CO</button>
@@ -939,33 +1080,58 @@ function calc3DHSL(item) {
   const made    = Math.max(0, Math.min(1, item.madeStrength ?? 0));
   const density = Math.max(0, Math.min(1, item.density ?? 1));
 
-  const hue = 8; // 固定色相（暖色）。強さの違いは彩度＋明度で表現する。
-  let sat, lum;
   if (density === 0) {
-    sat = 4; lum = 12; // 本当にデッドなコンボだけ暗い無彩色にする
-  } else {
-    // バグ修正（外部フィードバック）: 彩度だけで強さを表現すると、人間の目には
-    // 差がほとんど見えず「全部真っ赤」に見えてしまっていた（彩度の知覚差は
-    // 明度の知覚差より弱いため）。彩度と明度を「同じ1つの値(made)」に対して
-    // 両方連動させることで、暗い赤(弱い)〜鮮やかで明るい赤(強い)という
-    // はっきりしたグラデーションにする。2チャンネルとも同じ情報の補強であり、
-    // 別々の意味を持たせているわけではない（背景マスク=構造、彩度+明度=強さ、
-    // ドット=将来性、という3系統の役割分離は維持している）。
-    sat = Math.round(20 + made * 75); // 20%〜95%
-    lum = Math.round(14 + made * 34); // 14%〜48%
+    return 'hsl(220, 25%, 8%)'; // デッドコンボ
   }
 
-  return `hsl(${hue},${sat}%,${lum}%)`;
+  // 5階層の色彩グラデーション (ポーカーハンド強度を直感的に視覚化)
+  // 1.00 : ナッツ / クアッズ / フルハウス / SF (ルビーレッド)
+  // 0.80 : TPGK / トリップス / フラッシュ / ストレート (フレイムオレンジ)
+  // 0.60 : セカンドペア / ミドルペア / ガットショット+ペア (アンバーゴールド)
+  // 0.40 : ボトムペア / ウィークペア / ハイカード (エメラルドグリーン)
+  // 0.20 : 弱いハイカード / エアー (サファイアブルー)
+  // 0.00 : 完全なボトム・エアー (ダークネイビー)
+
+  let h, s, l;
+
+  if (made >= 0.80) {
+    const t = (made - 0.80) / 0.20;
+    h = Math.round(24 - t * 24);      // 24 -> 0 (Orange to Red)
+    s = Math.round(88 + t * 12);      // 88% -> 100%
+    l = Math.round(42 + t * 6);       // 42% -> 48%
+  } else if (made >= 0.60) {
+    const t = (made - 0.60) / 0.20;
+    h = Math.round(45 - t * 21);      // 45 -> 24 (Gold to Orange)
+    s = Math.round(82 + t * 6);       // 82% -> 88%
+    l = Math.round(38 + t * 4);       // 38% -> 42%
+  } else if (made >= 0.40) {
+    const t = (made - 0.40) / 0.20;
+    h = Math.round(145 - t * 100);    // 145 -> 45 (Green to Gold)
+    s = Math.round(70 + t * 12);      // 70% -> 82%
+    l = Math.round(32 + t * 6);       // 32% -> 38%
+  } else if (made >= 0.20) {
+    const t = (made - 0.20) / 0.20;
+    h = Math.round(210 - t * 65);     // 210 -> 145 (Blue to Green)
+    s = Math.round(58 + t * 12);      // 58% -> 70%
+    l = Math.round(22 + t * 10);      // 22% -> 32%
+  } else {
+    const t = made / 0.20;
+    h = Math.round(225 - t * 15);     // 225 -> 210 (Navy to Blue)
+    s = Math.round(35 + t * 23);      // 35% -> 58%
+    l = Math.round(12 + t * 10);      // 12% -> 22%
+  }
+
+  return `hsl(${h},${s}%,${l}%)`;
 }
 
 /* フォールバック: equityのみ使うシンプルカラー */
 function fallbackColor(pct) {
-  if (pct >= 80) return 'hsl(0,90%,42%)';
-  if (pct >= 60) return 'hsl(20,85%,45%)';
-  if (pct >= 40) return 'hsl(45,80%,45%)';
-  if (pct >= 20) return 'hsl(120,60%,30%)';
-  if (pct > 0)   return 'hsl(180,50%,22%)';
-  return '#0d1a2a';
+  if (pct >= 80) return 'hsl(0,95%,46%)';
+  if (pct >= 60) return 'hsl(30,90%,44%)';
+  if (pct >= 40) return 'hsl(45,85%,40%)';
+  if (pct >= 20) return 'hsl(145,75%,32%)';
+  if (pct > 0)   return 'hsl(210,65%,22%)';
+  return '#080f1a';
 }
 
 /* ══════════════════════════════
@@ -1177,26 +1343,23 @@ function classifyDrawInline(r1, r2, suited, pair, board) {
 function render3DHeatmap(data) {
   if (!data || !data.length) return;
   const boardLen = (typeof currentBoard !== 'undefined') ? currentBoard.length : 3;
+
   data.forEach((item, idx) => {
     const cell = document.getElementById('hc' + idx);
     if (!cell) return;
     cell.style.backgroundColor = item.potential !== undefined
       ? calc3DHSL(item)
       : fallbackColor(getDisplayStrength(item));
-    // バグ修正（外部レビュー指摘）: STRENGTH欄は「今の役の強さ」を示す想定なのに
-    // getDisplayStrength(item)=rawScoreを表示しており、rawScoreは既に
-    // potentialStrength（ドローの伸びしろ）を加算済みの値だった。
-    // POTENTIAL欄と情報が重複し、「今すでに強い」のか「将来伸びる」のかが
-    // 数値上でも区別できなくなっていた。madeStrength（現在の強さのみ）を使う。
+
     const madeForDisplay = item.madeStrength !== undefined ? item.madeStrength * 100 : getDisplayStrength(item);
     cell.dataset.eq   = madeForDisplay.toFixed(1);
     cell.dataset.pot  = item.potential !== undefined ? (item.potential * 100).toFixed(0) : '0';
     cell.dataset.den  = item.density !== undefined ? (item.density * 100).toFixed(0) : '100';
     cell.dataset.draw = item.drawType || '--';
     cell.dataset.hand = item.hand || '';
+    cell.dataset.madeCategory = item.madeCategory || '';
 
     // v3.9: Draw Potential（将来性）は彩度に混ぜず、独立したドットで表現する。
-    // 一定以上のpotentialがある場合のみ、シアン系の小さな発光ドットを表示。
     const dot = cell.querySelector('.hm-pot-dot');
     if (dot) {
       const pot = item.potential || 0;
@@ -1795,8 +1958,8 @@ function renderNuts(data, features) {
           ${confirmedHtml}
         </div>
         <div style="display:flex;align-items:baseline;gap:4px;">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(160,200,230,.4);" title="${b.combos} live combos">(${b.combos})</span>
-          <span style="font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:700;color:${b.textColor};">${pct.toFixed(1)}%</span>
+          <span style="font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;font-weight:800;color:rgba(180,220,255,.85);" title="${b.combos} live combos">(${b.combos})</span>
+          <span style="font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:13.5px;font-weight:900;color:${b.textColor};text-shadow:0 0 8px ${b.textColor}55;">${pct.toFixed(1)}%</span>
         </div>
       </div>
       <div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin-bottom:3px;">
@@ -1944,17 +2107,15 @@ const HUD_DEFS = [
 ══════════════════════════════ */
 /* ══════════════════════════════
    STRUCTURE RADAR
-   5項目・★評価: Entropy / Polarization / Coverage / DrawStructure / Dominance
+   4項目・★評価: DrawStructure / Polarization / Coverage / Dominance
    全て0-100スケール。Worker の structureFeatures から受け取る。
-   v3.9.1: レーダーチャートは「形が見えにくい」というフィードバックにより
-   撤廃し、5段階の★評価リストに変更した。
+   v3.9.2: 5項目から直感的な4項目（DRW / POL / DEN / NUT）へ集約・整理。
 ══════════════════════════════ */
 const RADAR_AXES = [
-  { key:'entropy',       label:'ENT',   jp:'複雑さ',   color:'#00d4ff' },  // 複雑さ
-  { key:'polarization',  label:'POL',   jp:'強弱差',   color:'#ff3b3b' },  // 強弱差
-  { key:'coverage',      label:'COV',   jp:'広さ',     color:'#00ff9d' },  // レンジの広さ
-  { key:'drawStructure', label:'DRW',   jp:'ドロー',   color:'#ffb800' },  // ドロー構造
-  { key:'dominance',     label:'DOM',   jp:'偏り',     color:'#a855f7' },  // Gini不平等度
+  { key:'drawStructure', label:'DRW', jp:'ドロー感',   color:'#ffb800', explain:'ストレートやフラッシュなどのドロー（未完成の可能性）がどれだけ多い盤面か' },
+  { key:'polarization',  label:'POL', jp:'二極化',     color:'#ff3b3b', explain:'最強の役と何もないエアーの二極に分かれており、中途半端な手が少ない度合い' },
+  { key:'coverage',      label:'DEN', jp:'レンジ密度', color:'#00ff9d', explain:'ワンペア・ツーペアなど中間的な強さのヒット手がどれほど広く分布しているか' },
+  { key:'dominance',     label:'NUT', jp:'ナッツ偏り', color:'#a855f7', explain:'特定の最強手（ナッツ）をどちらかのプレイヤーが独占・偏在しやすい盤面か' },
 ];
 
 // buildRadarGrid()は互換のため空実装として残す（finalizeBrainReady()から呼ばれている）
@@ -1968,10 +2129,137 @@ function valueToStars(value100) {
   return Math.max(1, Math.min(5, Math.round(value100 / 20)));
 }
 
+function generateTacticalInsights(sf) {
+  if (!sf) return [];
+  const tags = [];
+  const pol = sf.polarization ?? 0;
+  const drw = sf.drawStructure ?? 0;
+  const cov = sf.coverage ?? 0;
+  const dom = sf.dominance ?? 0;
+  const ent = sf.entropy ?? 0;
+
+  // 1. 二極化度合い（POLARIZATION）に応じた戦略
+  if (pol >= 60) {
+    tags.push({ tag: '⚡ POLARIZED RANGE', color: '#ff3b3b', text: 'ナッツとエアーの二極化。Overbet(75%+ Pot) や Check-Raise に非常に適した盤面構造' });
+  } else if (pol <= 38 && cov >= 50) {
+    tags.push({ tag: '🛡️ CONDENSED / CAP', color: '#00ff9d', text: 'レンジキャップド傾向。Check-Back や Delay C-Bet によるレンジ保護・Check-Raise警戒が有効' });
+  }
+
+  // 2. ドロー構造（DRAW STRUCTURE）に応じた戦略
+  if (drw >= 65) {
+    tags.push({ tag: '🌊 DYNAMIC & HEAVY DRAW', color: '#ffb800', text: '多重ドロー豊富。相手にフリーカードを与えない Protection Bet (66% Pot) や Multi-Street 連続打撃が有効' });
+  } else if (drw <= 30) {
+    tags.push({ tag: '🌵 DRY & STATIC BOARD', color: '#00d4ff', text: 'ドロー少の静的盤面。スモールC-Bet(25-33%) による高頻度Range Bet または Check-Back で波乱防止' });
+  }
+
+  // 3. ナッツ支配・レンジアドバンテージ（DOMINANCE & COVERAGE）
+  if (dom >= 60) {
+    tags.push({ tag: '👑 NUT ADVANTAGE', color: '#a855f7', text: 'ナッツ層の偏重。強気のレンジアプレッシャーやアグレッシブな3-Barrelで相手に圧力をかけやすい' });
+  } else if (cov >= 60 && pol < 50) {
+    tags.push({ tag: '🎯 MEDIUM DENSITY', color: '#00ff9d', text: '中手ヒット層が豊富。Check/Call ラインやスモールベットによるShowdown Valueの回収が有効' });
+  }
+
+  // 4. アクション複合指針 (Check-Raise, Check-Back, Probe Bet, Delay C-bet)
+  if (pol >= 48 && drw >= 45) {
+    tags.push({ tag: '⚔️ CHECK-RAISE HIGH', color: '#ff7c00', text: '強手と強ドローを混ぜた Check-Raise / Semi-Bluff ベットラインの期待値が高い' });
+  } else if (drw < 40 && pol < 50) {
+    tags.push({ tag: '↩️ CHECK-BACK OPTION', color: '#29b6f6', text: 'インポジション(IP)時、Showdown Value維持のための Check-Back → ターン Delay C-Bet が好選択肢' });
+  }
+
+  if (ent >= 68) {
+    tags.push({ tag: '🌀 COMPLEX SPLIT', color: '#3b82f6', text: '戦略分岐が複雑。同一ハンド群でも Bet/Check の混合戦略（Split Strategy）を採用' });
+  }
+
+  // フォールバック（タグが空の場合）
+  if (tags.length === 0) {
+    tags.push({ tag: '⚖️ BALANCED ACTION', color: '#00d4ff', text: 'バランス型構造。ポジションに応じて Range Bet / Check-Back / Check-Call を柔軟に切り替え' });
+  }
+
+  return tags;
+}
+
+function renderDefaultZeroState() {
+  // 戦況バッジ (WAITING - 0/5 CARDS)
+  const tDot  = document.getElementById('tactic-dot');
+  const tText = document.getElementById('tactic-text');
+  const tSub  = document.getElementById('tactic-sub');
+  const tBadge= document.getElementById('tactic-badge');
+  if (tDot && tText && tSub && tBadge) {
+    tDot.style.background = 'rgba(0,180,255,.4)';
+    tDot.style.boxShadow  = '0 0 10px rgba(0,180,255,.2)';
+    tText.style.color     = 'rgba(0,180,255,.7)';
+    tText.textContent     = 'WAITING (0/5 CARDS)';
+    tSub.textContent      = 'ボードカード（3〜5枚）を選択またはサンプルボタンをタップしてリアルタイム解析を開始';
+    tBadge.style.borderColor = 'rgba(0,180,255,.3)';
+    tBadge.style.boxShadow   = 'none';
+  }
+
+  // RANGE PROFILE (0% / LOW 初期状態)
+  const profileBlock = document.getElementById('range-profile-block');
+  const profileHud   = document.getElementById('range-profile-hud');
+  if (profileHud) {
+    const defaultDefs = [
+      { label: 'Value Density',      icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
+      { label: 'Bluff Availability',  icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
+      { label: 'Range Capped',         icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
+    ];
+    profileHud.innerHTML = defaultDefs.map(def => `
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:10px;flex-shrink:0;">${def.icon}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
+            <span style="font-family:'Rajdhani',sans-serif;font-size:10.5px;font-weight:600;color:rgba(200,225,250,.85);">${def.label}<span class="help-q" title="${def.explain}" style="margin-left:4px;">?</span></span>
+            <span style="font-family:'Orbitron',monospace;font-size:7.5px;font-weight:700;color:rgba(160,200,230,.4);">LOW</span>
+          </div>
+          <div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:0%;background:rgba(160,200,230,.4);border-radius:2px;"></div>
+          </div>
+        </div>
+        <span style="font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:10px;font-weight:800;color:rgba(200,230,255,.7);flex-shrink:0;min-width:34px;text-align:right;">0%</span>
+      </div>
+    `).join('');
+  }
+  if (profileBlock) profileBlock.style.display = 'flex';
+
+  // STRUCTURE RATING (★0 / 0% 初期状態)
+  const listEl = document.getElementById('star-rating-list');
+  const streetLbl = document.getElementById('radar-street-lbl');
+  if (streetLbl) streetLbl.textContent = 'PREFLOP';
+  if (listEl) {
+    const zeroStarsHtml = RADAR_AXES.map(ax => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03);">
+        <div style="display:flex;align-items:center;gap:4px;min-width:0;flex:1;">
+          <span style="font-family:'Orbitron',monospace;font-size:7px;font-weight:700;color:${ax.color};flex-shrink:0;" title="${ax.label}">${ax.label}</span>
+          <span style="font-family:'Rajdhani',sans-serif;font-size:9.5px;font-weight:600;color:rgba(220,235,250,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ax.jp}<span class="help-q" title="${ax.explain || ''}" style="margin-left:3px;">?</span></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(160,200,230,.25);letter-spacing:.5px;">☆☆☆☆☆</span>
+          <span style="font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:10px;font-weight:800;color:rgba(200,230,255,.6);min-width:34px;text-align:right;">0%</span>
+        </div>
+      </div>
+    `).join('');
+
+    listEl.innerHTML = zeroStarsHtml;
+  }
+
+  const insightsEl = document.getElementById('tactical-insights-block');
+  if (insightsEl) {
+    insightsEl.innerHTML = `
+      <div style="font-family:'Orbitron',monospace;font-size:8px;font-weight:700;color:#00d4ff;letter-spacing:1px;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid rgba(0,212,255,.2);display:flex;align-items:center;gap:5px;">
+        <span>⚡ TACTICAL INSIGHTS</span>
+      </div>
+      <div style="line-height:1.4;display:flex;align-items:center;gap:6px;">
+        <span style="font-family:'Orbitron',monospace;font-size:7.5px;font-weight:700;color:#00d4ff;padding:2px 6px;border:1px solid rgba(0,212,255,.4);border-radius:3px;background:rgba(0,212,255,.12);white-space:nowrap;flex-shrink:0;">💡 BOARD READ GUIDE</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(210,235,255,.85);">ボードカード選択で C-Bet / Check-Back / Check-Raise 等のGTO指針を自動解析</span>
+      </div>`;
+  }
+}
+
 function renderStructureRadar(sf, street) {
   if (!sf) return;
   const listEl    = document.getElementById('star-rating-list');
   const streetLbl = document.getElementById('radar-street-lbl');
+  const insightsEl = document.getElementById('tactical-insights-block');
   if (!listEl) return;
 
   if (streetLbl) streetLbl.textContent = street || '--';
@@ -1979,7 +2267,7 @@ function renderStructureRadar(sf, street) {
   // ── 前ストリートとの比較（▲上昇/▼下降/・変化なし） ──
   const hasComparison = _prevStructureFeatures && _prevStructureStreet && _prevStructureStreet !== street;
 
-  listEl.innerHTML = RADAR_AXES.map(ax => {
+  const starsHtml = RADAR_AXES.map(ax => {
     const val   = sf[ax.key] ?? 0;
     const stars = valueToStars(val);
     const starStr = '★'.repeat(stars) + '☆'.repeat(5 - stars);
@@ -1994,14 +2282,39 @@ function renderStructureRadar(sf, street) {
     }
 
     return `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:2.5px 0;">
-        <span style="font-family:'Orbitron',monospace;font-size:6.5px;color:${ax.color};width:26px;flex-shrink:0;" title="${ax.label}">${ax.label}</span>
-        <span style="font-family:'Rajdhani',sans-serif;font-size:8.5px;color:rgba(220,235,250,.75);flex:1;">${ax.jp}</span>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:${ax.color};letter-spacing:1px;">${starStr}</span>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.4);width:26px;text-align:right;">${val}%</span>
-        ${deltaHtml}
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03);">
+        <div style="display:flex;align-items:center;gap:4px;min-width:0;flex:1;">
+          <span style="font-family:'Orbitron',monospace;font-size:7px;font-weight:700;color:${ax.color};flex-shrink:0;" title="${ax.label}">${ax.label}</span>
+          <span style="font-family:'Rajdhani',sans-serif;font-size:9.5px;font-weight:600;color:rgba(220,235,250,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ax.jp}<span class="help-q" title="${ax.explain || ''}" style="margin-left:3px;">?</span></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:${ax.color};letter-spacing:.5px;text-shadow:0 0 6px ${ax.color}66;">${starStr}</span>
+          <span style="font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:10px;font-weight:800;color:#ffffff;min-width:34px;text-align:right;">${val}%</span>
+          ${deltaHtml}
+        </div>
       </div>`;
   }).join('');
+
+  listEl.innerHTML = starsHtml;
+
+  // ── Tactical Insights Tags ──
+  const insights = generateTacticalInsights(sf);
+  if (insightsEl) {
+    if (insights.length) {
+      insightsEl.innerHTML = `<div style="font-family:'Orbitron',monospace;font-size:8px;font-weight:700;color:#00d4ff;letter-spacing:1px;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid rgba(0,212,255,.2);">⚡ TACTICAL INSIGHTS</div>`
+        + insights.map(i => `<div style="margin-bottom:5px;line-height:1.4;display:flex;align-items:flex-start;gap:6px;">
+            <span style="font-family:'Orbitron',monospace;font-size:7.5px;font-weight:700;color:${i.color};padding:2px 6px;border:1px solid ${i.color}55;border-radius:3px;background:${i.color}18;white-space:nowrap;flex-shrink:0;box-shadow:0 0 8px ${i.color}22;">${i.tag}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(220,240,255,.9);">${i.text}</span>
+          </div>`).join('');
+    } else {
+      insightsEl.innerHTML = `
+        <div style="font-family:'Orbitron',monospace;font-size:8px;font-weight:700;color:#00d4ff;letter-spacing:1px;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid rgba(0,212,255,.2);">⚡ TACTICAL INSIGHTS</div>
+        <div style="line-height:1.4;display:flex;align-items:center;gap:6px;">
+          <span style="font-family:'Orbitron',monospace;font-size:7.5px;font-weight:700;color:#00d4ff;padding:2px 6px;border:1px solid rgba(0,212,255,.4);border-radius:3px;background:rgba(0,212,255,.12);white-space:nowrap;flex-shrink:0;">⚖️ STANDARD</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(210,235,255,.85);">標準的な構造。頻度ベットまたはチェックでレンジを保護</span>
+        </div>`;
+    }
+  }
 
   if (_prevStructureStreet !== street) {
     _prevStructureFeatures = sf;
@@ -2021,9 +2334,9 @@ function renderConclusion(data) {
   // ─ RANGE PROFILE（VALUE / BLUFF / CAPPED）─
   const s = data.hudSignals || {};
   const profileDefs = [
-    { key: 'value',  label: 'Value Density',      icon: '💎' },
-    { key: 'bluff',  label: 'Bluff Availability',  icon: '🎭' },
-    { key: 'capped', label: 'Range Capped',         icon: '🔒' },
+    { key: 'value',  label: 'Value Density',      icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
+    { key: 'bluff',  label: 'Bluff Availability',  icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
+    { key: 'capped', label: 'Range Capped',         icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
   ];
   const profileHtml = profileDefs.map(def => {
     const val = s[def.key] || 0;
@@ -2034,20 +2347,20 @@ function renderConclusion(data) {
       <span style="font-size:9px;flex-shrink:0;">${def.icon}</span>
       <div style="flex:1;min-width:0;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;">
-          <span style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;color:rgba(180,210,240,.7);">${def.label}</span>
+          <span style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;color:rgba(180,210,240,.7);">${def.label}<span class="help-q" title="${def.explain}" style="margin-left:4px;">?</span></span>
           <span style="font-family:'Orbitron',monospace;font-size:7px;font-weight:700;color:${lvl.color};">${lvl.label}</span>
         </div>
         <div style="height:2px;background:rgba(255,255,255,.06);border-radius:1px;margin-top:1px;overflow:hidden;">
           <div style="height:100%;width:${barW}%;background:${lvl.color};border-radius:1px;transition:width .5s;"></div>
         </div>
       </div>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.3);flex-shrink:0;min-width:26px;text-align:right;">${pct}%</span>
+      <span style="font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:10px;font-weight:800;color:#ffffff;flex-shrink:0;min-width:34px;text-align:right;">${pct}%</span>
     </div>`;
   }).join('');
 
   const profileBlock = document.getElementById('range-profile-block');
   document.getElementById('range-profile-hud').innerHTML = profileHtml;
-  if (profileBlock) profileBlock.style.display = 'block';
+  if (profileBlock) profileBlock.style.display = 'flex';
 
   // ─ Narrative ─
   const narEl = document.getElementById('conclusion-narrative');
@@ -2063,6 +2376,14 @@ function renderConclusion(data) {
 /* ══════════════════════════════
    RENDER: BOARD DIAGNOSTICS（L3 — 折りたたみ詳細）
 ══════════════════════════════ */
+/* ══════════════════════════════
+   v3.9: Format Label Helper
+══════════════════════════════ */
+function fl(val) {
+  if (!val) return '--';
+  return String(val).replace(/_/g, ' ');
+}
+
 function renderBoardDiagnostics(data) {
   const toggle = document.getElementById('bi-toggle');
   const panel  = document.getElementById('bi-panel');
@@ -2186,6 +2507,8 @@ const SITUATION_FEEDBACK = {
   BTN_VS_BB: 'SRP: Button opens, BB defends',
   '3BET_IP': '3-Bet pot in position — range compressed, nut heavy',
   SRP_IP:    'Single raised pot in position — balanced aggression',
+  '4BET_POT':'4-Bet pot — highly compressed ranges, low SPR, commitment heavy',
+  'LIMP_POT': 'Limped pot — wide unraised ranges, high multi-way variance',
 };
 
 function _fbLine(label, val, col) {
@@ -2460,159 +2783,50 @@ function clearSlot(i) {
   const r = document.getElementById('rsel-'+i);
   const s = document.getElementById('ssel-'+i);
   if (r) r.value = '';
-  if (s) { s.value=''; s.style.color='rgba(160,200,230,.5)'; s.style.boxShadow='0 0 6px rgba(0,140,255,.15)'; s.style.borderColor='rgba(0,180,255,.35)'; s.style.background='#0c1828'; }
-  const btn = document.getElementById('clr-'+i);
-  if (btn) btn.classList.remove('has-card');
+  if (s) s.value = '';
   onInputChanged();
 }
 
-let _clearTimer = null;
-function clearAllStart() {
+let _clearConfirming = false;
+let _clearConfirmTimer = null;
+
+function resetClearAllBtn() {
+  _clearConfirming = false;
+  if (_clearConfirmTimer) {
+    clearTimeout(_clearConfirmTimer);
+    _clearConfirmTimer = null;
+  }
   const btn = document.getElementById('clear-all-btn');
-  if (btn) { btn.style.background='rgba(255,59,59,.15)'; btn.textContent='HOLD...'; }
-  _clearTimer = setTimeout(() => {
-    clearBoard();
-    if (btn) { btn.textContent='✕ CLEAR ALL'; btn.style.background='rgba(255,59,59,.05)'; }
-  }, 600);
-}
-function clearAllCancel() {
-  clearTimeout(_clearTimer);
-  const btn = document.getElementById('clear-all-btn');
-  if (btn) { btn.style.background='rgba(255,59,59,.05)'; btn.textContent='✕ CLEAR ALL'; }
-}
-
-function buildBoardArea() {
-  const area = document.getElementById('board-area');
-  area.innerHTML = '';
-
-  const hdr = document.createElement('div');
-  hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding:0 2px;flex-shrink:0;';
-  hdr.innerHTML = `
-    <span style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,212,255,.35);letter-spacing:2px;">▐ BOARD CARDS</span>
-    <button id="clear-all-btn"
-      onmousedown="clearAllStart()" onmouseup="clearAllCancel()" onmouseleave="clearAllCancel()"
-      ontouchstart="clearAllStart()" ontouchend="clearAllCancel()"
-      style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:.8px;padding:3px 8px;
-             border:1px solid rgba(255,59,59,.3);border-radius:2px;background:rgba(255,59,59,.05);
-             color:rgba(255,100,100,.6);cursor:pointer;transition:all .15s;user-select:none;"
-      onmouseover="this.style.borderColor='rgba(255,59,59,.6)';this.style.color='rgba(255,130,130,1)';"
-      onmouseout="this.style.borderColor='rgba(255,59,59,.3)';this.style.color='rgba(255,100,100,.6)';">
-      ✕ CLEAR ALL</button>`;
-  area.appendChild(hdr);
-
-  const slotsWrap = document.createElement('div');
-  slotsWrap.style.cssText = 'display:flex;gap:6px;padding:0 2px;align-items:flex-start;';
-  area.appendChild(slotsWrap);
-
-  const SUIT_GLOW  = {s:'rgba(180,180,220,.35)',h:'rgba(220,30,60,.35)',d:'rgba(30,80,220,.35)',c:'rgba(30,160,60,.35)'};
-  const SUIT_BORDER= {s:'rgba(160,160,210,.7)',h:'rgba(220,30,60,.8)',d:'rgba(30,80,220,.8)',c:'rgba(30,160,60,.8)'};
-
-  for (let i=0; i<5; i++) {
-    const slot = document.createElement('div');
-    slot.className = 'board-slot'; slot.id = 'slot-'+i;
-    slot.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;';
-
-    const rSel = document.createElement('select');
-    rSel.className = 'rank-sel'; rSel.id = 'rsel-'+i;
-    rSel.style.cssText = 'width:100%;background:#0c1828;border:1px solid rgba(0,180,255,.35);border-radius:3px;font-family:"Rajdhani",sans-serif;font-size:14px;font-weight:700;padding:3px 1px;cursor:pointer;outline:none;text-align:center;color:#e0f0ff;transition:border-color .2s,background .2s,box-shadow .2s;box-shadow:0 0 6px rgba(0,140,255,.15);';
-    rSel.innerHTML = '<option value="">-</option>' + RANKS_LIST.map(r=>`<option value="${r}">${r}</option>`).join('');
-
-    const suitRow = document.createElement('div');
-    suitRow.style.cssText = 'display:flex;gap:2px;width:100%;align-items:center;';
-
-    const sSel = document.createElement('select');
-    sSel.className = 'suit-sel'; sSel.id = 'ssel-'+i;
-    sSel.style.cssText = 'flex:1;min-width:0;background:#0c1828;border:1px solid rgba(0,180,255,.35);border-radius:3px;font-family:"Rajdhani",sans-serif;font-size:14px;font-weight:700;padding:3px 1px;cursor:pointer;outline:none;text-align:center;transition:border-color .2s,background .2s,box-shadow .2s;box-shadow:0 0 6px rgba(0,140,255,.15);';
-    sSel.innerHTML = '<option value="">-</option>' + SUITS_LIST.map(s=>`<option value="${s}" style="color:${SUIT_COLORS[s]}">${SUIT_SYM[s]}</option>`).join('');
-
-    const clrBtn = document.createElement('button');
-    clrBtn.id = 'clr-'+i; clrBtn.className = 'slot-clr';
-    clrBtn.title = 'このカードを消す'; clrBtn.textContent = '✕';
-    clrBtn.style.cssText = 'flex-shrink:0;width:20px;height:20px;padding:0;border:1px solid rgba(255,59,59,.3);border-radius:2px;background:rgba(255,59,59,.06);color:rgba(255,100,100,.55);font-size:10px;cursor:pointer;line-height:1;transition:all .15s;';
-    clrBtn.onmouseover = () => { clrBtn.style.background='rgba(255,59,59,.28)'; clrBtn.style.color='#ff9090'; clrBtn.style.borderColor='rgba(255,59,59,.7)'; };
-    clrBtn.onmouseout  = () => { clrBtn.style.background='rgba(255,59,59,.06)'; clrBtn.style.color='rgba(255,100,100,.55)'; clrBtn.style.borderColor='rgba(255,59,59,.3)'; };
-    clrBtn.onclick = () => clearSlot(i);
-
-    const updateSuitColor = () => {
-      const v = sSel.value;
-      sSel.style.color       = SUIT_COLORS[v] || 'rgba(160,200,230,.5)';
-      sSel.style.boxShadow   = v ? `0 0 10px ${SUIT_GLOW[v]}`  : '0 0 6px rgba(0,140,255,.15)';
-      sSel.style.borderColor = v ? SUIT_BORDER[v]              : 'rgba(0,180,255,.35)';
-      sSel.style.background  = v ? 'rgba(0,0,0,.6)'             : '#0c1828';
-      clrBtn.classList.toggle('has-card', !!(rSel.value && v));
-    };
-
-    rSel.addEventListener('change', () => { updateSuitColor(); onInputChanged(); });
-    sSel.addEventListener('change', () => { updateSuitColor(); onInputChanged(); });
-    updateSuitColor();
-
-    suitRow.appendChild(sSel);
-    suitRow.appendChild(clrBtn);
-
-    const card = document.createElement('div');
-    card.className = 'board-card waiting'; card.id = 'bcard-'+i;
-    card.innerHTML = `<div class="wait-txt">CARD ${i+1}</div>`;
-
-    slot.appendChild(rSel);
-    slot.appendChild(suitRow);
-    slot.appendChild(card);
-    slotsWrap.appendChild(slot);
+  if (btn) {
+    btn.textContent = '✕ CLEAR ALL';
+    btn.style.background = 'rgba(255,59,59,.05)';
+    btn.style.borderColor = 'rgba(255,59,59,.3)';
+    btn.style.color = 'rgba(255,100,100,.6)';
+    btn.style.boxShadow = 'none';
   }
 }
 
-const BG_CLS = {s:'bg-s',h:'bg-h',d:'bg-d',c:'bg-c'};
-
-function updateBoardCards() {
-  // Detect draws for glow effects if hero hand set
-  let boardDrawType = null;
-  if (heroHand && heroHand.length >= 2 && currentBoard.length >= 3) {
-    const r1=heroHand[0][0],r2=heroHand[1][0],s1=heroHand[0][1],s2=heroHand[1][1];
-    const draws = detectDraws(r1,r2,s1,s2,currentBoard);
-    if (draws.length) boardDrawType = draws[0].type;
-  }
-
-  for (let i=0; i<5; i++) {
-    const rVal = document.getElementById('rsel-'+i)?.value||'';
-    const sVal = document.getElementById('ssel-'+i)?.value||'';
-    const card = document.getElementById('bcard-'+i);
-    const clrBtn = document.getElementById('clr-'+i);
-    if (!card) continue;
-
-    if (rVal && sVal) {
-      const rank=rVal.toUpperCase(), suit=sVal;
-      const bgCls = BG_CLS[suit]||'';
-      const sym   = SUIT_SYM[suit]||'';
-
-      // Determine glow class
-      let glowCls = '';
-      if (boardDrawType) {
-        if (boardDrawType.includes('FD'))   glowCls = 'glow-fd';
-        else if (boardDrawType.includes('OESD')) glowCls = 'glow-oesd';
-        else if (boardDrawType.includes('GSD'))  glowCls = 'glow-gsd';
-        else glowCls = 'glow-bd';
-      }
-
-      // Check if hero card
-      let heroCls = '';
-      if (heroHand && heroHand.length >= 2) {
-        if (heroHand[0] === rVal+sVal || heroHand[1] === rVal+sVal) heroCls = 'hero-card';
-      }
-
-      card.className = `board-card active ${glowCls} ${heroCls}`;
-      card.innerHTML = `<div class="card-inner ${bgCls}">
-        <span class="card-suit-bg sym-${suit}">${sym}</span>
-        <span class="card-rank-center">${rank}</span>
-        <div class="card-corner-tl"><span class="corner-rank">${rank}</span><span class="corner-suit">${sym}</span></div>
-        <div class="card-corner-br"><span class="corner-rank">${rank}</span><span class="corner-suit">${sym}</span></div>
-      </div>`;
-      if (clrBtn) clrBtn.classList.add('has-card');
-    } else {
-      card.className = 'board-card waiting';
-      card.innerHTML = `<div class="wait-txt">CARD ${i+1}</div>`;
-      if (clrBtn) clrBtn.classList.remove('has-card');
+function handleClearAllClick() {
+  const btn = document.getElementById('clear-all-btn');
+  if (!_clearConfirming) {
+    _clearConfirming = true;
+    if (btn) {
+      btn.textContent = '⚠️ REALLY?';
+      btn.style.background = 'rgba(255,59,59,.25)';
+      btn.style.borderColor = '#ff3b3b';
+      btn.style.color = '#ffffff';
+      btn.style.boxShadow = '0 0 10px rgba(255,59,59,.6)';
     }
+    _clearConfirmTimer = setTimeout(() => {
+      resetClearAllBtn();
+    }, 2500);
+  } else {
+    clearBoard();
+    resetClearAllBtn();
   }
 }
+
+
 
 /* ── Duplicate guard ── */
 function updateDuplicateGuard() {
@@ -2675,6 +2889,7 @@ function onInputChanged() {
     calcTimer = setTimeout(triggerUpdate, 300);
   } else {
     resetHeatmapUI();
+    renderDefaultZeroState();
     setStabState('MANUAL');
   }
 }
@@ -2715,18 +2930,17 @@ function clearBoard() {
   for (let i=0; i<5; i++) {
     const r = document.getElementById('rsel-'+i);
     const s = document.getElementById('ssel-'+i);
-    // バグ修正: 以前はs.style.colorしかリセットしておらず、clearSlot(i)（個別クリア）
-    // が行っている枠線色・box-shadow・背景色のリセットが漏れていた。
-    // そのためCLEAR ALL後もスート選択時の縁の色や背景色が残ったままになっていた。
     if (r) r.value='';
-    if (s) { s.value=''; s.style.color='rgba(160,200,230,.5)'; s.style.boxShadow='0 0 6px rgba(0,140,255,.15)'; s.style.borderColor='rgba(0,180,255,.35)'; s.style.background='#0c1828'; }
-    const btn = document.getElementById('clr-'+i);
-    if (btn) btn.classList.remove('has-card');
+    if (s) s.value='';
   }
+  activePickerSlot = 0;
+  updateTargetBadge();
   currentBoard=[];
   renderStreet([]);
   updateBoardCards();
   resetHeatmapUI();
+  renderDefaultZeroState();
+  resetClearAllBtn();
   setStabState('MANUAL');
   updateDuplicateGuard();
   updateSituationBadge(null);
@@ -3037,10 +3251,37 @@ function submitChallenge() {
 function renderChallengeResult(score, detail, state) {
   const body = document.getElementById('challenge-body');
   const scoreColor = score === 4 ? '#00ff9d' : score >= 2 ? '#ffd700' : '#ff6b6b';
+
+  let structSummaryHtml = '';
+  if (challengeActual && challengeActual.structureFeatures) {
+    const sf = challengeActual.structureFeatures;
+    const insights = generateTacticalInsights(sf);
+    const starsList = RADAR_AXES.map(ax => {
+      const val = sf[ax.key] ?? 0;
+      const stars = valueToStars(val);
+      const starStr = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+      return `<span style="color:${ax.color}">${ax.label}:${starStr}(${val}%)</span>`;
+    }).join(' ');
+
+    let insightTagsHtml = '';
+    if (insights.length) {
+      insightTagsHtml = `<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;justify-center;">` +
+        insights.map(i => `<span style="font-family:'Orbitron',monospace;font-size:7px;color:${i.color};padding:1px 4px;border:1px solid ${i.color}44;border-radius:2px;background:${i.color}11;">${i.tag}</span>`).join('') +
+        `</div>`;
+    }
+
+    structSummaryHtml = `
+      <div style="margin-top:8px;padding:8px;border-radius:4px;background:rgba(0,180,255,.05);border:1px solid rgba(0,180,255,.2);text-align:center;">
+        <div style="font-family:'Orbitron',monospace;font-size:7px;color:rgba(0,212,255,.8);letter-spacing:1px;margin-bottom:4px;">📊 ANALYZED STRUCTURE RATING & INSIGHTS</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;">${starsList}</div>
+        ${insightTagsHtml}
+      </div>`;
+  }
+
   body.innerHTML = `
     <div style="text-align:center;margin-bottom:10px;">
       <div style="font-family:'Orbitron',monospace;font-size:22px;font-weight:900;color:${scoreColor};">${score} / 4</div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.4);letter-spacing:1px;">READ SCORE（SPECTRA自身の計算値との一致数）</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.4);letter-spacing:1px;">READ SCORE（SPECTRAエンジンの計算値との一致数）</div>
     </div>
     ${detail.map(d => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;
@@ -3052,6 +3293,7 @@ function renderChallengeResult(score, detail, state) {
         </span>
       </div>
     `).join('')}
+    ${structSummaryHtml}
     <div style="margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.35);text-align:center;">
       また明日、新しいボードが出題されます
     </div>
@@ -3118,10 +3360,449 @@ function closeChallenge() {
 }
 
 /* ══════════════════════════════
-   INIT
+   52-CARD VISUAL DECK PICKER & INLINE BOARD INPUT
 ══════════════════════════════ */
-buildHeatmap();
+let activePickerSlot = 0; // 0..4 = Board Cards
+
+const PICKER_SLOT_LABELS = [
+  { id: 0, label: 'FLOP 1' },
+  { id: 1, label: 'FLOP 2' },
+  { id: 2, label: 'FLOP 3' },
+  { id: 3, label: 'TURN' },
+  { id: 4, label: 'RIVER' }
+];
+
+function selectPickerSlot(slotIdx) {
+  activePickerSlot = slotIdx;
+  updateTargetBadge();
+  updateBoardCards();
+  renderPickerSlots();
+  renderInlinePickerGrid();
+}
+
+function updateTargetBadge() {
+  const badge = document.getElementById('active-slot-badge');
+  if (badge) {
+    badge.textContent = `TARGET: ${PICKER_SLOT_LABELS[activePickerSlot].label}`;
+  }
+}
+
+function renderPickerSlots() {
+  const containers = document.querySelectorAll('.picker-slots');
+  if (!containers || !containers.length) return;
+
+  containers.forEach(container => {
+    container.innerHTML = '';
+
+    PICKER_SLOT_LABELS.forEach(slot => {
+      const btn = document.createElement('div');
+      const isActive = activePickerSlot === slot.id;
+      btn.className = `picker-slot-btn ${isActive ? 'active' : ''}`;
+      btn.onclick = () => selectPickerSlot(slot.id);
+
+      let cardVal = '--';
+      let suitCol = '';
+      let bgGradient = '';
+      const r = document.getElementById('rsel-' + slot.id)?.value || '';
+      const s = document.getElementById('ssel-' + slot.id)?.value || '';
+      if (r && s) {
+        cardVal = `${r}${SUIT_SYM[s] || s}`;
+        suitCol = SUIT_COLORS[s] || '#fff';
+        if (s === 's') bgGradient = 'rgba(154,164,184,.15)';
+        else if (s === 'h') bgGradient = 'rgba(216,56,80,.15)';
+        else if (s === 'd') bgGradient = 'rgba(40,104,216,.15)';
+        else if (s === 'c') bgGradient = 'rgba(32,136,72,.15)';
+      }
+
+      if (bgGradient) btn.style.background = bgGradient;
+
+      btn.innerHTML = `
+        <div style="font-size:7px;letter-spacing:1px;opacity:.8;">${slot.label}</div>
+        <div class="slot-card-val" style="color:${suitCol || (isActive ? '#00d4ff' : 'rgba(200,230,255,.5)')}">${cardVal}</div>
+      `;
+      container.appendChild(btn);
+    });
+  });
+}
+
+function getUsedCardsMap() {
+  const map = new Map();
+  for (let i = 0; i < 5; i++) {
+    const r = document.getElementById('rsel-' + i)?.value;
+    const s = document.getElementById('ssel-' + i)?.value;
+    if (r && s) {
+      map.set(r + s, PICKER_SLOT_LABELS[i].label);
+    }
+  }
+  return map;
+}
+
+function renderInlinePickerGrid() {
+  const containers = document.querySelectorAll('.picker-grid');
+  if (!containers || !containers.length) return;
+
+  containers.forEach(container => {
+    container.innerHTML = '';
+
+    const usedMap = getUsedCardsMap();
+
+    let currentCardOfActiveSlot = '';
+    if (activePickerSlot <= 4) {
+      const r = document.getElementById('rsel-' + activePickerSlot)?.value || '';
+      const s = document.getElementById('ssel-' + activePickerSlot)?.value || '';
+      if (r && s) currentCardOfActiveSlot = r + s;
+    }
+
+    const SUIT_CARD_BGS = {
+      s: 'rgba(154,164,184,.12)',
+      h: 'rgba(216,56,80,.15)',
+      d: 'rgba(40,104,216,.15)',
+      c: 'rgba(32,136,72,.15)'
+    };
+
+    const SUIT_CARD_BORDERS = {
+      s: 'rgba(180,200,220,.3)',
+      h: 'rgba(255,100,120,.4)',
+      d: 'rgba(80,160,255,.4)',
+      c: 'rgba(60,210,120,.4)'
+    };
+
+    SUITS_LIST.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'picker-suit-row';
+
+      const lbl = document.createElement('div');
+      lbl.className = 'picker-suit-lbl';
+      lbl.style.color = SUIT_COLORS[s];
+      lbl.textContent = SUIT_SYM[s];
+      row.appendChild(lbl);
+
+      RANKS_LIST.forEach(r => {
+        const cardStr = r + s;
+        const usedBy = usedMap.get(cardStr);
+        const isSelectedForActiveSlot = (cardStr === currentCardOfActiveSlot);
+        const isUsedElsewhere = usedBy && !isSelectedForActiveSlot;
+
+        const cardBtn = document.createElement('button');
+        cardBtn.className = `picker-card-btn ${isUsedElsewhere ? 'disabled' : ''}`;
+        
+        if (isSelectedForActiveSlot) {
+          cardBtn.style.border = '1.5px solid #00d4ff';
+          cardBtn.style.boxShadow = '0 0 8px rgba(0,212,255,.6)';
+          cardBtn.style.background = 'rgba(0,212,255,.25)';
+          cardBtn.style.color = '#ffffff';
+        } else if (!isUsedElsewhere) {
+          cardBtn.style.background = SUIT_CARD_BGS[s];
+          cardBtn.style.borderColor = SUIT_CARD_BORDERS[s];
+          cardBtn.style.color = SUIT_COLORS[s];
+        } else {
+          cardBtn.style.color = 'rgba(255,255,255,.2)';
+        }
+
+        let content = `<div style="display:flex;align-items:center;justify-content:center;gap:1px;font-size:11px;font-weight:900;line-height:1;"><span>${r}</span><span style="font-size:9px;">${SUIT_SYM[s]}</span></div>`;
+        if (usedBy) {
+          content += `<span class="used-tag" style="${isSelectedForActiveSlot ? 'color:#ffffff;font-weight:bold;' : ''}">${usedBy}</span>`;
+        }
+        cardBtn.innerHTML = content;
+
+        cardBtn.onclick = () => handleCardPick(r, s);
+
+        row.appendChild(cardBtn);
+      });
+
+      container.appendChild(row);
+    });
+  });
+}
+
+function handleCardPick(rank, suit) {
+  const cardStr = rank + suit;
+
+  // If clicked card is already placed in active slot -> toggle off (clear it)
+  const currentR = document.getElementById('rsel-' + activePickerSlot)?.value;
+  const currentS = document.getElementById('ssel-' + activePickerSlot)?.value;
+  if (currentR === rank && currentS === suit) {
+    clearSlot(activePickerSlot);
+    updateBoardCards();
+    return;
+  }
+
+  // If clicked card is placed in another slot -> jump target slot to that slot or clear it
+  for (let i = 0; i < 5; i++) {
+    if (i === activePickerSlot) continue;
+    const r = document.getElementById('rsel-' + i)?.value;
+    const s = document.getElementById('ssel-' + i)?.value;
+    if (r === rank && s === suit) {
+      // Clear from old slot and place in active slot
+      clearSlot(i);
+      break;
+    }
+  }
+
+  if (activePickerSlot <= 4) {
+    const rSel = document.getElementById('rsel-' + activePickerSlot);
+    const sSel = document.getElementById('ssel-' + activePickerSlot);
+    if (rSel && sSel) {
+      rSel.value = rank;
+      sSel.value = suit;
+      sSel.dispatchEvent(new Event('change'));
+    }
+  }
+
+  // Auto-advance to next empty slot
+  let nextSlot = -1;
+  for (let i = 0; i < 5; i++) {
+    const idx = (activePickerSlot + 1 + i) % 5;
+    const r = document.getElementById('rsel-' + idx)?.value;
+    const s = document.getElementById('ssel-' + idx)?.value;
+    if (!r || !s) {
+      nextSlot = idx;
+      break;
+    }
+  }
+
+  if (nextSlot !== -1) {
+    activePickerSlot = nextSlot;
+  } else {
+    activePickerSlot = (activePickerSlot + 1) % 5;
+  }
+
+  updateTargetBadge();
+  updateBoardCards();
+}
+
+function clearCurrentPickerSlot() {
+  clearSlot(activePickerSlot);
+  updateBoardCards();
+}
+
+function clearAllPickerCards() {
+  clearBoard();
+  updateBoardCards();
+}
+
+function openDeckPicker(targetSlot = 0) {
+  selectPickerSlot(targetSlot);
+  const overlay = document.getElementById('picker-overlay');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+function closeDeckPicker() {
+  const overlay = document.getElementById('picker-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function onPickerOverlayClick(e) {
+  if (e.target.id === 'picker-overlay') {
+    closeDeckPicker();
+  }
+}
+
+function buildBoardArea() {
+  const area = document.getElementById('board-area');
+  area.innerHTML = '';
+
+  // 1. HEADER (Title, Target Badge, Modal View, Clear All)
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:6px;padding:0 2px;flex-shrink:0;';
+  hdr.innerHTML = `
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,212,255,.5);letter-spacing:1.5px;white-space:nowrap;">▐ BOARD CARDS</span>
+      <span id="active-slot-badge" style="font-family:'Orbitron',monospace;font-size:8px;padding:2px 6px;border-radius:2px;background:rgba(0,212,255,.15);border:1px solid rgba(0,212,255,.4);color:#00d4ff;letter-spacing:.5px;white-space:nowrap;">TARGET: FLOP 1</span>
+      <button id="open-picker-modal-btn" onclick="openDeckPicker(activePickerSlot)"
+        style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:.8px;padding:2px 8px;
+               border:1px solid rgba(0,212,255,.5);border-radius:3px;background:rgba(0,212,255,.12);
+               color:#00d4ff;cursor:pointer;transition:all .15s;user-select:none;white-space:nowrap;"
+        onmouseover="this.style.borderColor='#00d4ff';this.style.boxShadow='0 0 10px rgba(0,212,255,.5)';"
+        onmouseout="this.style.borderColor='rgba(0,212,255,.5)';this.style.boxShadow='none';">
+        🔍 拡大表示
+      </button>
+    </div>
+    <button id="clear-all-btn" onclick="handleClearAllClick()"
+      style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:.8px;padding:3px 8px;
+             border:1px solid rgba(255,59,59,.3);border-radius:2px;background:rgba(255,59,59,.05);
+             color:rgba(255,100,100,.6);cursor:pointer;transition:all .15s;user-select:none;white-space:nowrap;"
+      onmouseover="if(!_clearConfirming){this.style.borderColor='rgba(255,59,59,.6)';this.style.color='rgba(255,130,130,1)';}"
+      onmouseout="if(!_clearConfirming){this.style.borderColor='rgba(255,59,59,.3)';this.style.color='rgba(255,100,100,.6)';}">
+      ✕ CLEAR ALL</button>`;
+  area.appendChild(hdr);
+
+  // 1.5 PRESET BOARDS BAR
+  const presetBar = document.createElement('div');
+  presetBar.style.cssText = 'display:flex;align-items:center;gap:4px;margin-bottom:6px;padding:0 2px;overflow-x:auto;scroll-behavior:smooth;';
+  presetBar.innerHTML = `
+    <span style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(0,212,255,.6);white-space:nowrap;">サンプル:</span>
+    <button onclick="loadPresetBoard(['Ks','7d','2c'])" class="preset-btn" title="K-7-2 Offsuit (Dry Board)">🏜️ K♠7♦2♣</button>
+    <button onclick="loadPresetBoard(['Js','Ts','9h'])" class="preset-btn" title="J-T-9 Wet Board">🌊 J♠T♠9♥</button>
+    <button onclick="loadPresetBoard(['Ah','Kh','8h'])" class="preset-btn" title="A-K-8 Monotone Board">💎 A♥K♥8♥</button>
+    <button onclick="loadPresetBoard(['As','Ad','Qc'])" class="preset-btn" title="A-A-Q Paired Board">👑 A♠A♦Q♣</button>
+  `;
+  area.appendChild(presetBar);
+
+  // 2. SLOTS WRAPPER (Rich Visual Cards)
+  const slotsWrap = document.createElement('div');
+  slotsWrap.id = 'board-slots-row';
+  slotsWrap.style.cssText = 'display:flex;gap:6px;padding:0 2px;align-items:center;margin-bottom:8px;';
+  area.appendChild(slotsWrap);
+
+  const SLOT_NAMES = ['FLOP 1', 'FLOP 2', 'FLOP 3', 'TURN', 'RIVER'];
+
+  for (let i = 0; i < 5; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'board-slot'; slot.id = 'slot-' + i;
+
+    const lbl = document.createElement('div');
+    lbl.className = 'slot-hdr-lbl';
+    lbl.textContent = SLOT_NAMES[i];
+    slot.appendChild(lbl);
+
+    // Hidden backing selects for state compatibility
+    const rSel = document.createElement('select');
+    rSel.className = 'rank-sel'; rSel.id = 'rsel-' + i; rSel.style.display = 'none';
+    rSel.innerHTML = '<option value="">-</option>' + RANKS_LIST.map(r => `<option value="${r}">${r}</option>`).join('');
+
+    const sSel = document.createElement('select');
+    sSel.className = 'suit-sel'; sSel.id = 'ssel-' + i; sSel.style.display = 'none';
+    sSel.innerHTML = '<option value="">-</option>' + SUITS_LIST.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    rSel.addEventListener('change', onInputChanged);
+    sSel.addEventListener('change', onInputChanged);
+
+    slot.appendChild(rSel);
+    slot.appendChild(sSel);
+
+    // Visual Rich Card Display
+    const card = document.createElement('div');
+    card.className = 'board-card waiting'; card.id = 'bcard-' + i;
+    card.title = `${SLOT_NAMES[i]} を選択対象にする`;
+    card.style.cursor = 'pointer';
+    card.onclick = () => selectPickerSlot(i);
+    card.innerHTML = `<div class="wait-txt"><span style="font-size:12px;display:block;margin-bottom:2px;">＋</span>${SLOT_NAMES[i]}</div>`;
+
+    slot.appendChild(card);
+    slotsWrap.appendChild(slot);
+  }
+
+  // 3. INLINE 52-CARD DECK PICKER
+  const pickerContainer = document.createElement('div');
+  pickerContainer.id = 'inline-picker-container';
+  pickerContainer.style.cssText = 'background:rgba(0,12,28,.65);border:1px solid rgba(0,180,255,.2);border-radius:4px;padding:6px 8px;';
+  pickerContainer.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div style="font-family:'Orbitron',monospace;font-size:7.5px;letter-spacing:1px;color:rgba(0,212,255,.7);">🃏 52-CARD DECK PICKER</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(160,200,230,.5);">上のカード枠または以下のカードを選択</div>
+    </div>
+    <div id="inline-picker-grid-container" class="picker-grid" style="display:flex;flex-direction:column;gap:3px;"></div>
+  `;
+  area.appendChild(pickerContainer);
+
+  renderPickerSlots();
+  renderInlinePickerGrid();
+}
+
+const BG_CLS = { s: 'bg-s', h: 'bg-h', d: 'bg-d', c: 'bg-c' };
+
+function updateBoardCards() {
+  // Detect draws for glow effects if hero hand set
+  let boardDrawType = null;
+  if (heroHand && heroHand.length >= 2 && currentBoard.length >= 3) {
+    const r1 = heroHand[0][0], r2 = heroHand[1][0], s1 = heroHand[0][1], s2 = heroHand[1][1];
+    const draws = detectDraws(r1, r2, s1, s2, currentBoard);
+    if (draws.length) boardDrawType = draws[0].type;
+  }
+
+  const SLOT_NAMES = ['FLOP 1', 'FLOP 2', 'FLOP 3', 'TURN', 'RIVER'];
+
+  for (let i = 0; i < 5; i++) {
+    const rVal = document.getElementById('rsel-' + i)?.value || '';
+    const sVal = document.getElementById('ssel-' + i)?.value || '';
+    const card = document.getElementById('bcard-' + i);
+    if (!card) continue;
+
+    const isActiveTarget = (i === activePickerSlot);
+
+    if (rVal && sVal) {
+      const rank = rVal.toUpperCase(), suit = sVal;
+      const bgCls = BG_CLS[suit] || '';
+      const sym = SUIT_SYM[suit] || '';
+
+      // Determine glow class
+      let glowCls = '';
+      if (boardDrawType) {
+        if (boardDrawType.includes('FD')) glowCls = 'glow-fd';
+        else if (boardDrawType.includes('OESD')) glowCls = 'glow-oesd';
+        else if (boardDrawType.includes('GSD')) glowCls = 'glow-gsd';
+        else glowCls = 'glow-bd';
+      }
+
+      // Check if hero card
+      let heroCls = '';
+      if (heroHand && heroHand.length >= 2) {
+        if (heroHand[0] === rVal + sVal || heroHand[1] === rVal + sVal) heroCls = 'hero-card';
+      }
+
+      let activeBorder = isActiveTarget ? 'style="border-color:#00d4ff;box-shadow:0 0 14px rgba(0,212,255,.6);"' : '';
+
+      card.className = `board-card active ${glowCls} ${heroCls}`;
+      if (isActiveTarget) card.style.border = '2px solid #00d4ff';
+      else card.style.border = '';
+
+      card.innerHTML = `<div class="card-inner ${bgCls}">
+        <span class="card-suit-bg sym-${suit}">${sym}</span>
+        <span class="card-rank-center">${rank}</span>
+        <div class="card-corner-tl"><span class="corner-rank">${rank}</span><span class="corner-suit">${sym}</span></div>
+        <div class="card-corner-br"><span class="corner-rank">${rank}</span><span class="corner-suit">${sym}</span></div>
+        <button class="slot-clr-btn" title="カードを消す" onclick="event.stopPropagation();clearSlot(${i})">✕</button>
+      </div>`;
+    } else {
+      card.className = `board-card waiting ${isActiveTarget ? 'active-target' : ''}`;
+      if (isActiveTarget) {
+        card.style.border = '2px solid #00d4ff';
+        card.style.background = 'rgba(0,212,255,.12)';
+        card.style.boxShadow = '0 0 12px rgba(0,212,255,.4)';
+      } else {
+        card.style.border = '';
+        card.style.background = '';
+        card.style.boxShadow = '';
+      }
+      card.innerHTML = `<div class="wait-txt"><span style="font-size:12px;display:block;margin-bottom:2px;">＋</span>${SLOT_NAMES[i]}</div>`;
+    }
+  }
+
+  renderPickerSlots();
+  renderInlinePickerGrid();
+}
+
+function loadPresetBoard(cards) {
+  clearBoard();
+  for (let i = 0; i < cards.length && i < 5; i++) {
+    const cardStr = cards[i].trim();
+    if (cardStr.length < 2) continue;
+    let r = '', s = '';
+    for (const char of cardStr) {
+      const u = char.toUpperCase();
+      const l = char.toLowerCase();
+      if ('AKQJT98765432'.includes(u)) r = u;
+      if ('shdc'.includes(l)) s = l;
+    }
+    if (r && s) {
+      const rSel = document.getElementById('rsel-' + i);
+      const sSel = document.getElementById('ssel-' + i);
+      if (rSel && sSel) {
+        rSel.value = r;
+        sSel.value = s;
+      }
+    }
+  }
+  activePickerSlot = Math.min(cards.length, 4);
+  updateTargetBadge();
+  updateBoardCards();
+  onInputChanged();
+}
+
 buildBoardArea();
+buildHeatmap();
+renderDefaultZeroState();
 // buildHeroSelects(); // v3.7.2: HERO HANDをコメントアウトしたため無効化（関数自体は残置）
 initEngine();
 </script>
