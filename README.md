@@ -204,32 +204,19 @@ spectraWorker.postMessage({
 
 ---
 
-## Position Matrix
-
-5×6グリッド（Hero行 × Villain列）で、ボードを加えたレンジ優位を可視化。
-
-- **色:** 赤系=Hero有利、青系=Villain有利、グレー=中立
-- **クリック:** セルをクリックでHero/Villain Positionを切り替え、即再計算
-- **ボード補正:** `baseAdv × 0.5 + lastRangeAdv × 0.5` でWorker値を反映
-
-```
-Hero Positions (rows):  UTG / HJ / CO / BTN / SB
-Villain Positions (cols): UTG / HJ / CO / BTN / SB / BB
-```
-
----
-
 ## UIパネル構成（デスクトップ 3カラム）
 
 ```
 LEFT (200px)        CENTER (1fr)         RIGHT (220px)
 ─────────────       ──────────────       ──────────────
-Board Input         Situation Badge      Position Matrix
-Hero Hand           Board Cards          Structure Radar (5軸)
-NUTS Table          3D Heatmap           Board Texture
-(全ストリート共通)   HUD Signals          Board Intelligence
-                                          (Board Diagnostics)
+Board Input         Situation Badge      Structure Rating (★評価リスト)
+Hero Hand           Board Cards          Board Texture
+NUTS Table          3D Heatmap           Board Intelligence
+(全ストリート共通)   HUD Signals          (Board Diagnostics)
 ```
+
+**v3.9.1 変更:** Position Matrix（5×6グリッド）は撤去。ポジション自体の選択は
+`hero-pos-select`/`villain-pos-select`のドロップダウンで引き続き可能。
 
 **v3.6.1 変更:** リバー専用の「River Polar View（PURE VALUE / BLUFF CATCH / BLUFF・FOLD 3分割）」は廃止。
 リバーもFLOP/TURNと同じ役ごとのコンボ%分布リスト（NUTS Table）をそのまま継続表示する
@@ -287,22 +274,23 @@ DOM (Dominance / 支配度)      : ジニ係数による一部強者ハンドの
 
 ## テスト
 
-`tests/engine.test.js` — Node標準の`assert`のみで書かれたリグレッションテストスイート（フレームワーク不使用）。
+`test/engine.test.js` — Node標準の`assert`のみで書かれたリグレッションテストスイート（フレームワーク不使用）。
 `core/*.js`をWorkerと同じ読込順で結合してevalし、実際のWorker挙動をそのまま再現してテストする。
 
 ```bash
-node tests/engine.test.js
+node test/engine.test.js
 ```
 
-配置は `tests/` を `core/` と同じ階層（リポジトリルート）に置く想定：
+配置は `test/` を `core/` と同じ階層（リポジトリルート）に置く想定：
 
 ```
 index.html
 spectra-worker.js
 core/
   utils.js ...
-tests/
+test/
   engine.test.js
+  crossval.js
 ```
 
 現在27ケース。主な内容：
@@ -323,8 +311,8 @@ tests/
 ## 検証方法: pokersolver（独立実装）との突き合わせ
 
 役判定・キッカー比較の信頼性を検証するため、npmの`pokersolver`（本リポジトリとは独立に実装された
-ポーカー役評価ライブラリ）と結果を突き合わせるスクリプト（`crossval.js`。**リポジトリ本体には含まれない
-検証専用ツール**）を用意し、以下2つの軸で検証した。
+ポーカー役評価ライブラリ）と結果を突き合わせるスクリプト（`test/crossval.js`）を用意し、
+以下2つの軸で検証した。
 
 1. **カテゴリ一致率** — ランダムな7枚に対して役の種類が一致するか
 2. **勝敗順序一致率** — 同一ボード上で2組のホールカードを比較したとき、pokersolverの
@@ -335,7 +323,7 @@ tests/
 
 ```bash
 npm install pokersolver
-node crossval.js
+node test/crossval.js
 ```
 
 **v3.7.5時点の結果:**
