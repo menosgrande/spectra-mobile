@@ -10,9 +10,11 @@ Fold/Call/Raise の推奨・GTOアクション・EV比較は**提示しない**�
 ## ファイル構成
 
 ```
-index.html                  ← UI本体（単一ファイル）
+index.html                  ← UI本体（描画・イベント処理）
 spectra-worker.js            ← Worker エントリーポイント（API窓口のみ）
-core/
+ui/
+  tactical_insights.js      ← 盤面構造(structureFeatures) → 戦術タグ文言の変換（メインスレッド専用）
+core/                       ← 解析エンジン（Worker専用・importScriptsで読込）
   utils.js                  ← 定数・ユーティリティ関数
   texture.js                ← ボードテクスチャ分類
   position.js               ← ポジションプロファイル・アーキタイプ
@@ -24,7 +26,9 @@ core/
   board_intelligence.js     ← オーケストレーター（analyzeBoard）
 ```
 
-### importScripts 読込順（依存グラフ順）
+`core/`はWorker側（spectra-worker.jsがimportScriptsで読み込む解析エンジン）専用。`ui/`はメインスレッド側（index.htmlが`<script src="...">`で読み込む表示・文言生成ロジック）用で、Workerからは参照されない。
+
+### importScripts 読込順（依存グラフ順・core/のみ）
 
 ```
 utils → texture → position → strength → range_matrix
@@ -232,6 +236,39 @@ NUTS Table          3D Heatmap           Board Texture
 （`renderNuts()` 内の `isRiver` フラグは恒久的に `false` 固定）。
 
 モバイルはタブ切替（BOARD / HEAT / INTEL）。
+
+---
+
+## STRUCTURE RATING（5軸評価）の設計思想と肯定・否定評価
+
+SPECTRAにおける **Structure Rating（旧 Structure Radar / 5軸★評価リスト）** は、`data.structureFeatures`（ENT / POL / COV / DRW / DOM）を用いてボードとレンジの動的構造を定量化する仕組みです。
+
+```
+ENT (Entropy / 複雑さ)       : ハンドスコア分布の多様性・分岐の多さ
+POL (Polarization / 二極化)   : ナッツ層とエア層の明瞭な解離度
+COV (Coverage / カバレッジ)   : 生存レンジの平均密度・広さ
+DRW (Draw Structure / ドロー) : フラッシュ・ストレートドローの豊富さ
+DOM (Dominance / 支配度)      : ジニ係数による一部強者ハンドの偏り度
+```
+
+### 肯定的な視点（Pros / 利点・メリット）
+
+1. **「単なる勝率数値」を超えた立体的な認知支援**:
+   - 勝率%やEVなどの1次元データでは捉えきれない、「今どんな質の盤面なのか」を多角的に表現。
+   - 例: 「勝率は同じだが、POLが高いから大型ベット向き」「ENTが高いから複雑で誤認しやすい」といった戦況理解をアシスト。
+2. **意思決定プロセスとの親和性（非GTO強制）**:
+   - SPECTRAの根本思想である「Fold/Call/Raiseを命令しない」を体現。数値をヒントにプレイヤー自身が戦略を組み立てる余地を残す。
+3. **ストリート変化（ダイナミクス）の直感的把握**:
+   - ターン・リバーでカードが落ちた際、前ストリートからの変化（▲/▼/・）を見るだけで「ドローが爆発した」「二極化が加速した」などの転換点を一目で察知できる。
+
+### 否定的な視点（Cons / 課題・デメリット）
+
+1. **アクションへのダイレクトな結びつきにくさ（抽象度の高さ）**:
+   - 「Entropyが75%」と言われても、初心者が即座に「チェックすべきかベットすべきか」の判断に変換しづらく、メンタルモデルの構築に学習コストが必要。
+2. **単一ストリート内での微小なカード変化に対する感度の弱さ**:
+   - 例えば COV (Coverage) は全169ハンドの平均Densityに基づくため、極端なペアボード等を除けば、同じストリート内での微小なランク変更（例: T83 vs T82）には反応が薄いという仕様上の感度限界がある。
+3. **GTO完全解の完全な代替ではない（ヒューリスティックな側面）**:
+   - 169ハンドのrawScore分布から統計的に算出した指標であり、GTOソルバーの正確な周波数やゲームツリーのEVとは異なるため、厳密なGTO信奉者からは「あくまで目安・補助指標」と受け取られる可能性がある。
 
 ---
 
