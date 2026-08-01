@@ -309,22 +309,26 @@ NUTSテーブルのLive Combo表示・帯集計はこちらを優先する。
 
 ---
 
-## Structure Radar（5軸SVGチャート・renderStructureRadar）
+## Structure Rating / Structure Radar（5軸評価リスト・renderStructureRadar）
 
-`data.structureFeatures`（0-100の5軸）をペンタゴン形のSVGにプロットする。データソースは`computeStructureFeatures()`（range_matrix.js）。
+`data.structureFeatures`（0-100の5軸）を表示する。データソースは`computeStructureFeatures()`（range_matrix.js）。
 
 ```
-軸構成（RADAR_AXES）:
-  ENT  Entropy         rawScore分布の複雑さ
-  POL  Polarization    上位25% - 下位25%の強弱差
-  COV  Coverage        density>0のハンド数 / 169
-  DRW  DrawStructure   drawType の豊富さ・複合度
-  DOM  Dominance       rawScore分布のGini係数（不平等度）
+軸構成（RADAR_AXES / 5軸）:
+  ENT  Entropy         rawScore分布の複雑さ（多様性）
+  POL  Polarization    上位25% - 下位25%の強弱差（極性）
+  COV  Coverage        平均Density（生存レンジの広さ・密度）
+  DRW  DrawStructure   drawType の豊富さ・複合度（ドロー性）
+  DOM  Dominance       rawScore分布のGini係数（不平等度・支配度）
 ```
 
-**v3.6.1:** 目盛りライン（25/50/75）の視認性を強化（`rgba(0,180,255,0.2)`→`rgba(140,200,240,0.55)`、font-size 5→6）。
-また、略語だけでは意味が伝わりにくいため、チャート下部に5軸それぞれの英語フルネーム＋簡単な説明を凡例として常時表示する
-（`ENT Entropy — complexity` など）。
+**v3.6.1:** 目盛りライン（25/50/75）の視認性を強化。
+**v3.9.1:** 「レーダー型SVGペンタゴンは直感的な形が見えにくい」というフィードバックに基づき、5項目・5段階の★評価リスト（ENT/POL/COV/DRW/DOMそれぞれの★の数＋パーセント値）にUI刷新。前ストリートとの比較は▲上昇/▼下降/・変化なしのシンプルな記号で表示。
+
+### STRUCTURE RATING の評価と設計上の位置づけ
+
+- **肯定的な評価 (Pros)**: 1次元の勝率・EVに留まらない「戦況の質的解像度」を提供。戦術の選択肢（大型ベット向きか、チェック/プロテクション向きか）を非GTO命令型で思考補助する点、およびストリート間でのダイナミクス（▲/▼変化）を瞬時に識別できる点が高く評価される。
+- **否定的な評価 (Cons)**: アクションに直接結びつきにくく初心者にとって抽象度が高い点、COVなどが平均Densityベースのため同一ストリート内の微小カード差に反応しにくい感度の限界、および厳密なGTO Game TreeのEV分布の代替ではなく169マトリクス上のヒューリスティック統計値である点。
 
 ---
 
@@ -371,6 +375,8 @@ STREET_COLORS = { PREFLOP:'#00d4ff', FLOP:'#00ff9d', TURN:'#ffb800', RIVER:'#ff3
 /                     ← リポジトリルート
   index.html
   spectra-worker.js
+  ui/
+    tactical_insights.js
   core/
     utils.js
     texture.js
@@ -388,3 +394,48 @@ STREET_COLORS = { PREFLOP:'#00d4ff', FLOP:'#00ff9d', TURN:'#ffb800', RIVER:'#ff3
 （≒Workerエンジンが一切機能せずUIのみの空回り状態になる）バグがあった。
 現在の正しい参照パス: `new Worker('spectra-worker.js')`（index.htmlと同階層を直接参照）。
 `spectra-worker.js` 側の `importScripts('./core/utils.js', ...)` は変更不要（自身と同階層のcore/を見るため）。
+
+---
+
+## ディレクトリ構成の方針（core/ vs ui/）
+
+v3.9.2〜、index.html内の巨大な単一`<script>`から、DOM操作を持たない純粋ロジックを段階的に切り出す方針を採用。
+
+```
+core/  … Worker側（spectra-worker.jsがimportScriptsで読み込む）。解析エンジン本体。
+ui/    … メインスレッド側（index.htmlが<script src="...">で読み込む）。
+         盤面構造などの解析結果 → UI表示用の文言・データへの変換ロジック。
+         DOM操作（document. / getElementById / innerHTML）を含まない純粋関数のみを対象とする。
+```
+
+**切り出し済み:**
+- `ui/tactical_insights.js` … `generateTacticalInsights(sf)`。structureFeatures（polarization/drawStructure/coverage/dominance/entropy）→ TACTICAL INSIGHTSタグ文言への変換。index.html側の`renderStructureRadar`と`renderChallengeResult`から呼び出される。
+
+**切り出し候補（未着手・優先度は都度相談）:**
+1. **フォールバック評価エンジン** — Worker不使用時の代替計算一式。`classifyHandCategory` `chenScore` `build169ChenPercentile` `isInVillainRange` `getDisplayStrength` `calc3DHSL` `fallbackColor` `fallbackEval169` `evalHandFallback` `parseCard` `estimatePairScore/estimateSuitedScore/estimateOffsuitScore` `classifyDrawInline` `detectDraws` `getOutsCards` `drawColor` `mergeSuitedOffsuit` `getRepresentativeCombo` `comboToHtml` `calcTexture`。全てDOM非依存。`calcTexture`は`core/texture.js`の`calcBoardTexture`と役割が重複している疑いがあり、切り出し前に要比較。
+2. **デイリーチャレンジのロジック** — `seededRandom` `todayKey` `generateDailyBoard` `loadChallengeState` `saveChallengeState` `deriveChallengeCorrectAnswers` `submitChallenge` `ensureChallengeWorker`。ゲームロジック部分のみでDOM非依存。
+3. **表示用フォーマットヘルパー** — `hudLevel` `valueToStars` `fl` `colorGradient` `deriveSituationBadge` `detectStreet`。小粒のため優先度は低め。
+
+`render*`系（`renderNuts` `buildBoardArea`等）はDOM操作そのものが本体のため、index.html側に残す。
+
+---
+
+## 保留中のUI改修（TODO）
+
+未着手・方針メモのみ。実装時はここを更新すること。
+
+1. **ボード拡大表示部の削除**
+   `buildBoardArea()`内、`id="open-picker-modal-btn"`（🔍 拡大表示ボタン、3568行目付近）と、それが呼ぶ`openDeckPicker()` / `#picker-overlay`モーダル一式が対象。削除範囲（ボタンのみ／モーダル機構ごとか）は要確認。
+
+2. **ボード選択部に戻るボタン**
+   `#picker-overlay`のカード選択モーダル（`renderInlinePickerGrid()`等）に、閉じずに前の状態へ戻るための「戻る」ボタンを追加。現状は`closeDeckPicker()`（✕で閉じる）と背景クリック（`onPickerOverlayClick`）のみ。
+
+3. **カード表示部の右詰め**
+   `board-slots-row`（`buildBoardArea()`内、FLOP1〜RIVERの5スロット）の配置をレイアウト変更。現状は`display:flex;gap:6px`で左詰め。
+
+4. **ヒートマップ右上のバッジ形状: ■ → ◥**
+   `.hm-pot-dot`（360行目付近のCSS、Draw Potentialバッジ）。CSSはborder-trickによる三角形（コーナートライアングル）として定義済みだが、`render3DHeatmap()`側のJS（1364〜1373行目）が`dot.style.background`と`dot.style.boxShadow`のみを設定しており`border-color`を設定していない。0×0要素にbackground/box-shadowを当てているため、意図した三角形ではなく滲んだ四角（■寄り）に見えている可能性が高い。→ `dot.style.borderColor`側を更新する実装に修正すれば◥として見える見込み。
+
+5. **◥部の色合い（保留）**
+   CSSコメント上は「シアン(青)=通常ドロー／ゴールド(黄)=強力なコンボドロー」の2色設計だが、現状JSはシアン固定（`rgba(0,212,255,...)`のみ、opacityをpotentialで可変）。ゴールド分岐が未実装。
+   検討事項: potential強度に応じて彩度・色相まで変化させるか、それとも現状通り「色は2値（シアン/ゴールド）・濃さのみpotentialで可変」に留めるか → 方針未決定。
