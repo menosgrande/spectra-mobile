@@ -226,17 +226,18 @@ NUTS Table          3D Heatmap           Board Intelligence
 
 ---
 
-## STRUCTURE RATING（5軸評価）の設計思想と肯定・否定評価
+## STRUCTURE RATING（4軸評価）の設計思想と肯定・否定評価
 
-SPECTRAにおける **Structure Rating（旧 Structure Radar / 5軸★評価リスト）** は、`data.structureFeatures`（ENT / POL / COV / DRW / DOM）を用いてボードとレンジの動的構造を定量化する仕組みです。
+SPECTRAにおける **Structure Rating（旧 Structure Radar / 4軸★評価リスト）** は、`data.structureFeatures`のうち4軸（DRW / POL / DEN / NUT）を用いてボードとレンジの動的構造を定量化する仕組みです。
 
 ```
-ENT (Entropy / 複雑さ)       : ハンドスコア分布の多様性・分岐の多さ
-POL (Polarization / 二極化)   : ナッツ層とエア層の明瞭な解離度
-COV (Coverage / カバレッジ)   : 生存レンジの平均密度・広さ
-DRW (Draw Structure / ドロー) : フラッシュ・ストレートドローの豊富さ
-DOM (Dominance / 支配度)      : ジニ係数による一部強者ハンドの偏り度
+DRW (Draw Structure / ドロー感)  : フラッシュ・ストレートドローの豊富さ
+POL (Polarization / 二極化)      : ナッツ層とエア層の明瞭な解離度
+DEN (Coverage / レンジ密度)      : 生存レンジの平均密度・広さ
+NUT (Dominance / ナッツ偏り)     : ジニ係数による一部強者ハンドの偏り度
 ```
+
+`structureFeatures`にはこの他に`entropy`（ハンドスコア分布の複雑さ）も含まれるが、★評価リストには表示されない。`ui/tactical_insights.js`の「🌀 COMPLEX SPLIT」タグ判定にのみ内部的に使われている。
 
 ### 肯定的な視点（Pros / 利点・メリット）
 
