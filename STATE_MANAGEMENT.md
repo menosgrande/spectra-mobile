@@ -309,26 +309,28 @@ NUTSテーブルのLive Combo表示・帯集計はこちらを優先する。
 
 ---
 
-## Structure Rating / Structure Radar（5軸評価リスト・renderStructureRadar）
+## Structure Rating / Structure Radar（4軸評価リスト・renderStructureRadar）
 
-`data.structureFeatures`（0-100の5軸）を表示する。データソースは`computeStructureFeatures()`（range_matrix.js）。
+`data.structureFeatures`（0-100、内部的にはentropy含む5フィールド）のうち4軸を表示する。データソースは`computeStructureFeatures()`（range_matrix.js）。
 
 ```
-軸構成（RADAR_AXES / 5軸）:
-  ENT  Entropy         rawScore分布の複雑さ（多様性）
-  POL  Polarization    上位25% - 下位25%の強弱差（極性）
-  COV  Coverage        平均Density（生存レンジの広さ・密度）
-  DRW  DrawStructure   drawType の豊富さ・複合度（ドロー性）
-  DOM  Dominance       rawScore分布のGini係数（不平等度・支配度）
+軸構成（RADAR_AXES / 4軸・index.html 2115行目）:
+  DRW  drawStructure   ドロー感      ストレートやフラッシュなどドロー（未完成の可能性）の多さ
+  POL  polarization    二極化       最強の役とエアーへの二極化度（中途半端な手の少なさ）
+  DEN  coverage        レンジ密度    ワンペア・ツーペア等、中間的な強さのヒット手の広さ
+  NUT  dominance       ナッツ偏り    特定の最強手（ナッツ）の独占・偏在度
 ```
 
-**v3.6.1:** 目盛りライン（25/50/75）の視認性を強化。
-**v3.9.1:** 「レーダー型SVGペンタゴンは直感的な形が見えにくい」というフィードバックに基づき、5項目・5段階の★評価リスト（ENT/POL/COV/DRW/DOMそれぞれの★の数＋パーセント値）にUI刷新。前ストリートとの比較は▲上昇/▼下降/・変化なしのシンプルな記号で表示。
+**注意:** `computeStructureFeatures()`が返す`entropy`（rawScore分布の複雑さ）は現在★評価リストには表示されない。ただし値自体は引き続き計算されており、`ui/tactical_insights.js`の`generateTacticalInsights()`内で「🌀 COMPLEX SPLIT」タグの判定（`ent >= 68`）に使われている。UI表示から消えているだけでデータフローからは削除されていない点に注意。
+
+**v3.6.1:** 目盛りライン（25/50/75）の視認性を強化（当時はSVGレーダー、5軸: ENT/POL/COV/DRW/DOM）。
+**v3.9.1:** 「レーダー型SVGペンタゴンは直感的な形が見えにくい」というフィードバックに基づき★評価リストにUI刷新。前ストリートとの比較は▲上昇/▼下降/・変化なしのシンプルな記号で表示。
+**（changelog未記載の変更）** ★評価リスト移行の過程でENT（entropy）が表示軸から外れ、5軸→4軸になっている。いつのタイミングで外れたかの記録が無いため、次に触る際はここへ追記すること。
 
 ### STRUCTURE RATING の評価と設計上の位置づけ
 
 - **肯定的な評価 (Pros)**: 1次元の勝率・EVに留まらない「戦況の質的解像度」を提供。戦術の選択肢（大型ベット向きか、チェック/プロテクション向きか）を非GTO命令型で思考補助する点、およびストリート間でのダイナミクス（▲/▼変化）を瞬時に識別できる点が高く評価される。
-- **否定的な評価 (Cons)**: アクションに直接結びつきにくく初心者にとって抽象度が高い点、COVなどが平均Densityベースのため同一ストリート内の微小カード差に反応しにくい感度の限界、および厳密なGTO Game TreeのEV分布の代替ではなく169マトリクス上のヒューリスティック統計値である点。
+- **否定的な評価 (Cons)**: アクションに直接結びつきにくく初心者にとって抽象度が高い点、DEN（coverage）などが平均Densityベースのため同一ストリート内の微小カード差に反応しにくい感度の限界、および厳密なGTO Game TreeのEV分布の代替ではなく169マトリクス上のヒューリスティック統計値である点。
 
 ---
 
@@ -420,22 +422,20 @@ ui/    … メインスレッド側（index.htmlが<script src="...">で読み�
 
 ---
 
-## 保留中のUI改修（TODO）
+## UI改修 履歴（旧TODO）
 
-未着手・方針メモのみ。実装時はここを更新すること。
+1. **✅ ボード拡大表示部の削除（完了）**
+   `open-picker-modal-btn`（🔍 拡大表示ボタン）を削除。それに伴い到達不能になった`#picker-overlay`モーダル一式（HTML/CSS、`openDeckPicker()` `closeDeckPicker()` `onPickerOverlayClick()` `clearCurrentPickerSlot()` `clearAllPickerCards()`）も合わせて削除。カード選択は常設の`inline-picker-grid-container`（`renderInlinePickerGrid()`）に一本化。
+   あわせて、ターゲットスロット表示先だった`active-slot-badge`要素も既に削除済みだったため、参照元の`updateTargetBadge()`（4箇所の呼び出し含む）も削除。ターゲットスロットの選択状態はインラインpicker側（カード表示部分、`renderPickerSlots()`のactive表示）で完結しているため、バッジ表示は不要と判断。
 
-1. **ボード拡大表示部の削除**
-   `buildBoardArea()`内、`id="open-picker-modal-btn"`（🔍 拡大表示ボタン、3568行目付近）と、それが呼ぶ`openDeckPicker()` / `#picker-overlay`モーダル一式が対象。削除範囲（ボタンのみ／モーダル機構ごとか）は要確認。
+2. **✅ ボード選択部に戻るボタン（完了）**
+   `stepBackPickerSlot()`を追加。現在スロットにカードがあればそれを消去、無ければ直前入力済みスロットを遡って消去する。インライン picker の操作行に「◀ 戻す」ボタンとして設置。
 
-2. **ボード選択部に戻るボタン**
-   `#picker-overlay`のカード選択モーダル（`renderInlinePickerGrid()`等）に、閉じずに前の状態へ戻るための「戻る」ボタンを追加。現状は`closeDeckPicker()`（✕で閉じる）と背景クリック（`onPickerOverlayClick`）のみ。
+3. **見送り: カード表示部の右詰め**
+   対応不要と判断。`board-slots-row`は現状（`display:flex;gap:6px`の左詰め）のまま。
 
-3. **カード表示部の右詰め**
-   `board-slots-row`（`buildBoardArea()`内、FLOP1〜RIVERの5スロット）の配置をレイアウト変更。現状は`display:flex;gap:6px`で左詰め。
+4. **✅ ヒートマップ右上のバッジ形状: ■ → ◥（完了）**
+   `.hm-pot-dot`を`clip-path:polygon(0 0, 100% 0, 100% 100%)`によるコーナートライアングルに変更。`getDrawPotentialLevelColor()`が`border-color`ではなく`background`/`boxShadow`を直接設定する実装になり、意図通り◥として描画されるようになった。
 
-4. **ヒートマップ右上のバッジ形状: ■ → ◥**
-   `.hm-pot-dot`（360行目付近のCSS、Draw Potentialバッジ）。CSSはborder-trickによる三角形（コーナートライアングル）として定義済みだが、`render3DHeatmap()`側のJS（1364〜1373行目）が`dot.style.background`と`dot.style.boxShadow`のみを設定しており`border-color`を設定していない。0×0要素にbackground/box-shadowを当てているため、意図した三角形ではなく滲んだ四角（■寄り）に見えている可能性が高い。→ `dot.style.borderColor`側を更新する実装に修正すれば◥として見える見込み。
-
-5. **◥部の色合い（保留）**
-   CSSコメント上は「シアン(青)=通常ドロー／ゴールド(黄)=強力なコンボドロー」の2色設計だが、現状JSはシアン固定（`rgba(0,212,255,...)`のみ、opacityをpotentialで可変）。ゴールド分岐が未実装。
-   検討事項: potential強度に応じて彩度・色相まで変化させるか、それとも現状通り「色は2値（シアン/ゴールド）・濃さのみpotentialで可変」に留めるか → 方針未決定。
+5. **✅ ◥部の色合い（完了）**
+   2色（シアン/ゴールド）ではなく、potential強度に応じた5段階配色に変更（`getDrawPotentialLevelColor()`）: ★1灰(微)→★2緑(小)→★3青(中)→★4橙(大)→★5金(特大・複合強力ドロー)。ヒートマップ凡例にも5段階の色見本を追加。

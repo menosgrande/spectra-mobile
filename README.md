@@ -10,11 +10,9 @@ Fold/Call/Raise の推奨・GTOアクション・EV比較は**提示しない**�
 ## ファイル構成
 
 ```
-index.html                  ← UI本体（描画・イベント処理）
+index.html                  ← UI本体（単一ファイル）
 spectra-worker.js            ← Worker エントリーポイント（API窓口のみ）
-ui/
-  tactical_insights.js      ← 盤面構造(structureFeatures) → 戦術タグ文言の変換（メインスレッド専用）
-core/                       ← 解析エンジン（Worker専用・importScriptsで読込）
+core/
   utils.js                  ← 定数・ユーティリティ関数
   texture.js                ← ボードテクスチャ分類
   position.js               ← ポジションプロファイル・アーキタイプ
@@ -26,9 +24,7 @@ core/                       ← 解析エンジン（Worker専用・importScript
   board_intelligence.js     ← オーケストレーター（analyzeBoard）
 ```
 
-`core/`はWorker側（spectra-worker.jsがimportScriptsで読み込む解析エンジン）専用。`ui/`はメインスレッド側（index.htmlが`<script src="...">`で読み込む表示・文言生成ロジック）用で、Workerからは参照されない。
-
-### importScripts 読込順（依存グラフ順・core/のみ）
+### importScripts 読込順（依存グラフ順）
 
 ```
 utils → texture → position → strength → range_matrix
@@ -204,59 +200,38 @@ spectraWorker.postMessage({
 
 ---
 
+## Position Matrix
+
+5×6グリッド（Hero行 × Villain列）で、ボードを加えたレンジ優位を可視化。
+
+- **色:** 赤系=Hero有利、青系=Villain有利、グレー=中立
+- **クリック:** セルをクリックでHero/Villain Positionを切り替え、即再計算
+- **ボード補正:** `baseAdv × 0.5 + lastRangeAdv × 0.5` でWorker値を反映
+
+```
+Hero Positions (rows):  UTG / HJ / CO / BTN / SB
+Villain Positions (cols): UTG / HJ / CO / BTN / SB / BB
+```
+
+---
+
 ## UIパネル構成（デスクトップ 3カラム）
 
 ```
 LEFT (200px)        CENTER (1fr)         RIGHT (220px)
 ─────────────       ──────────────       ──────────────
-Board Input         Situation Badge      Structure Rating (★評価リスト)
-Hero Hand           Board Cards          Board Texture
-NUTS Table          3D Heatmap           Board Intelligence
-(全ストリート共通)   HUD Signals          (Board Diagnostics)
+Board Input         Situation Badge      Position Matrix
+Hero Hand           Board Cards          Structure Radar (5軸)
+NUTS Table          3D Heatmap           Board Texture
+(全ストリート共通)   HUD Signals          Board Intelligence
+                                          (Board Diagnostics)
 ```
-
-**v3.9.1 変更:** Position Matrix（5×6グリッド）は撤去。ポジション自体の選択は
-`hero-pos-select`/`villain-pos-select`のドロップダウンで引き続き可能。
 
 **v3.6.1 変更:** リバー専用の「River Polar View（PURE VALUE / BLUFF CATCH / BLUFF・FOLD 3分割）」は廃止。
 リバーもFLOP/TURNと同じ役ごとのコンボ%分布リスト（NUTS Table）をそのまま継続表示する
 （`renderNuts()` 内の `isRiver` フラグは恒久的に `false` 固定）。
 
 モバイルはタブ切替（BOARD / HEAT / INTEL）。
-
----
-
-## STRUCTURE RATING（4軸評価）の設計思想と肯定・否定評価
-
-SPECTRAにおける **Structure Rating（旧 Structure Radar / 4軸★評価リスト）** は、`data.structureFeatures`のうち4軸（DRW / POL / DEN / NUT）を用いてボードとレンジの動的構造を定量化する仕組みです。
-
-```
-DRW (Draw Structure / ドロー感)  : フラッシュ・ストレートドローの豊富さ
-POL (Polarization / 二極化)      : ナッツ層とエア層の明瞭な解離度
-DEN (Coverage / レンジ密度)      : 生存レンジの平均密度・広さ
-NUT (Dominance / ナッツ偏り)     : ジニ係数による一部強者ハンドの偏り度
-```
-
-`structureFeatures`にはこの他に`entropy`（ハンドスコア分布の複雑さ）も含まれるが、★評価リストには表示されない。`ui/tactical_insights.js`の「🌀 COMPLEX SPLIT」タグ判定にのみ内部的に使われている。
-
-### 肯定的な視点（Pros / 利点・メリット）
-
-1. **「単なる勝率数値」を超えた立体的な認知支援**:
-   - 勝率%やEVなどの1次元データでは捉えきれない、「今どんな質の盤面なのか」を多角的に表現。
-   - 例: 「勝率は同じだが、POLが高いから大型ベット向き」「ENTが高いから複雑で誤認しやすい」といった戦況理解をアシスト。
-2. **意思決定プロセスとの親和性（非GTO強制）**:
-   - SPECTRAの根本思想である「Fold/Call/Raiseを命令しない」を体現。数値をヒントにプレイヤー自身が戦略を組み立てる余地を残す。
-3. **ストリート変化（ダイナミクス）の直感的把握**:
-   - ターン・リバーでカードが落ちた際、前ストリートからの変化（▲/▼/・）を見るだけで「ドローが爆発した」「二極化が加速した」などの転換点を一目で察知できる。
-
-### 否定的な視点（Cons / 課題・デメリット）
-
-1. **アクションへのダイレクトな結びつきにくさ（抽象度の高さ）**:
-   - 「Entropyが75%」と言われても、初心者が即座に「チェックすべきかベットすべきか」の判断に変換しづらく、メンタルモデルの構築に学習コストが必要。
-2. **単一ストリート内での微小なカード変化に対する感度の弱さ**:
-   - 例えば COV (Coverage) は全169ハンドの平均Densityに基づくため、極端なペアボード等を除けば、同じストリート内での微小なランク変更（例: T83 vs T82）には反応が薄いという仕様上の感度限界がある。
-3. **GTO完全解の完全な代替ではない（ヒューリスティックな側面）**:
-   - 169ハンドのrawScore分布から統計的に算出した指標であり、GTOソルバーの正確な周波数やゲームツリーのEVとは異なるため、厳密なGTO信奉者からは「あくまで目安・補助指標」と受け取られる可能性がある。
 
 ---
 
@@ -275,23 +250,22 @@ NUT (Dominance / ナッツ偏り)     : ジニ係数による一部強者ハン�
 
 ## テスト
 
-`test/engine.test.js` — Node標準の`assert`のみで書かれたリグレッションテストスイート（フレームワーク不使用）。
+`tests/engine.test.js` — Node標準の`assert`のみで書かれたリグレッションテストスイート（フレームワーク不使用）。
 `core/*.js`をWorkerと同じ読込順で結合してevalし、実際のWorker挙動をそのまま再現してテストする。
 
 ```bash
-node test/engine.test.js
+node tests/engine.test.js
 ```
 
-配置は `test/` を `core/` と同じ階層（リポジトリルート）に置く想定：
+配置は `tests/` を `core/` と同じ階層（リポジトリルート）に置く想定：
 
 ```
 index.html
 spectra-worker.js
 core/
   utils.js ...
-test/
+tests/
   engine.test.js
-  crossval.js
 ```
 
 現在27ケース。主な内容：
@@ -312,8 +286,8 @@ test/
 ## 検証方法: pokersolver（独立実装）との突き合わせ
 
 役判定・キッカー比較の信頼性を検証するため、npmの`pokersolver`（本リポジトリとは独立に実装された
-ポーカー役評価ライブラリ）と結果を突き合わせるスクリプト（`test/crossval.js`）を用意し、
-以下2つの軸で検証した。
+ポーカー役評価ライブラリ）と結果を突き合わせるスクリプト（`crossval.js`。**リポジトリ本体には含まれない
+検証専用ツール**）を用意し、以下2つの軸で検証した。
 
 1. **カテゴリ一致率** — ランダムな7枚に対して役の種類が一致するか
 2. **勝敗順序一致率** — 同一ボード上で2組のホールカードを比較したとき、pokersolverの
@@ -324,7 +298,7 @@ test/
 
 ```bash
 npm install pokersolver
-node test/crossval.js
+node crossval.js
 ```
 
 **v3.7.5時点の結果:**

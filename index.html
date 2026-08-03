@@ -246,13 +246,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   transform: translateY(-1px);
 }
 
-/* ─── 52-CARD PICKER MODAL ─── */
-#picker-overlay{display:none;position:fixed;inset:0;z-index:9990;background:rgba(3,8,16,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:10px;}
-#picker-dialog{width:100%;max-width:720px;background:rgba(10,18,30,.96);border:1px solid rgba(0,212,255,.4);box-shadow:0 0 35px rgba(0,212,255,.25),0 0 15px rgba(0,0,0,.9);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;max-height:94vh;overflow-y:auto;}
-.picker-hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(0,212,255,.2);padding-bottom:6px;}
-.picker-title{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:2px;color:#00d4ff;display:flex;align-items:center;gap:6px;}
-.picker-close-btn{background:rgba(255,59,59,.15);border:1px solid rgba(255,59,59,.4);color:#ff8080;border-radius:3px;padding:3px 10px;font-family:'Orbitron',monospace;font-size:10px;cursor:pointer;transition:all .15s;}
-.picker-close-btn:hover{background:rgba(255,59,59,.3);color:#fff;}
 .picker-slots{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scroll-behavior:smooth;}
 .picker-slot-btn{flex:1;min-width:55px;padding:6px 2px;border:1px solid rgba(0,180,255,.25);border-radius:4px;background:rgba(0,20,40,.6);color:rgba(200,230,255,.7);font-family:'Orbitron',monospace;font-size:9px;text-align:center;cursor:pointer;transition:all .2s;user-select:none;}
 .picker-slot-btn:hover{border-color:rgba(0,212,255,.6);color:#fff;}
@@ -355,14 +348,11 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .hm-c.cat-offsuit-bw { border:1px dotted rgba(255,255,255,.35); }
 .hm-c.cat-other      { border:1px solid rgba(255,255,255,.06); }
 
-/* v3.9.2: Draw Potential（将来性）はセルの右上に大きく見やすい「コーナートライアングルバッジ」で直感表示
-   - シアン(青) = 通常ドロー / ゴールド(黄) = 強力なコンボドロー（伸びしろ特大） */
+/* v3.9.3: Draw Potential（将来性）はセルの右上の三角バッジ「◥」で直感表示（5段階色分け） */
 .hm-pot-dot{
   position:absolute; top:0; right:0;
-  width:0; height:0;
-  border-style:solid;
-  border-width:0 10px 10px 0;
-  border-color:transparent transparent transparent transparent;
+  width:10px; height:10px;
+  clip-path:polygon(0 0, 100% 0, 100% 100%);
   pointer-events:none;
   transition:all .25s ease;
   z-index:3;
@@ -474,10 +464,11 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 <!-- TOOLTIP -->
 <div id="hm-tooltip">
   <div class="tt-hand" id="tt-hand">--</div>
-  <div class="tt-row"><span class="tt-label">STRENGTH</span><span class="tt-val" id="tt-eq">--%</span></div>
-  <div class="tt-row"><span class="tt-label">POTENTIAL</span><span class="tt-val" id="tt-pot">--%</span></div>
-  <div class="tt-row"><span class="tt-label">DENSITY</span><span class="tt-val" id="tt-den">--%</span></div>
-  <div class="tt-row"><span class="tt-label">DRAW</span><span class="tt-val" id="tt-draw">--</span></div>
+  <div class="tt-row"><span class="tt-label">現在の強さ:</span><span class="tt-val" id="tt-eq">--%</span></div>
+  <div class="tt-row"><span class="tt-label">将来性(ドロー):</span><span class="tt-val" id="tt-pot-lvl" style="font-weight:700;">--</span></div>
+  <div class="tt-row"><span class="tt-label">ドロー種類:</span><span class="tt-val" id="tt-draw">--</span></div>
+  <div class="tt-row"><span class="tt-label">枠(ハンド分類):</span><span class="tt-val" id="tt-cat">--</span></div>
+  <div class="tt-row"><span class="tt-label">コンボ密度:</span><span class="tt-val" id="tt-den">--%</span></div>
 </div>
 
 <!-- HEADER -->
@@ -523,35 +514,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
     <div id="challenge-streak" style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);
          display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.5);"></div>
-  </div>
-</div>
-
-<!-- ══ 52-CARD VISUAL DECK PICKER MODAL ══ -->
-<div id="picker-overlay" onclick="onPickerOverlayClick(event)">
-  <div id="picker-dialog" onclick="event.stopPropagation()">
-    <div class="picker-hdr">
-      <div class="picker-title">
-        <span>🃏 52-CARD DECK PICKER</span>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.5);font-weight:normal;">[ビジュアルカード選択]</span>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <button onclick="clearCurrentPickerSlot()" style="background:rgba(255,180,0,.12);border:1px solid rgba(255,180,0,.35);color:#ffca28;border-radius:3px;padding:3px 8px;font-family:'Orbitron',monospace;font-size:9px;cursor:pointer;">消去</button>
-        <button onclick="clearAllPickerCards()" style="background:rgba(255,59,59,.12);border:1px solid rgba(255,59,59,.35);color:#ff8080;border-radius:3px;padding:3px 8px;font-family:'Orbitron',monospace;font-size:9px;cursor:pointer;">全クリア</button>
-        <button class="picker-close-btn" onclick="closeDeckPicker()">✕ 閉じる</button>
-      </div>
-    </div>
-
-    <!-- Active Slot Selector Tabs -->
-    <div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,212,255,.6);margin-bottom:4px;letter-spacing:1px;">対象スロット (タップして切替):</div>
-      <div class="picker-slots" id="modal-picker-slots-container"></div>
-    </div>
-
-    <!-- 52 Cards Grid -->
-    <div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(200,220,240,.5);margin-bottom:4px;letter-spacing:1px;">カードをタップするとセットして自動的に次のスロットへ進みます:</div>
-      <div class="picker-grid" id="modal-picker-grid-container"></div>
-    </div>
   </div>
 </div>
 
@@ -667,26 +629,27 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         ">ボードを入力してください</div>
       </div>
     <!-- 2-COLUMN GRID: PROFILE & RATING -->
-    <div id="profile-rating-row" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:4px;margin-bottom:4px;">
-      <!-- LEFT COL: RANGE PROFILE -->
-      <div id="range-profile-block" style="padding:5px 6px;border-radius:4px;border:1px solid rgba(0,180,255,.2);background:linear-gradient(180deg, rgba(0,15,30,.6), rgba(0,6,16,.4));display:flex;flex-direction:column;justify-content:space-between;">
+    <!-- STACKED LAYOUT: PROFILE & RATING (画面の圧迫による文字切れ・読みにくさを解消するため1列縦積みに変更) -->
+    <div id="profile-rating-row" style="display:flex;flex-direction:column;gap:5px;margin-bottom:4px;">
+      <!-- TOP BLOCK: RANGE PROFILE -->
+      <div id="range-profile-block" style="padding:5px 7px;border-radius:4px;border:1px solid rgba(0,180,255,.2);background:linear-gradient(180deg, rgba(0,15,30,.6), rgba(0,6,16,.4));display:flex;flex-direction:column;justify-content:space-between;">
         <div>
-          <div style="font-family:'Orbitron',monospace;font-size:7px;font-weight:700;letter-spacing:1px;color:#00d4ff;margin-bottom:4px;display:flex;align-items:center;gap:4px;">
-            <span>▐ RANGE PROFILE</span>
+          <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:7.5px;font-weight:700;letter-spacing:1px;color:#00d4ff;margin-bottom:4px;display:flex;align-items:center;gap:4px;">
+            <span>▐ レンジ分析 (RANGE PROFILE)</span>
             <span class="help-q" title="Hero側のレンジが今どんな性質か（バリュー寄り/ブラフ寄り/レンジCap等）を表すHUD指標です">?</span>
           </div>
-          <div id="range-profile-hud" style="display:flex;flex-direction:column;gap:3px;">
+          <div id="range-profile-hud" style="display:flex;flex-direction:column;gap:4px;">
             <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.25);padding:2px 0;">--</div>
           </div>
         </div>
       </div>
 
-      <!-- RIGHT COL: STRUCTURE RATING（4項目・★評価） -->
-      <div style="background:linear-gradient(180deg, rgba(0,15,30,.6), rgba(0,6,16,.4));border:1px solid rgba(0,180,255,.2);border-radius:4px;padding:5px 6px;display:flex;flex-direction:column;justify-content:space-between;">
+      <!-- BOTTOM BLOCK: STRUCTURE RATING（4項目・★評価） -->
+      <div style="background:linear-gradient(180deg, rgba(0,15,30,.6), rgba(0,6,16,.4));border:1px solid rgba(0,180,255,.2);border-radius:4px;padding:5px 7px;display:flex;flex-direction:column;justify-content:space-between;">
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <div style="font-family:'Orbitron',monospace;font-size:7px;font-weight:700;letter-spacing:1px;color:#00d4ff;display:flex;align-items:center;gap:4px;">
-              <span>▐ STRUCTURE RATING</span>
+            <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:7.5px;font-weight:700;letter-spacing:1px;color:#00d4ff;display:flex;align-items:center;gap:4px;">
+              <span>▐ 盤面評価 (STRUCTURE RATING)</span>
               <span class="help-q" title="盤面の性質を4項目（ドロー感/二極化/レンジ密度/ナッツ偏り）・5段階の★評価で表します">?</span>
             </div>
             <div id="radar-street-lbl" style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.5);font-weight:600;">--</div>
@@ -745,15 +708,27 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     </div>
 
     <!-- ══ L3: 3D HEATMAP（主役・大きく） ══ -->
-    <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:rgba(0,212,255,.6);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札の一覧です。色の濃さ=現在の強さ、右上の三角マーク◤=将来性・ドロー（青=通常 / 金=コンボドロー）、枠線=ハンドの形（ペア/ブロードウェイ等の静的な分類）">?</span></div>
-    <div id="hm-legend" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:#00d4ff;font-weight:700;">STRENGTH</span>
-      <div style="width:70px;height:5px;border-radius:2px;background:linear-gradient(90deg, hsl(225,35%,12%), hsl(210,58%,22%), hsl(145,70%,32%), hsl(45,82%,38%), hsl(0,100%,48%));border:1px solid rgba(255,255,255,0.15);"></div>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(200,220,240,.6);">AIR → NUTS</span>
-      <span style="color:rgba(160,200,230,.2);">|</span>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(0,212,255,.9);" title="将来性（ドローの伸びしろ）。セル右上の三角バッジ◤で表示（青=通常のドロー / 金=大化けする強ドロー・コンボドロー）">将来性 ◤<span style="color:#ffb800;margin-left:1px;">◤</span></span>
-      <span style="color:rgba(160,200,230,.2);">|</span>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(200,220,240,.6);" title="セルの枠線はハンドの静的カテゴリを表す（盤面に依存しない）。太い実線=ペア／二重線=スーテッドブロードウェイ／破線=スーテッドコネクター系／点線=オフスーツブロードウェイ">枠=形</span>
+    <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:7.5px;letter-spacing:1.5px;color:rgba(0,212,255,.7);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札一覧です。色の濃さ=現在の強さ、右上の三角マーク◥=将来性(ドロー力・5段階)、枠線=ハンド分類(ペア/ブロードウェイ等)">?</span></div>
+    <div id="hm-legend" style="display:flex;flex-direction:column;gap:3px;padding:5px 6px;background:rgba(0,15,35,.5);border:1px solid rgba(0,180,255,.2);border-radius:3px;flex-shrink:0;margin-bottom:3px;">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span style="font-family:'Orbitron',monospace;font-size:7px;color:#00d4ff;font-weight:700;">STRENGTH:</span>
+        <div style="width:55px;height:5px;border-radius:2px;background:linear-gradient(90deg, hsl(225,35%,12%), hsl(210,58%,22%), hsl(145,70%,32%), hsl(45,82%,38%), hsl(0,100%,48%));border:1px solid rgba(255,255,255,0.15);"></div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(200,220,240,.7);">エアー → ナッツ</span>
+        <span style="color:rgba(160,200,230,.25);">|</span>
+        <span style="font-family:'Orbitron',monospace;font-size:7px;color:#ffd700;font-weight:700;">将来性 ◥ (5段階):</span>
+        <span style="font-size:7.5px;color:#ffd700;font-weight:700;">★5(黄:特大)</span>
+        <span style="font-size:7.5px;color:#ff8c00;font-weight:700;">★4(橙:大)</span>
+        <span style="font-size:7.5px;color:#00d4ff;font-weight:700;">★3(青:中)</span>
+        <span style="font-size:7.5px;color:#00ff9d;font-weight:700;">★2(緑:小)</span>
+        <span style="font-size:7.5px;color:#88aacc;">★1(灰:微)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.05);padding-top:3px;">
+        <span style="font-family:'Orbitron',monospace;font-size:7px;color:#00d4ff;font-weight:700;">枠線の意味:</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:2px solid rgba(255,255,255,.7);"></span>ポケットペア</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:2px double rgba(255,255,255,.7);"></span>Sブロードウェイ</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:1px dashed rgba(255,255,255,.7);"></span>Sコネクター</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:1px dotted rgba(255,255,255,.7);"></span>Oブロードウェイ</span>
+      </div>
     </div>
     <div id="hm-wrap">
       <div id="hm-pos-tabs" style="display:flex;align-items:center;gap:3px;margin-bottom:4px;flex-shrink:0;flex-wrap:wrap;">
@@ -1360,23 +1335,37 @@ function render3DHeatmap(data) {
     cell.dataset.hand = item.hand || '';
     cell.dataset.madeCategory = item.madeCategory || '';
 
-    // v3.9: Draw Potential（将来性）は彩度に混ぜず、独立したドットで表現する。
+    // v3.9.3: Draw Potential（将来性）はセルの右上の三角バッジ「◥」で直感表示（5段階色分け）
     const dot = cell.querySelector('.hm-pot-dot');
     if (dot) {
       const pot = item.potential || 0;
-      if (pot > 0.15) {
-        const dotOpacity = Math.min(1, 0.35 + pot * 0.65);
-        dot.style.background  = `rgba(0,212,255,${dotOpacity.toFixed(2)})`;
-        dot.style.boxShadow   = `0 0 3px rgba(0,212,255,${(dotOpacity * 0.85).toFixed(2)})`;
-      } else {
-        dot.style.background = 'transparent';
-        dot.style.boxShadow  = 'none';
-      }
+      const lvl = getDrawPotentialLevelColor(pot);
+      dot.style.background = lvl.color;
+      dot.style.boxShadow  = lvl.shadow;
+      cell.dataset.potLevel = lvl.label;
     }
   });
 
   // v3.9: ポジションタブの選択状態を、盤面更新後も維持する
   renderVillainOverlay();
+}
+
+function getDrawPotentialLevelColor(pot) {
+  if (!pot || pot < 0.05) return { color: 'transparent', shadow: 'none', level: 0, label: 'なし' };
+  if (pot >= 0.55) return { color: '#ffd700', shadow: '0 0 6px #ffd700', level: 5, label: '★5 特大(複合強力ドロー)' };
+  if (pot >= 0.40) return { color: '#ff8c00', shadow: '0 0 5px #ff8c00', level: 4, label: '★4 大(OESD/FD等)' };
+  if (pot >= 0.25) return { color: '#00d4ff', shadow: '0 0 4px #00d4ff', level: 3, label: '★3 中(強ガット等)' };
+  if (pot >= 0.15) return { color: '#00ff9d', shadow: '0 0 3px #00ff9d', level: 2, label: '★2 小(ガット等)' };
+  return           { color: '#88aacc', shadow: 'none',               level: 1, label: '★1 微(バックドア等)' };
+}
+
+function getBorderCategoryJP(hand) {
+  const cat = classifyHandCategory(hand);
+  if (cat === 'cat-pair')       return 'ポケットペア [実線]';
+  if (cat === 'cat-suited-bw')  return 'Sブロードウェイ [二重線]';
+  if (cat === 'cat-connector')  return 'Sコネクター系 [破線]';
+  if (cat === 'cat-offsuit-bw') return 'Oブロードウェイ [点線]';
+  return 'その他オフスート [薄線]';
 }
 
 /* ══════════════════════════════
@@ -2086,20 +2075,20 @@ function applySituationBadge(model) {
    HUD LEVEL — 0..1 → 言語レーティング
 ══════════════════════════════ */
 const HUD_LEVELS = [
-  { min: 0.72, label: 'VERY HIGH', color: '#ff4a4a' },
-  { min: 0.55, label: 'HIGH',      color: '#ffb300' },
-  { min: 0.38, label: 'MODERATE',  color: '#29b6f6' },
-  { min: 0,    label: 'LOW',       color: 'rgba(160,200,230,.4)' },
+  { min: 0.72, label: '極高', color: '#ff4a4a' },
+  { min: 0.55, label: '高い', color: '#ffb300' },
+  { min: 0.38, label: '標準', color: '#29b6f6' },
+  { min: 0,    label: '低い', color: 'rgba(160,200,230,.5)' },
 ];
 function hudLevel(val) {
   return HUD_LEVELS.find(l => (val || 0) >= l.min) || HUD_LEVELS[HUD_LEVELS.length - 1];
 }
 
 const HUD_DEFS = [
-  { key: 'attack', label: 'Attack Opportunity', icon: '⚡', explain: '積極的に攻める（ベット/レイズする）ことがどれだけ有効な盤面か' },
-  { key: 'value',  label: 'Value Density',       icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
-  { key: 'bluff',  label: 'Bluff Availability',  icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
-  { key: 'capped', label: 'Range Capped',         icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
+  { key: 'attack', label: '攻勢チャンス', icon: '⚡', explain: '積極的に攻める（ベット/レイズする）ことがどれだけ有効な盤面か' },
+  { key: 'value',  label: 'バリュー密度', icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
+  { key: 'bluff',  label: 'ブラフ有効度', icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
+  { key: 'capped', label: 'キャップ率',  icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
 ];
 
 
@@ -2135,7 +2124,8 @@ function valueToStars(value100) {
 //   グローバル関数として利用可能）
 
 function renderDefaultZeroState() {
-  // 戦況バッジ (WAITING - 0/5 CARDS)
+  // 戦況バッジ (WAITING - X/5 CARDS) ※ この関数はboard.length < 3の間だけ呼ばれる想定
+  const cardCount = (typeof currentBoard !== 'undefined' && currentBoard) ? currentBoard.length : 0;
   const tDot  = document.getElementById('tactic-dot');
   const tText = document.getElementById('tactic-text');
   const tSub  = document.getElementById('tactic-sub');
@@ -2144,8 +2134,10 @@ function renderDefaultZeroState() {
     tDot.style.background = 'rgba(0,180,255,.4)';
     tDot.style.boxShadow  = '0 0 10px rgba(0,180,255,.2)';
     tText.style.color     = 'rgba(0,180,255,.7)';
-    tText.textContent     = 'WAITING (0/5 CARDS)';
-    tSub.textContent      = 'ボードカード（3〜5枚）を選択またはサンプルボタンをタップしてリアルタイム解析を開始';
+    tText.textContent     = `WAITING (${cardCount}/5 CARDS)`;
+    tSub.textContent      = cardCount > 0
+      ? `あと${3 - cardCount}枚でリアルタイム解析を開始します（フロップは最低3枚必要）`
+      : 'ボードカード（3〜5枚）を選択またはサンプルボタンをタップしてリアルタイム解析を開始';
     tBadge.style.borderColor = 'rgba(0,180,255,.3)';
     tBadge.style.boxShadow   = 'none';
   }
@@ -2155,9 +2147,9 @@ function renderDefaultZeroState() {
   const profileHud   = document.getElementById('range-profile-hud');
   if (profileHud) {
     const defaultDefs = [
-      { label: 'Value Density',      icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
-      { label: 'Bluff Availability',  icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
-      { label: 'Range Capped',         icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
+      { label: 'バリュー密度', icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
+      { label: 'ブラフ有効度', icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
+      { label: 'キャップ率',  icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
     ];
     profileHud.innerHTML = defaultDefs.map(def => `
       <div style="display:flex;align-items:center;gap:6px;">
@@ -2165,7 +2157,7 @@ function renderDefaultZeroState() {
         <div style="flex:1;min-width:0;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
             <span style="font-family:'Rajdhani',sans-serif;font-size:10.5px;font-weight:600;color:rgba(200,225,250,.85);">${def.label}<span class="help-q" title="${def.explain}" style="margin-left:4px;">?</span></span>
-            <span style="font-family:'Orbitron',monospace;font-size:7.5px;font-weight:700;color:rgba(160,200,230,.4);">LOW</span>
+            <span style="font-family:'Orbitron',monospace;font-size:7.5px;font-weight:700;color:rgba(160,200,230,.4);">低い</span>
           </div>
           <div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;">
             <div style="height:100%;width:0%;background:rgba(160,200,230,.4);border-radius:2px;"></div>
@@ -2290,9 +2282,9 @@ function renderConclusion(data) {
   // ─ RANGE PROFILE（VALUE / BLUFF / CAPPED）─
   const s = data.hudSignals || {};
   const profileDefs = [
-    { key: 'value',  label: 'Value Density',      icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
-    { key: 'bluff',  label: 'Bluff Availability',  icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
-    { key: 'capped', label: 'Range Capped',         icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
+    { key: 'value',  label: 'バリュー密度', icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
+    { key: 'bluff',  label: 'ブラフ有効度', icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
+    { key: 'capped', label: 'キャップ率',  icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
   ];
   const profileHtml = profileDefs.map(def => {
     const val = s[def.key] || 0;
@@ -2615,6 +2607,10 @@ function triggerUpdate() {
     });
   } else {
     // Inline fallback（Worker 未使用時のみ evalCache を使用）
+    // v3.6.2: フォールバック時はrenderBoardIntelligence()系が一切呼ばれないため、
+    // 戦況バッジがrenderDefaultZeroState()時点の「WAITING (X/5 CARDS)」で
+    // 固まり続けるバグがあった。ヒートマップ更新後に必ずrenderFallbackBadge()を
+    // 呼び、正直な状態（Worker専用の戦況判定は利用不可）を表示する。
     const cacheKey = currentBoard.join(',');
     if (evalCache.has(cacheKey)) {
       const cached = evalCache.get(cacheKey);
@@ -2624,6 +2620,7 @@ function triggerUpdate() {
       document.getElementById('calc-time').textContent = 'CALC: 0ms (cache)';
       setStabState('DONE');
       updateHeroCells();
+      renderFallbackBadge();
       return;
     }
     setTimeout(() => {
@@ -2640,7 +2637,47 @@ function triggerUpdate() {
       updateHeroCells();
       const tex = calcTexture(currentBoard);
       if (tex) applyTexture(tex);
+      renderFallbackBadge();
     }, 50);
+  }
+}
+
+/* ══════════════════════════════
+   FALLBACK BADGE — Worker未使用時の戦況バッジ表示
+   v3.6.2: フォールバックモードではrenderBoardIntelligence()を
+   呼べない（Worker専用の詳細な戦況判定ロジックがWorker側にしかないため）。
+   バッジを「WAITING」のまま固めず、フォールバック中である旨を明示する。
+══════════════════════════════ */
+function renderFallbackBadge() {
+  const color  = 'rgba(255,180,0,.85)';
+  const shadow = 'rgba(255,180,0,.35)';
+
+  const dot   = document.getElementById('sit-dot');
+  const label = document.getElementById('sit-label');
+  const sub   = document.getElementById('sit-sub');
+  const badge = document.getElementById('sit-badge');
+  if (dot && label && sub && badge) {
+    dot.style.background     = color;
+    dot.style.boxShadow      = `0 0 8px ${shadow}`;
+    label.style.color        = color;
+    label.textContent        = 'FALLBACK MODE';
+    sub.textContent          = 'Worker未使用 - 簡易解析のみ';
+    badge.style.borderColor  = color;
+    badge.style.boxShadow    = `0 0 10px ${shadow}`;
+  }
+
+  const tDot   = document.getElementById('tactic-dot');
+  const tText  = document.getElementById('tactic-text');
+  const tSub   = document.getElementById('tactic-sub');
+  const tBadge = document.getElementById('tactic-badge');
+  if (tDot && tText && tSub && tBadge) {
+    tDot.style.background     = color;
+    tDot.style.boxShadow      = `0 0 10px ${shadow}`;
+    tText.style.color         = color;
+    tText.textContent         = 'FALLBACK MODE (簡易解析)';
+    tSub.textContent          = 'ヒートマップ/NUTSのみ更新中 - 戦況判定はWorker専用機能のため利用不可';
+    tBadge.style.borderColor  = color;
+    tBadge.style.boxShadow    = `0 0 14px ${shadow}`;
   }
 }
 
@@ -2718,12 +2755,19 @@ function onCellTouch(e) {
 function showTooltip(c, x, y) {
   document.getElementById('tt-hand').textContent = c.dataset.hand || '--';
   document.getElementById('tt-eq').textContent   = (c.dataset.eq||'--')+'%';
-  document.getElementById('tt-pot').textContent  = (c.dataset.pot||'--')+'%';
+  const potLvl = c.dataset.potLevel || 'なし';
+  const potEl = document.getElementById('tt-pot-lvl');
+  if (potEl) {
+    potEl.textContent = potLvl;
+    potEl.style.color = potLvl.includes('★5') ? '#ffd700' : potLvl.includes('★4') ? '#ff8c00' : potLvl.includes('★3') ? '#00d4ff' : potLvl.includes('★2') ? '#00ff9d' : '#fff';
+  }
   document.getElementById('tt-den').textContent  = (c.dataset.den||'--')+'%';
   document.getElementById('tt-draw').textContent = c.dataset.draw||'--';
+  const catEl = document.getElementById('tt-cat');
+  if (catEl) catEl.textContent = getBorderCategoryJP(c.dataset.hand || '');
   tooltip.style.display = 'block';
   // Position: keep inside window
-  const tw = 160, th = 100;
+  const tw = 180, th = 110;
   let lft = x + 12;
   let top = y - 30;
   if (lft + tw > window.innerWidth)  lft = x - tw - 8;
@@ -2890,7 +2934,6 @@ function clearBoard() {
     if (s) s.value='';
   }
   activePickerSlot = 0;
-  updateTargetBadge();
   currentBoard=[];
   renderStreet([]);
   updateBoardCards();
@@ -3330,17 +3373,9 @@ const PICKER_SLOT_LABELS = [
 
 function selectPickerSlot(slotIdx) {
   activePickerSlot = slotIdx;
-  updateTargetBadge();
   updateBoardCards();
   renderPickerSlots();
   renderInlinePickerGrid();
-}
-
-function updateTargetBadge() {
-  const badge = document.getElementById('active-slot-badge');
-  if (badge) {
-    badge.textContent = `TARGET: ${PICKER_SLOT_LABELS[activePickerSlot].label}`;
-  }
 }
 
 function renderPickerSlots() {
@@ -3523,34 +3558,35 @@ function handleCardPick(rank, suit) {
     activePickerSlot = (activePickerSlot + 1) % 5;
   }
 
-  updateTargetBadge();
   updateBoardCards();
 }
 
-function clearCurrentPickerSlot() {
-  clearSlot(activePickerSlot);
-  updateBoardCards();
-}
+function stepBackPickerSlot() {
+  // 現在のスロットにカードがあればそれを消す
+  const currentR = document.getElementById('rsel-' + activePickerSlot)?.value;
+  const currentS = document.getElementById('ssel-' + activePickerSlot)?.value;
+  if (currentR && currentS) {
+    clearSlot(activePickerSlot);
+    updateBoardCards();
+    return;
+  }
 
-function clearAllPickerCards() {
-  clearBoard();
-  updateBoardCards();
-}
+  // 現在のスロットが空なら直前に入力されているスロットを探して消し、そこをターゲットにする
+  let found = -1;
+  for (let i = 0; i < 5; i++) {
+    const idx = (activePickerSlot - 1 - i + 5) % 5;
+    const r = document.getElementById('rsel-' + idx)?.value;
+    const s = document.getElementById('ssel-' + idx)?.value;
+    if (r && s) {
+      found = idx;
+      break;
+    }
+  }
 
-function openDeckPicker(targetSlot = 0) {
-  selectPickerSlot(targetSlot);
-  const overlay = document.getElementById('picker-overlay');
-  if (overlay) overlay.style.display = 'flex';
-}
-
-function closeDeckPicker() {
-  const overlay = document.getElementById('picker-overlay');
-  if (overlay) overlay.style.display = 'none';
-}
-
-function onPickerOverlayClick(e) {
-  if (e.target.id === 'picker-overlay') {
-    closeDeckPicker();
+  if (found !== -1) {
+    activePickerSlot = found;
+    clearSlot(found);
+    updateBoardCards();
   }
 }
 
@@ -3558,21 +3594,12 @@ function buildBoardArea() {
   const area = document.getElementById('board-area');
   area.innerHTML = '';
 
-  // 1. HEADER (Title, Target Badge, Modal View, Clear All)
+  // 1. HEADER (Title, Modal View, Clear All)
   const hdr = document.createElement('div');
   hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:6px;padding:0 2px;flex-shrink:0;';
   hdr.innerHTML = `
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
       <span style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(0,212,255,.5);letter-spacing:1.5px;white-space:nowrap;">▐ BOARD CARDS</span>
-      <span id="active-slot-badge" style="font-family:'Orbitron',monospace;font-size:8px;padding:2px 6px;border-radius:2px;background:rgba(0,212,255,.15);border:1px solid rgba(0,212,255,.4);color:#00d4ff;letter-spacing:.5px;white-space:nowrap;">TARGET: FLOP 1</span>
-      <button id="open-picker-modal-btn" onclick="openDeckPicker(activePickerSlot)"
-        style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:.8px;padding:2px 8px;
-               border:1px solid rgba(0,212,255,.5);border-radius:3px;background:rgba(0,212,255,.12);
-               color:#00d4ff;cursor:pointer;transition:all .15s;user-select:none;white-space:nowrap;"
-        onmouseover="this.style.borderColor='#00d4ff';this.style.boxShadow='0 0 10px rgba(0,212,255,.5)';"
-        onmouseout="this.style.borderColor='rgba(0,212,255,.5)';this.style.boxShadow='none';">
-        🔍 拡大表示
-      </button>
     </div>
     <button id="clear-all-btn" onclick="handleClearAllClick()"
       style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:.8px;padding:3px 8px;
@@ -3646,7 +3673,10 @@ function buildBoardArea() {
   pickerContainer.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
       <div style="font-family:'Orbitron',monospace;font-size:7.5px;letter-spacing:1px;color:rgba(0,212,255,.7);">🃏 52-CARD DECK PICKER</div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(160,200,230,.5);">上のカード枠または以下のカードを選択</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="stepBackPickerSlot()" style="background:rgba(255,180,0,.15);border:1px solid rgba(255,180,0,.4);color:#ffca28;border-radius:3px;padding:2px 8px;font-family:'Orbitron',monospace;font-size:8px;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(255,180,0,.28)'" onmouseout="this.style.background='rgba(255,180,0,.15)'">◀ 戻す</button>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(160,200,230,.5);">カードをタップで選択</span>
+      </div>
     </div>
     <div id="inline-picker-grid-container" class="picker-grid" style="display:flex;flex-direction:column;gap:3px;"></div>
   `;
@@ -3751,7 +3781,6 @@ function loadPresetBoard(cards) {
     }
   }
   activePickerSlot = Math.min(cards.length, 4);
-  updateTargetBadge();
   updateBoardCards();
   onInputChanged();
 }
