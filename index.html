@@ -328,6 +328,11 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   text-shadow:0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.8);
   position:relative;
 }
+/* v3.9.4: 3文字ラベル（例: AKs / AKo）はセル幅に収まるよう縮小 */
+.hm-c-len3{
+  font-size: clamp(8px, 1vw + 4.5px, 10.5px) !important;
+  letter-spacing: -0.6px;
+}
 .hm-c:hover{
   transform:scale(1.18);
   z-index:10;
@@ -446,6 +451,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   .n-eq{font-size:11px;}.n-hand{font-size:18px;}.n-type{font-size:10px;}
   #hm-grid{grid-template-columns:14px repeat(13,1fr);gap:2px;}
   .hm-c{font-size:9px;}
+  .hm-c-len3{font-size:7.5px !important;}
   #ftr{display:none;}
 }
 </style>
@@ -2706,7 +2712,8 @@ function buildHeatmap() {
       const lbl = i===j ? r1+r2 : (i<j ? r1+r2+'s' : r2+r1+'o');
       const c   = document.createElement('div');
       c.className = 'hm-c'; c.id = 'hc'+(i*13+j);
-      c.title = lbl; c.textContent = lbl.slice(0,2);
+      c.title = lbl; c.textContent = lbl; // v3.9.4: スーテッド(s)/オフスート(o)を省略せずフル表示
+      if (lbl.length >= 3) c.classList.add('hm-c-len3');
       c.style.backgroundColor = '#0d1a2a';
       c.dataset.hand = lbl;
 
