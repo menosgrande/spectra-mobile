@@ -347,16 +347,18 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 /* v3.9: 背景マスク（ハンドの静的カテゴリ）を枠線スタイルで表現。
    彩度(Made Strength)とは独立した「構造」情報のため、パターンで文字の
    可読性を潰さないよう、枠線の太さ/実線・点線・二重線の違いだけで区別する。 */
-.hm-c.cat-pair       { border:2px solid rgba(255,255,255,.5); }
-.hm-c.cat-suited-bw  { border:2px double rgba(255,255,255,.45); }
-.hm-c.cat-connector  { border:1px dashed rgba(255,255,255,.4); }
-.hm-c.cat-offsuit-bw { border:1px dotted rgba(255,255,255,.35); }
+/* v3.9.4: 枠線を「線種の違い」から「色+太さ」で統一し、小さいセルでも判別しやすく整理 */
+.hm-c.cat-pair       { border: 2px solid rgba(0,212,255,.65); box-shadow: inset 0 0 5px rgba(0,212,255,.25); }
+.hm-c.cat-suited-bw  { border: 2px solid rgba(255,215,0,.6);  box-shadow: inset 0 0 5px rgba(255,215,0,.2);  }
+.hm-c.cat-connector  { border: 1.5px solid rgba(0,255,157,.55); }
+.hm-c.cat-offsuit-bw { border: 1px solid rgba(170,150,255,.4); }
 .hm-c.cat-other      { border:1px solid rgba(255,255,255,.06); }
 
-/* v3.9.3: Draw Potential（将来性）はセルの右上の三角バッジ「◥」で直感表示（5段階色分け） */
+/* v3.9.6: Draw Potential（将来性）はセルの右上の三角バッジ「◥」で直感表示（5段階色分け）
+   段階が一目でわかるよう、単一色相（淡いアンバー→鮮烈な赤）の濃淡だけで5段階を表現 */
 .hm-pot-dot{
   position:absolute; top:0; right:0;
-  width:10px; height:10px;
+  width:7px; height:7px;
   clip-path:polygon(0 0, 100% 0, 100% 100%);
   pointer-events:none;
   transition:all .25s ease;
@@ -467,14 +469,2292 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.3);margin-top:4px;" id="brain-sub">loading pure javascript worker</div>
 </div>
 
+<!-- v3.9.5: Workerソースをtext/plainで埋め込み、Blob URL経由で起動。
+     file://で直接開いても(サーバー無し・オフラインでも) new Worker('spectra-worker.js')の
+     クロスオリジン制限を受けずWorkerを起動できるようにするための完全オフライン対応。
+     spectra-worker.js / core/*.js を編集したら、このブロックも再生成が必要。 -->
+<script type="text/plain" id="spectra-worker-src">
+/* ===== SPECTRA WORKER BUNDLE (auto-embedded, offline対応) ===== */
+
+/* ---- core/utils.js ---- */
+
+/* core/utils.js — constants, cache, clamp01. No deps. */
+
+/**
+ * SPECTRA v3.5 Worker
+ * Protocol: INIT_OK handshake
+ * Public API : BOARD_INTELLIGENCE (unified entry point)
+ * Legacy API : EVAL_169 / TEXTURE  (backward compat, internally delegated)
+ *
+ * Evaluation stack:
+ *   evaluate7()          → { score, category, categoryName }（v3.7〜: 役判定と
+ *                           連続値スコアリングを分離。category は判定結果そのもの
+ *                           なのでスコアの揺れで役名がズレることはない）
+ *   classifyHandClass()  → NUTS / TOP_PAIR_PLUS / MIDDLE_PAIR / WEAK_PAIR / AIR
+ *   evalRange169()       → 169-hand matrix { hand, rawScore, potential, density, class }
+ *   computeRangeAdvantage() → -1..+1 (+ = hero advantage)
+ *   computeNutAdvantage()   → { advantage:-1..+1, density, coverage }
+ *   analyzeBoard()       → full BOARD_INTELLIGENCE response
+ */
+
+const RANKS = 'AKQJT98765432';
+const SUITS = 'shdc';
+const RANK_IDX = {};
+RANKS.split('').forEach((r, i) => RANK_IDX[r] = i);
+
+const HAND_TYPES = {
+  1: 'STRAIGHT FLUSH',
+  2: 'FOUR OF A KIND',
+  3: 'FULL HOUSE',
+  4: 'FLUSH',
+  5: 'STRAIGHT',
+  6: 'THREE OF A KIND',
+  7: 'TWO PAIR',
+  8: 'ONE PAIR',
+  9: 'HIGH CARD'
+};
+
+let evalCache = new Map();
+
+// バグ修正候補（レビュー指摘）: evalCacheが無制限に増え続ける可能性があったため、
+// 上限を設けてFIFO（Mapは挿入順を保持する）で古いエントリから削除するようにする。
+const EVAL_CACHE_MAX = 500;
+function cacheSet(key, value) {
+  if (evalCache.size >= EVAL_CACHE_MAX && !evalCache.has(key)) {
+    const oldestKey = evalCache.keys().next().value;
+    evalCache.delete(oldestKey);
+  }
+  evalCache.set(key, value);
+}
+
+function clamp01(x) {
+  return Math.max(0, Math.min(1, x));
+}
+
+
+/* ---- core/texture.js ---- */
+
+/* core/texture.js — board texture & classifiers. Deps: utils.js */
+
+function calcBoardTexture(board) {
+  if (board.length < 3) return null;
+
+  const ranks = board.map(c => RANK_IDX[c[0]]);
+  const suits = board.map(c => c[1]);
+  const sorted = [...ranks].sort((a, b) => a - b);
+
+  // Connectivity
+  let gaps = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    gaps += sorted[i] - sorted[i - 1];
+  }
+  const connect = Math.max(0, Math.round(100 - gaps * 8));
+
+  // Flush pressure
+  const suitCounts = {};
+  suits.forEach(s => suitCounts[s] = (suitCounts[s] || 0) + 1);
+  const maxSuit = Math.max(...Object.values(suitCounts));
+  const flush = Math.round((maxSuit / board.length) * 100);
+
+  // Overall wetness
+  const wet = Math.round((connect + flush) / 2);
+
+  let texture;
+  if (wet >= 85) texture = 'VERY_WET';
+  else if (wet >= 65) texture = 'WET';
+  else if (wet >= 45) texture = 'SEMI_WET';
+  else if (wet >= 20) texture = 'DRY';
+  else texture = 'VERY_DRY';
+
+  const lbl = wet>=80 ? 'VERY WET / 非常に危険'
+            : wet>=60 ? 'WET / 危険'
+            : wet>=40 ? 'SEMI-WET / やや危険'
+            : wet>=20 ? 'DRY / 安全'
+            : 'VERY DRY / 安全';
+
+  return {
+    wet, connect, flush, texture, lbl,
+    connectivityScore: connect,
+    flushScore: flush,
+    wetnessScore: wet
+  };
+}
+
+
+function classifyConnectivity(board) {
+  const ranks = board.map(c => RANK_IDX[c[0]]);
+  const sorted = [...ranks].sort((a, b) => a - b);
+  const unique = [...new Set(sorted)].length;
+
+  if (unique === 5) {
+    // Check for straight
+    for (let k = 0; k <= sorted.length - 5; k++) {
+      if (sorted[k + 4] - sorted[k] === 4) {
+        return 'HIGHLY_CONNECTED';
+      }
+    }
+  }
+
+  let gaps = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    gaps += sorted[i] - sorted[i - 1];
+  }
+
+  if (gaps <= 2) return 'HIGHLY_CONNECTED';
+  if (gaps <= 4) return 'CONNECTED';
+  if (gaps <= 6) return 'LOW_CONNECTED';
+  return 'DISCONNECTED';
+}
+
+
+function classifyFlushPressure(board) {
+  const suits = board.map(c => c[1]);
+  const suitCounts = {};
+  suits.forEach(s => suitCounts[s] = (suitCounts[s] || 0) + 1);
+  const maxSuit = Math.max(...Object.values(suitCounts));
+
+  if (board.length === 3) {
+    if (maxSuit === 3) return 'THREE_FLUSH';
+    if (maxSuit === 2) return 'TWO_FLUSH';
+    return 'RAINBOW';
+  }
+
+  if (maxSuit === 4) return 'FOUR_FLUSH';
+  if (maxSuit === 3) return 'THREE_FLUSH';
+  if (maxSuit === 2) return 'TWO_FLUSH';
+  return 'RAINBOW';
+}
+
+
+function classifyPairStructure(board) {
+  const ranks = board.map(c => c[0]);
+  const freq = {};
+  ranks.forEach(r => freq[r] = (freq[r] || 0) + 1);
+  const counts = Object.values(freq).sort((a, b) => b - a);
+
+  if (counts[0] === 3 && counts[1] === 2) return 'TRIPS_BOARD';
+  if (counts[0] === 3) return 'TRIPS_BOARD';
+  if (counts[0] === 2 && counts[1] === 2) return 'DOUBLE_PAIRED';
+  if (counts[0] === 2) return 'PAIRED';
+  return 'UNPAIRED';
+}
+
+
+function classifyRankStructure(board) {
+  const highRanks = board.filter(c => {
+    const r = c[0];
+    return ['A', 'K', 'Q', 'J', 'T'].includes(r);
+  }).length;
+
+  const lowRanks = board.filter(c => {
+    const r = c[0];
+    return ['5', '4', '3', '2'].includes(r);
+  }).length;
+
+  const midRanks = board.length - highRanks - lowRanks;
+
+  if (highRanks >= 2) return 'HIGH';
+  if (lowRanks >= 2) return 'LOW';
+  if (midRanks >= 2) return 'MID';
+  return 'MIXED';
+}
+
+
+/* ---- core/position.js ---- */
+
+/* core/position.js — position profiles & archetype. Deps: utils.js, texture.js */
+
+const POSITION_PROFILE = {
+  UTG: {
+    label: 'UTG (Early)',
+    // Opens very tight
+    openWidth: 0.6,           // 60% of optimal
+    nutDensity: 1.2,          // Premium hand concentration
+    highCardDensity: 1.1,     // Broadway heavy
+    drawCoverage: 0.8,        // Fewer draws in opening range
+    defensibility: 0.7,       // Hard to defend against aggression
+    adjustmentFactor: 1.0     // baseline
+  },
+
+  HJ: {
+    label: 'HJ (Hijack)',
+    openWidth: 0.8,
+    nutDensity: 1.1,
+    highCardDensity: 1.0,
+    drawCoverage: 0.9,
+    defensibility: 0.75,
+    adjustmentFactor: 1.1
+  },
+
+  CO: {
+    label: 'CO (Cutoff)',
+    openWidth: 1.2,           // 120% of optimal
+    nutDensity: 1.0,
+    highCardDensity: 1.0,
+    drawCoverage: 1.1,
+    defensibility: 0.85,
+    adjustmentFactor: 1.2
+  },
+
+  BTN: {
+    label: 'BTN (Button)',
+    openWidth: 1.5,           // 150% - widest range
+    nutDensity: 0.9,          // Diluted premium region
+    highCardDensity: 0.95,
+    drawCoverage: 1.3,        // Heavy on draws/speculative
+    defensibility: 0.9,       // Easy to defend
+    adjustmentFactor: 1.3
+  },
+
+  SB: {
+    label: 'SB (Small Blind)',
+    openWidth: 1.3,
+    nutDensity: 0.95,
+    highCardDensity: 0.98,
+    drawCoverage: 1.2,
+    defensibility: 1.0,       // Neutral position
+    adjustmentFactor: 1.2
+  },
+
+  BB: {
+    label: 'BB (Big Blind)',
+    // Defend rather than open
+    defendWidth: 1.8,         // 180% - defend very wide
+    openWidth: 0.5,           // Fold most hands preflop
+    nutDensity: 0.8,          // Fewer premium hands in calling range
+    lowBoardCoverage: 1.4,    // Strong on low boards
+    drawCoverage: 1.3,        // Many drawing hands
+    defensibility: 1.1,       // Position strength
+    adjustmentFactor: 1.0
+  }
+};
+
+
+const RANGE_ARCHETYPE_PROFILE = {
+  STANDARD: {
+    // Balanced, typical play
+    rangeWidthMultiplier: 1.0,
+    nutConcentration: 1.0,
+    equityBoost: 0.0,
+    spreadModifier: 0.0
+  },
+
+  TIGHT: {
+    // Only premium hands, strong ranges
+    rangeWidthMultiplier: 0.6,     // Only 60% of hands
+    nutConcentration: 1.4,          // More concentrated in nut region
+    equityBoost: 0.18,              // ~18% equity improvement
+    spreadModifier: -0.25           // Less spread, more polarized
+  },
+
+  LOOSE: {
+    // Wide, marginal hands included
+    rangeWidthMultiplier: 1.5,      // 150% of standard (more marginal)
+    nutConcentration: 0.7,          // Diluted nut region
+    equityBoost: -0.12,             // ~12% equity decrease
+    spreadModifier: 0.35            // More spread, less polarized
+  },
+
+  GTO: {
+    // Game-theoretically balanced
+    rangeWidthMultiplier: 1.0,
+    nutConcentration: 1.1,          // Slightly more balanced toward value
+    equityBoost: 0.06,              // Slight bias toward exploiting
+    spreadModifier: 0.08            // Balanced bluff/value ratio
+  },
+
+  RECREATIONAL: {
+    // Unpredictable, wide and weak
+    rangeWidthMultiplier: 1.8,      // Very wide
+    nutConcentration: 0.5,          // Nut region very diluted
+    equityBoost: -0.22,             // Significant equity loss
+    spreadModifier: 0.5             // Maximum spread
+  }
+};
+
+
+function getPositionProfile(position) {
+  return POSITION_PROFILE[position] || POSITION_PROFILE.BB;
+}
+
+
+function getOrderedPositionAdvantage(heroPos, villainPos) {
+  // Calculate position advantage from ordered pair
+  // Hero is the aggressor/opener
+  const heroProf = getPositionProfile(heroPos);
+  const villainProf = getPositionProfile(villainPos);
+
+  // Higher openWidth = wider opening range = equity advantage early
+  // Higher drawCoverage = more flexibility
+  const heroAdvantage = (heroProf.openWidth * heroProf.adjustmentFactor);
+  const villainDisadvantage = villainProf.defensibility; // How well they can defend
+
+  // Normalize to 0.0-1.0 scale where 0.5 = neutral
+  const rawAdvantage = heroAdvantage / (heroAdvantage + villainDisadvantage);
+  return clamp01(rawAdvantage);
+}
+
+
+function getOrderedNutAdvantage(heroPos, villainPos, board) {
+  // Calculate nut density advantage
+  const heroProf = getPositionProfile(heroPos);
+  const villainProf = getPositionProfile(villainPos);
+
+  // Nut density from position + board structure
+  const heroNutDensity = heroProf.nutDensity;
+  const villainNutDensity = villainProf.nutDensity;
+
+  const rawAdvantage = heroNutDensity / (heroNutDensity + villainNutDensity);
+  return clamp01(rawAdvantage);
+}
+
+
+function getArchetypeProfile(archetype) {
+  return RANGE_ARCHETYPE_PROFILE[archetype] || RANGE_ARCHETYPE_PROFILE.STANDARD;
+}
+
+
+function applyArchetypeToRangeDynamics(baseDynamics, archetype) {
+  // Modify range advantage based on archetype range width
+  const prof = getArchetypeProfile(archetype);
+  
+  // TIGHT ranges have wider equity advantage
+  // LOOSE ranges have narrower or reversed advantage
+  if (baseDynamics === 'RANGE_ADV_HERO') {
+    if (archetype === 'TIGHT') return 'RANGE_ADV_HERO';     // Maintain/strengthen
+    if (archetype === 'LOOSE') return 'NEUTRAL';           // Dilute advantage
+    if (archetype === 'GTO') return 'RANGE_ADV_HERO';       // Maintain
+  }
+  
+  if (baseDynamics === 'RANGE_ADV_VILLAIN') {
+    if (archetype === 'TIGHT') return 'RANGE_ADV_VILLAIN';      // Maintain
+    if (archetype === 'LOOSE') return 'NEUTRAL';           // Lose advantage
+    if (archetype === 'GTO') return 'RANGE_ADV_VILLAIN';        // Maintain
+  }
+
+  // RECREATIONAL is unpredictable
+  if (archetype === 'RECREATIONAL') return 'NEUTRAL';
+
+  return baseDynamics;
+}
+
+
+function applyArchetypeToNutDynamics(baseNutAdv, archetype) {
+  // Modify nut region advantage based on nutConcentration
+  const prof = getArchetypeProfile(archetype);
+  const nutMultiplier = prof.nutConcentration;
+
+  if (baseNutAdv === 'NUT_ADV_HERO') {
+    if (nutMultiplier > 1.2) return 'NUT_ADV_HERO';        // Tighter → stronger nut adv
+    if (nutMultiplier < 0.8) return 'NEUTRAL';            // Looser → dilute nut adv
+  }
+
+  if (baseNutAdv === 'NUT_ADV_VILLAIN') {
+    if (nutMultiplier > 1.2) return 'NUT_ADV_VILLAIN';
+    if (nutMultiplier < 0.8) return 'NEUTRAL';
+  }
+
+  if (archetype === 'RECREATIONAL') return 'NEUTRAL';     // Too unpredictable
+
+  return baseNutAdv;
+}
+
+
+function applyArchetypeBonus(score, key, archetype) {
+  // Interpretation scores are modulated by archetype
+  // Applied at interpretation generation time (upstream)
+  const prof = getArchetypeProfile(archetype);
+  
+  // Tight → amplifies value, dilutes bluff
+  // Loose → dampens value, amplifies draw
+  if (key.includes('VALUE') || key.includes('LEVERAGE')) {
+    if (archetype === 'TIGHT') return clamp01(score * (1 + prof.equityBoost * 2));
+    if (archetype === 'LOOSE') return clamp01(score * (1 - 0.2));
+  }
+
+  if (key.includes('DRAW') || key.includes('PRESSURE')) {
+    if (archetype === 'TIGHT') return clamp01(score * 0.8);   // Draw less likely in tight range
+    if (archetype === 'LOOSE') return clamp01(score * 1.3);   // Draw more likely in loose
+  }
+
+  return score;
+}
+
+
+/* ---- core/strength.js ---- */
+
+/* core/strength.js — hand evaluation & strength decomp. Deps: utils.js */
+
+/* ══════════════════════════════
+   設計リファクタ（v3.7）:
+   以前は evaluate7() が「役判定」と「連続値スコアリング（ボード補正・
+   キッカー補正込み）」を1つの関数の中で混在させており、この構造が
+   繰り返しバグの温床になっていた（ロイヤルフラッシュ取り逃がし、
+   ホイールがカテゴリ閾値を割り込む、トリップスがストレート名で
+   表示される、等）。原因はどれも「最終的な連続値スコアから
+   getHandName()で役名を逆算する」という設計そのものにあった。
+   ボード補正やポテンシャル加算でスコアがカテゴリ境界を跨ぐたびに
+   同種のバグが再発する構造だったため、根本から分離する:
+
+     detectHandCategory(cards)  → 役判定のみ（純粋関数、スコアなし）
+     scoreHandCategory(cat, cards) → 判定済みカテゴリに対して
+                                     連続値スコア（ボード補正込み）を計算
+     evaluate7(cards)           → 上記2つをオーケストレートし、
+                                     { score, category, categoryName }
+                                     を返す（category は判定結果そのもの
+                                     なので、スコアがどれだけ揺れても
+                                     「スコアと役名が食い違う」バグは
+                                     構造上発生しなくなる。
+                                     ※ただし detectHandCategory() 自体の
+                                     役判定ロジックが誤っていれば、それは
+                                     そのまま役名に反映される——この分離が
+                                     防ぐのはスコアとの不整合のみで、
+                                     役判定ロジック自体の正しさを保証する
+                                     ものではない）
+══════════════════════════════ */
+
+// レビュー指摘対応: category を生の文字列リテラルで書くとタイポに気づきにくいため、
+// 定数オブジェクトを経由して参照する（HAND_CATEGORY.ROYAL_FLUSH のように使う）。
+// 値そのものは内部識別子として従来通りの文字列を維持（CATEGORY_DISPLAYのキーと一致させる）。
+const HAND_CATEGORY = {
+  ROYAL_FLUSH:     'ROYAL_FLUSH',
+  STRAIGHT_FLUSH:  'STRAIGHT_FLUSH',
+  FOUR_OF_A_KIND:  'FOUR_OF_A_KIND',
+  FULL_HOUSE:      'FULL_HOUSE',
+  FLUSH:           'FLUSH',
+  STRAIGHT:        'STRAIGHT',
+  THREE_OF_A_KIND: 'THREE_OF_A_KIND',
+  TWO_PAIR:        'TWO_PAIR',
+  ONE_PAIR:        'ONE_PAIR',
+  HIGH_CARD:       'HIGH_CARD'
+};
+
+const CATEGORY_DISPLAY = {
+  ROYAL_FLUSH:     'ROYAL FLUSH',
+  STRAIGHT_FLUSH:  'STRAIGHT FLUSH',
+  FOUR_OF_A_KIND:  'FOUR OF A KIND',
+  FULL_HOUSE:      'FULL HOUSE',
+  FLUSH:           'FLUSH',
+  STRAIGHT:        'STRAIGHT',
+  THREE_OF_A_KIND: 'THREE OF A KIND',
+  TWO_PAIR:        'TWO PAIR',
+  ONE_PAIR:        'ONE PAIR',
+  HIGH_CARD:       'HIGH CARD'
+};
+
+function detectHandCategory(cards) {
+  const ranks = cards.map(c => RANK_IDX[c[0]]);   // 0=A … 12=2
+  const suits = cards.map(c => c[1]);
+
+  // ── flush detection ──
+  const suitCounts = {};
+  suits.forEach(s => suitCounts[s] = (suitCounts[s] || 0) + 1);
+  const flushSuit = Object.keys(suitCounts).find(s => suitCounts[s] >= 5) || null;
+  const isFlush = flushSuit !== null;
+
+  // ── straight detection (on unique sorted ranks, 全スート混在) ──
+  const uniqueRanks = [...new Set(ranks)].sort((a, b) => a - b);
+  // Ace-low straight: A(0) plays as rank 13 after K(1)
+  if (uniqueRanks[0] === 0) uniqueRanks.push(13);
+  let straightHighRank = -1; // 成立したストレートの最高位カードのRANK_IDX（値が小さいほど強い）
+  // バグ修正（pokersolver突き合わせで発覚、v3.7.5）: 以前は`straightHighIdx = k`として
+  // ウィンドウの終端（配列の昇順で見て一番後ろ=RANK_IDXが一番大きい=一番弱いカード）を
+  // 保存しており、後段で`uniqueRanks[straightHighIdx]`とそのまま使っていたため、
+  // 実際には「ストレートの中で一番弱いカード」をスコアリングに使ってしまっていた
+  // （例: 3-4-5-6-7の7ハイストレートで、本来の最高位カード'7'ではなく
+  // 最弱の'3'のRANK_IDXが使われ、5ハイのホイールと点数が同じになる、
+  // 7ハイの方が8ハイより高得点になる、といった順序の乱れが起きていた）。
+  // 以前はSF/Quads等の固定ボーナスがbandCeilingへの張り付きを引き起こしており、
+  // その副作用でこのバグがスコア上マスクされ続けていた（ボーナス撤去で露呈）。
+  // 正しくはウィンドウの開始点（uniqueRanks[k-4]、RANK_IDXが一番小さい=一番強い
+  // カード）を使う。
+  // 6枚以上ランクが連続するケース（例: A-K-Q-J-T-9が全部同スート）で
+  // より弱い窓に先に一致して停止しないよう、昇順(=最良の窓から)にチェックする。
+  for (let k = 4; k < uniqueRanks.length; k++) {
+    if (uniqueRanks[k] - uniqueRanks[k - 4] === 4) {
+      straightHighRank = uniqueRanks[k - 4];
+      break;
+    }
+  }
+  const isStraight = straightHighRank !== -1;
+
+  // ── straight-flush specific detection（flushSuitのカードだけで再判定） ──
+  // 一般ストレート判定を流用すると、フラッシュに関与しない余分なカードに
+  // 引きずられてロイヤルフラッシュを取り逃がすバグがあったため、
+  // flushSuit限定で改めてストレートを判定する。
+  let sfHigh = -1; // flushSuit内で成立するストレートの最高位カードのRANK_IDX（値が小さいほど強い）
+  if (isFlush) {
+    const flushRanks = cards
+      .filter(c => c[1] === flushSuit)
+      .map(c => RANK_IDX[c[0]])
+      .sort((a, b) => a - b);
+    const uFlush = [...new Set(flushRanks)];
+    if (uFlush[0] === 0) uFlush.push(13);
+    for (let k = 4; k < uFlush.length; k++) {
+      // 同上のバグ修正: ウィンドウの開始点(k-4)を使う。
+      if (uFlush[k] - uFlush[k - 4] === 4) {
+        sfHigh = uFlush[k - 4];
+        break;
+      }
+    }
+  }
+  const isStraightFlush = sfHigh !== -1;
+
+  // ── frequency map ──
+  const freq = {};
+  ranks.forEach(r => freq[r] = (freq[r] || 0) + 1);
+  const entries = Object.entries(freq)
+    .map(([r, c]) => ({ r: Number(r), c }))
+    .sort((a, b) => b.c - a.c || a.r - b.r);
+  const counts = entries.map(e => e.c);
+  const topRank = entries[0].r;
+
+  // ── カテゴリ確定（役判定はここで完結、スコアはまだ計算しない） ──
+  let category;
+  let primaryRank = topRank;   // スコア計算で使う代表ランク（役ごとに意味が変わる）
+  let secondaryRank = null;    // フルハウスの組ランク／ツーペアの2組目
+
+  if (isStraightFlush) {
+    // sfHighは修正後、ウィンドウの開始点（最高位カード）を指すようになったため、
+    // ロイヤル(T-J-Q-K-A)の判定も「最高位カードがA(idx0)か」に変更する
+    // （旧コードでは窓の終端＝T(idx4)を見ていたため sfHigh===4 だった）。
+    category = (sfHigh === 0) ? HAND_CATEGORY.ROYAL_FLUSH : HAND_CATEGORY.STRAIGHT_FLUSH;
+    primaryRank = sfHigh;
+  } else if (counts[0] === 4) {
+    category = HAND_CATEGORY.FOUR_OF_A_KIND;
+  } else if (counts[0] === 3 && counts[1] >= 2) {
+    category = HAND_CATEGORY.FULL_HOUSE;
+    secondaryRank = entries[1].r;
+  } else if (isFlush) {
+    category = HAND_CATEGORY.FLUSH;
+    const flushCards = cards.filter(c => c[1] === flushSuit).map(c => RANK_IDX[c[0]]).sort((a, b) => a - b);
+    primaryRank = flushCards[0]; // 最高フラッシュカード
+  } else if (isStraight) {
+    category = HAND_CATEGORY.STRAIGHT;
+    primaryRank = straightHighRank;
+  } else if (counts[0] === 3) {
+    category = HAND_CATEGORY.THREE_OF_A_KIND;
+  } else if (counts[0] === 2 && counts[1] === 2) {
+    category = HAND_CATEGORY.TWO_PAIR;
+    secondaryRank = entries[1].r;
+  } else if (counts[0] === 2) {
+    category = HAND_CATEGORY.ONE_PAIR;
+  } else {
+    category = HAND_CATEGORY.HIGH_CARD;
+  }
+
+  return {
+    category, primaryRank, secondaryRank, topRank,
+    isFlush, flushSuit, isStraight, isStraightFlush, sfHigh,
+    freq, entries, counts
+  };
+}
+
+
+/* ══════════════════════════════
+   外部レビュー対応（同一カテゴリ内のキッカー比較バグ修正）:
+   以前は各カテゴリのスコアが primaryRank（と一部 secondaryRank）だけで
+   決まっており、同じ役の中でのキッカー差（例: フルハウスの下のペア、
+   クアッズの余り1枚、トリップス/ワンペアの残りカード）が一切スコアに
+   反映されていなかった。結果、KK/QQ/33/44のフルハウスが完全に同点になる、
+   AK/J9のクアッズが完全に同点になる、といった誤順位付けが起きていた。
+   （ワンペアのキッカー比較は従来computeBoardInteraction側で行っていたが、
+   「count===1のエントリを rank 昇順でソートして先頭を取る」という実装が
+   実質「盤面上のカードの中で一番強いカードを常に拾う」だけになっており、
+   ホールカードのキッカーがどれだけ強くても盤面のAに埋もれて反映されない
+   バグがあった）
+
+   kickerFraction(): [primaryRank, kicker1, kicker2, ...] のようなランク列を
+   base-13の位取り記数法で単一の分数にエンコードする。
+   value = Σ (12 - rank_i) / 13^(i+1)
+   この方式なら、より上位（先頭に近い）のランクの差は、それより下位の
+   ランク列がどんな値を取ろうと必ず上回る（等比級数の性質）。
+   つまり「primaryRankが同じ場合のみ次のキッカーで比較する」という
+   ポーカー本来のキッカー比較順序を、複雑な条件分岐なしに再現できる。
+══════════════════════════════ */
+function kickerFraction(rankTuple) {
+  let value = 0;
+  for (let i = 0; i < rankTuple.length; i++) {
+    const r = Math.max(0, Math.min(12, rankTuple[i]));
+    value += (12 - r) / Math.pow(13, i + 1);
+  }
+  return value; // [0, 1) 未満
+}
+
+// entries（{r, c}の配列、count降順・rank昇順ソート済み）から、
+// excludeRanks に含まれないランクを rank昇順（強い順）で数え上げ、
+// 先頭 count 個を返す。足りない場合は最弱値(12)で埋める。
+function getExtraKickers(entries, excludeRanks, count) {
+  const excludeSet = new Set(excludeRanks);
+  const remaining = entries
+    .filter(e => !excludeSet.has(e.r))
+    .map(e => e.r)
+    .sort((a, b) => a - b);
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    result.push(remaining[i] !== undefined ? remaining[i] : 12);
+  }
+  return result;
+}
+
+function scoreHandCategory(cat, cards) {
+  const { category, primaryRank, secondaryRank, counts, isFlush, isStraight, isStraightFlush, freq, entries, flushSuit } = cat;
+
+  let madeScore, bandCeiling, bandWidth;
+
+  // キッカー分のスコアはband幅の95%までに抑え、残り5%をboardAdjustment
+  // （ホールカードの寄与ボーナス等）の余地として空けておく。
+  // これにより「キッカー最強＋board補正最大」でもbandCeilingを超えて
+  // クランプされ、別のキッカー差が消える事態をできる限り避ける。
+  const KICKER_HEADROOM = 0.95;
+
+  switch (category) {
+    case HAND_CATEGORY.ROYAL_FLUSH:
+      madeScore = 1.00;
+      bandCeiling = 1.00;
+      bandWidth = 0.045;
+      break;
+    case HAND_CATEGORY.STRAIGHT_FLUSH:
+      // 次に良いSF(K-high)≈0.958、最弱SF(wheel)≈0.90
+      // ストレートフラッシュは最高位カード1枚で強さが完全に決まるため
+      // （5枚全部が連番同スートなので、他のキッカーという概念自体が無い）、
+      // primaryRankのみの評価で正しい。
+      madeScore = 0.90 + (1 - primaryRank / 12) * 0.054;
+      bandCeiling = 0.954; // Royal帯(0.955+)に侵入しない
+      bandWidth = 0.054;
+      break;
+    case HAND_CATEGORY.FOUR_OF_A_KIND: {
+      // バグ修正: 以前はprimaryRank(クアッズのランク)のみでキッカー(5枚目)を
+      // 無視していた。クアッズ+キッカー1枚をタプルでエンコードする。
+      const kicker = getExtraKickers(entries, [primaryRank], 1);
+      const width = 0.09;
+      bandWidth = width;
+      madeScore = 0.80 + kickerFraction([primaryRank, ...kicker]) * width * KICKER_HEADROOM;
+      bandCeiling = 0.895;
+      break;
+    }
+    case HAND_CATEGORY.FULL_HOUSE: {
+      // バグ修正: 以前はsecondaryRank（下位のペア）を保持していたのに
+      // スコア計算で一切使っていなかった。777/KKと777/QQが完全に同点になっていた。
+      // フルハウスはトリップ+ペアの5枚で完結するため、これ以上のキッカーは不要。
+      const width = 0.09;
+      bandWidth = width;
+      madeScore = 0.70 + kickerFraction([primaryRank, secondaryRank]) * width * KICKER_HEADROOM;
+      bandCeiling = 0.795;
+      break;
+    }
+    case HAND_CATEGORY.FLUSH: {
+      // バグ修正: 以前は最高位フラッシュカード1枚(primaryRank)のみで
+      // 2〜5枚目の差を無視していた（4-flushボードでQ/J/9ハイのフラッシュが
+      // 全部同点になっていた）。フラッシュを構成する5枚（同スート、強い順）を
+      // タプルでエンコードする。
+      const flushRanks = cards
+        .filter(c => c[1] === flushSuit)
+        .map(c => RANK_IDX[c[0]])
+        .sort((a, b) => a - b)
+        .slice(0, 5);
+      const width = 0.09;
+      bandWidth = width;
+      madeScore = 0.58 + kickerFraction(flushRanks) * width * KICKER_HEADROOM;
+      bandCeiling = 0.675;
+      break;
+    }
+    case HAND_CATEGORY.STRAIGHT:
+      // ホイール(A-2-3-4-5)はAceがlow扱い(idx=13)になるため通常域(4〜12)を
+      // 超えて式に代入すると0.47を割り込みTHREE OF A KIND帯と誤認されうる。
+      // この後のcomputeMadeStrength()内boardHazardペナルティも吸収できるよう
+      // 余裕を持たせて0.49を床にする。
+      // ストレートも最高位カード1枚で強さが完全に決まる（5枚連番の並びが
+      // 決まればキッカーの概念が無い）ため、primaryRankのみの評価で正しい。
+      madeScore = Math.max(0.49, 0.47 + (1 - primaryRank / 12) * 0.10);
+      bandCeiling = 0.575;
+      bandWidth = 0.10;
+      break;
+    case HAND_CATEGORY.THREE_OF_A_KIND: {
+      // バグ修正: 以前はprimaryRank(トリップのランク)のみでキッカー2枚を無視していた。
+      const kickers = getExtraKickers(entries, [primaryRank], 2);
+      const width = 0.08;
+      bandWidth = width;
+      madeScore = 0.38 + kickerFraction([primaryRank, ...kickers]) * width * KICKER_HEADROOM;
+      bandCeiling = 0.465;
+      break;
+    }
+    case HAND_CATEGORY.TWO_PAIR: {
+      // バグ修正: 以前は上位ペア・下位ペアのみでキッカー(5枚目)を無視していた。
+      const kicker = getExtraKickers(entries, [primaryRank, secondaryRank], 1);
+      const width = 0.11; // 0.07(primary)+0.04(secondary)相当の合計幅を維持
+      bandWidth = width;
+      madeScore = 0.26 + kickerFraction([primaryRank, secondaryRank, ...kicker]) * width * KICKER_HEADROOM;
+      bandCeiling = 0.375;
+      break;
+    }
+    case HAND_CATEGORY.ONE_PAIR: {
+      // バグ修正: 以前はcomputeBoardInteraction側で「count===1のカードを
+      // rank昇順ソートして先頭を取る」というキッカー処理をしていたが、
+      // これは実質「7枚の中で一番強いカード」を毎回拾うだけになっており、
+      // 盤面に強いカード（例:A）があると、ホールカードのキッカーがどれだけ
+      // 強くても常に盤面のカードに埋もれて無視される欠陥があった
+      // （例: 77A92盤面でKQ/JT/54を持っても、キッカーは常に盤面のAになり
+      // 全部同点になっていた）。ペアランク+キッカー3枚をタプルでエンコードし、
+      // computeBoardInteraction側の重複ロジックは削除した。
+      const kickers = getExtraKickers(entries, [primaryRank], 3);
+      const width = 0.15;
+      bandWidth = width;
+      madeScore = 0.10 + kickerFraction([primaryRank, ...kickers]) * width * KICKER_HEADROOM;
+      bandCeiling = 0.255;
+      break;
+    }
+    default: { // HIGH_CARD
+      // バグ修正: 以前はtopRank(最高位カード)1枚のみで残り4枚を無視していた。
+      const kickers = getExtraKickers(entries, [primaryRank], 4);
+      const width = 0.09;
+      bandWidth = width;
+      madeScore = kickerFraction([primaryRank, ...kickers]) * width * KICKER_HEADROOM;
+      bandCeiling = 0.095;
+    }
+  }
+  madeScore = clamp01(madeScore);
+
+  // ── Layer 2: board interaction adjustment ──
+  const isRoyal = category === HAND_CATEGORY.ROYAL_FLUSH;
+  const isSF     = category === HAND_CATEGORY.ROYAL_FLUSH || category === HAND_CATEGORY.STRAIGHT_FLUSH;
+  const ranks    = cards.map(c => RANK_IDX[c[0]]);
+  const boardAdjustment = computeBoardInteraction(cards, ranks, freq, isSF, isFlush, isStraight, counts, isRoyal, bandWidth);
+
+  // bandCeilingでクランプするため、ボード補正・キッカー補正がどれだけ
+  // 加算されてもカテゴリ境界（例: FLUSH→STRAIGHT FLUSH帯）を跨がない。
+  // これによりcategoryとscoreは常に整合する。
+  return Math.min(bandCeiling, clamp01(madeScore + boardAdjustment));
+}
+
+
+function evaluate7(cards) {
+  if (!cards || cards.length < 5) {
+    return { score: 0, category: 'HIGH_CARD', categoryName: CATEGORY_DISPLAY.HIGH_CARD };
+  }
+
+  const cat = detectHandCategory(cards);
+  const score = scoreHandCategory(cat, cards);
+
+  return { score, category: cat.category, categoryName: CATEGORY_DISPLAY[cat.category] };
+}
+
+
+function computeBoardInteraction(cards, ranks, freq, isSF, isFlush, isStraight, counts, isRoyal, width) {
+  // 外部レビュー対応・pokersolver突き合わせでの発見（v3.7.5）:
+  // 以前はここで「ホールカードが役に絡んでいるボーナス」「ボードだけで
+  // 役が完成している場合のペナルティ」「SF/Royalの追加ボーナス」を
+  // 固定値または小さくスケールした値で加算していたが、これらはどれも
+  // 本物のポーカーのルールには存在しない、SPECTRA独自の演出的な加点だった。
+  //
+  // scoreHandCategory()側でkickerFraction()による正確なキッカー比較を
+  // 導入した結果、これらの加点が「深い位置のキッカー差」（例: フラッシュの
+  // 3〜5枚目、ワンペアの2〜3枚目のキッカー）を上書きしてしまう新たな
+  // バグを引き起こすことが判明した。深い位置のキッカーの粒度は
+  // 13^n（nは何番目か）で指数関数的に小さくなるため、どんなに小さく
+  // スケールした固定ボーナスでも、いずれかの位置の粒度を必ず上回って
+  // しまい、完全に正確な順序付けとは両立しない。
+  //
+  // ポーカーのハンド強度は「役のカテゴリ＋キッカーの並び」だけで完全に
+  // 決まるべきものであり、それ以上の"演出的加点"は本質的に不要と判断し、
+  // このセッションで全て撤去した。
+  //
+  // 検証: pokersolver（独立実装のポーカー評価ライブラリ、npm）との突き合わせで、
+  // ランダム7枚2万件のカテゴリ一致率100%、ランダムなボード+2ホール対決
+  // 2万件の勝敗順序一致率100%、既存の固定エッジケース6/6一致を確認済み。
+  return 0;
+}
+
+
+function classifyHandClass(score) {
+  // Thresholds calibrated to evaluate7 output ranges:
+  //   SF/Quads/Boat  ≥ 0.70
+  //   Flush/Straight ≥ 0.47
+  //   Trips          ≥ 0.38
+  //   Two pair       ≥ 0.26
+  //   One pair       ≥ 0.10
+  //   High card       < 0.10
+  if (score >= 0.80) return 'NUTS';          // SF / Quads / top Boat
+  if (score >= 0.44) return 'TOP_PAIR_PLUS'; // Flush, Straight, Trips, Boats
+  if (score >= 0.26) return 'MIDDLE_PAIR';   // Two pair
+  if (score >= 0.10) return 'WEAK_PAIR';     // One pair
+  return 'AIR';
+}
+
+
+function getHandName(rawScore) {
+  // ⚠ レガシー関数（v3.7リファクタ以降は使用しない）
+  // 以前はrange_matrix.jsがこの関数で「スコアから役名を逆算」していたが、
+  // ボード補正やポテンシャル加算でスコアが閾値を跨ぐと役名がズレるバグの
+  // 温床になっていたため廃止。現在は evaluate7() が返す category/categoryName
+  // （役判定そのものの結果）を直接使うため、この関数は呼ばれていない。
+  // 外部デバッグ用途などでスコア単体から大まかな役名を推測したい場合のみ
+  // 参考値として残す。
+  if (rawScore >= 0.955) return 'ROYAL FLUSH';
+  if (rawScore >= 0.90) return 'STRAIGHT FLUSH';
+  if (rawScore >= 0.80) return 'FOUR OF A KIND';
+  if (rawScore >= 0.70) return 'FULL HOUSE';
+  if (rawScore >= 0.58) return 'FLUSH';
+  if (rawScore >= 0.47) return 'STRAIGHT';
+  if (rawScore >= 0.38) return 'THREE OF A KIND';
+  if (rawScore >= 0.26) return 'TWO PAIR';
+  if (rawScore >= 0.10) return 'ONE PAIR';
+  return 'HIGH CARD';
+}
+
+
+function boardHazard(board) {
+  const ranks      = board.map(c => RANK_IDX[c[0]]);
+  const highCount  = ranks.filter(r => r <= 4).length; // A,K,Q,J,T
+  const sorted     = [...ranks].sort((a, b) => a - b);
+  let minGap       = Infinity;
+  for (let i = 1; i < sorted.length; i++) minGap = Math.min(minGap, sorted[i] - sorted[i - 1]);
+  const isConnected = minGap <= 1;
+  const freq = {};
+  ranks.forEach(r => freq[r] = (freq[r] || 0) + 1);
+  const isPaired = Object.values(freq).some(c => c >= 2);
+
+  let h = (highCount / board.length) * 0.60; // high-card density
+  if (isConnected)  h += 0.15;               // connected board → more combos for villain
+  if (!isPaired)    h += 0.05;               // unpaired → villain has more two-pair combos
+  return Math.min(1, h);
+}
+
+
+function computeMadeStrength(rawEval7, board) {
+  const haz     = boardHazard(board);
+  const penalty = haz * 0.03 * (1 - rawEval7);
+  return Math.max(0, rawEval7 - penalty);
+}
+
+
+function computeProjectedRawScore(madeStrength, potentialStrength) {
+  const potWeight = 0.35 * (1 - madeStrength);
+  return Math.min(1, madeStrength + potentialStrength * potWeight);
+}
+
+
+/* ---- core/range_matrix.js ---- */
+
+/* core/range_matrix.js — 169 matrix, draw classif, range stats. Deps: utils, strength, texture, position */
+
+function classifyPotential(hand, board) {
+  if (board.length < 3) return 0;
+  // バグ修正: 以前はboard.length<3のガードしかなく、リバー(5枚)でも
+  // フロップ/ターンと同じロジックでpotentialStrengthを計算していた。
+  // リバーは次のカードが来ないため「ドローの伸びしろ」という概念自体が
+  // 存在せず、常に0であるべき。
+  if (board.length >= 5) return 0;
+
+  // ── Flush draw potential ──
+  // Suited hands only: hand[2] === 's'
+  const isSuited = hand[2] === 's';
+  let hasFlushDraw = false;
+  if (isSuited) {
+    // Find which suit this hand would be — we don't know the specific suit here,
+    // so we check the most common suit on the board (proxy for flush draw presence)
+    const suitCounts = {};
+    board.forEach(c => suitCounts[c[1]] = (suitCounts[c[1]] || 0) + 1);
+    const maxSuitOnBoard = Math.max(...Object.values(suitCounts));
+    // バグ修正: maxSuitOnBoard>=2なら常に「ドロー」として+0.45していたが、
+    // board側に既に3枚以上同スートがある場合、スーテッドハンド（2枚）と合わせて
+    // 5枚以上になり、フラッシュは既に完成している（ドローではない）。
+    // 例: 4-flushボード+スーテッドハンド = ロイヤル/フラッシュ完成なのに
+    // 「まだドロー中」として二重にpotentialを加算していた。
+    // → ちょうど2枚（=まだ1枚足りない、本物のドロー）の時だけ加算する。
+    hasFlushDraw = maxSuitOnBoard === 2;
+  }
+
+  // ── Straight draw potential ──
+  // Use hand ranks + board ranks; check for 4-card straight draws
+  const ri1 = RANK_IDX[hand[0]];
+  const ri2 = hand[1] && hand[1] !== 's' && hand[1] !== 'o' ? RANK_IDX[hand[1]] : null;
+  const boardRanks = board.map(c => RANK_IDX[c[0]]);
+  const allRanks = ri2 !== null
+    ? [...new Set([ri1, ri2, ...boardRanks])].sort((a, b) => a - b)
+    : [...new Set([ri1, ...boardRanks])].sort((a, b) => a - b);
+
+  let hasOESD = false;
+  let hasGSD  = false;
+
+  // バグ修正: allRanks内に「5枚連続」＝完成済みストレートが既に存在する場合、
+  // その中の4枚部分集合が偶然OESDパターン（span===3）に一致してしまい、
+  // 「役が完成しているのに、さらにドローの伸びしろがある」という
+  // 二重計上バグが起きていた（例: J-Q-A盤面でK-Tsが完成ブロードウェイなのに
+  // OESD+0.40が上乗せされ、最終スコアが閾値をまたいでhandNameが誤表示される）。
+  // → 5枚連続が既に成立している場合は、それはmadeStrength側の仕事なので
+  //   ここでは追加のOESD/GSD potentialを与えない。
+  // ホイール(A-2-3-4-5)はAceがlow側にも回るため、Aceを13として扱う別配列でも判定する。
+  const straightCheckRanks = allRanks[0] === 0 ? [...allRanks, 13] : allRanks;
+  let hasMadeStraight = false;
+  for (let k = 0; k <= straightCheckRanks.length - 5; k++) {
+    if (straightCheckRanks[k + 4] - straightCheckRanks[k] === 4) { hasMadeStraight = true; break; }
+  }
+
+  if (!hasMadeStraight) {
+    for (let k = 0; k <= allRanks.length - 4; k++) {
+      const span = allRanks[k + 3] - allRanks[k];
+      if (span === 3) { hasOESD = true; break; }
+      if (span === 4) hasGSD = true;
+    }
+  }
+
+  // ── Score ──
+  // FD  = 0.45 (9 outs), OESD = 0.40 (8 outs), GSD = 0.20 (4 outs)
+  // Combos: FD+OESD can coexist → cap at 0.85
+  let potential = 0;
+  if (hasFlushDraw) potential += 0.45;
+  if (hasOESD)      potential += 0.40;
+  else if (hasGSD)  potential += 0.20;
+
+  return Math.min(0.85, potential);
+}
+
+
+function classifyDraw(hand, board) {
+  if (board.length < 3) return null;
+  // バグ修正: 同上。リバー(5枚)ではドロー概念自体が存在しないため、
+  // FD/OESD/GSD/BD-FDのようなタグを一切付けない。
+  if (board.length >= 5) return null;
+
+  // hand format: "AA" (pair), "AKs" (suited), "KAo" (offsuit)
+  // hand[0] = rank1, hand[1] = rank2 (or 2nd rank char for pairs = same as [0])
+  // hand[2] = 's' | 'o' | undefined (pairs have no suffix)
+  const ri1 = RANK_IDX[hand[0]];
+  // For pairs: hand[1] is the same rank letter, not a suit
+  const ri2 = RANK_IDX[hand[1]]; // always a rank index (A-2)
+  const boardRanks = board.map(c => RANK_IDX[c[0]]).sort((a, b) => a - b);
+  const allRanks = [...new Set([ri1, ri2, ...boardRanks])].sort((a, b) => a - b);
+
+  // ── Straight draw checks ──
+  // バグ修正: classifyPotentialと同様、5枚連続（完成済みストレート）が
+  // 既に存在する場合は、それを「ドロー」として二重にタグ付けしない。
+  // ホイール(A-2-3-4-5)はAceをlow(13扱い)にした配列でも判定する。
+  const straightCheckRanks = allRanks[0] === 0 ? [...allRanks, 13] : allRanks;
+  let hasMadeStraight = false;
+  for (let k = 0; k <= straightCheckRanks.length - 5; k++) {
+    if (straightCheckRanks[k + 4] - straightCheckRanks[k] === 4) { hasMadeStraight = true; break; }
+  }
+
+  if (!hasMadeStraight) {
+    // OESD: 4 cards spanning exactly 3 ranks (e.g. 5678)
+    for (let k = 0; k <= allRanks.length - 4; k++) {
+      if (allRanks[k + 3] - allRanks[k] === 3) {
+        return 'OESD';
+      }
+    }
+
+    // GSD: 4 cards spanning exactly 4 ranks with one gap (e.g. 5679)
+    for (let k = 0; k <= allRanks.length - 4; k++) {
+      if (allRanks[k + 3] - allRanks[k] === 4) {
+        return 'GSD';
+      }
+    }
+  }
+
+  // ── Flush draw checks (suited hands only) ──
+  // hand[2] === 's' means the hand notation is suited; pair hands have no [2]
+  const isSuited = hand[2] === 's';
+  if (isSuited) {
+    // We don't know the exact suit of the hand in the 169 canonical form,
+    // but we know suited hands share one suit. Use board's most frequent suit
+    // as a proxy: if the board has 2+ of the same suit, a suited hand will
+    // have FD potential for that suit combination.
+    const suitCounts = {};
+    board.forEach(c => suitCounts[c[1]] = (suitCounts[c[1]] || 0) + 1);
+    const maxSuitCount = Math.max(...Object.values(suitCounts));
+    // バグ修正: board側に既に3枚以上同スートがあれば、スーテッドハンド(2枚)と
+    // 合わせて5枚以上=フラッシュは既に完成しておりドローではない。
+    // 「まだ1枚足りない」ちょうど2枚の時だけFDタグを付ける。
+    if (maxSuitCount === 2) return 'FD';
+    if (maxSuitCount === 1) return 'BD-FD';
+  }
+
+  return null;
+}
+
+
+function eval169(board, hero) {
+  const results = [];
+  const boardSet = new Set(board);
+  // Hero cards are removed from the available deck
+  const heroSet  = new Set(hero || []);
+  const deadSet  = new Set([...boardSet, ...heroSet]);
+
+  for (let i = 0; i < 13; i++) {
+    for (let j = 0; j < 13; j++) {
+      const r1 = RANKS[i];
+      const r2 = RANKS[j];
+      let hand, evals = [], activeCombos = 0;
+
+      if (i === j) {
+        // Pair
+        hand = r1 + r2;
+        for (let s1 = 0; s1 < 4; s1++) {
+          for (let s2 = s1 + 1; s2 < 4; s2++) {
+            const c1 = r1 + SUITS[s1];
+            const c2 = r1 + SUITS[s2];
+            if (!deadSet.has(c1) && !deadSet.has(c2)) {
+              activeCombos++;
+              evals.push(evaluate7([c1, c2, ...board]));
+            }
+          }
+        }
+      } else if (i < j) {
+        // Suited
+        hand = r1 + r2 + 's';
+        for (let s = 0; s < 4; s++) {
+          const c1 = r1 + SUITS[s];
+          const c2 = r2 + SUITS[s];
+          if (!deadSet.has(c1) && !deadSet.has(c2)) {
+            activeCombos++;
+            evals.push(evaluate7([c1, c2, ...board]));
+          }
+        }
+      } else {
+        // Offsuit
+        hand = r2 + r1 + 'o';
+        for (let s1 = 0; s1 < 4; s1++) {
+          for (let s2 = 0; s2 < 4; s2++) {
+            if (s1 === s2) continue;
+            const c1 = r2 + SUITS[s1];
+            const c2 = r1 + SUITS[s2];
+            if (!deadSet.has(c1) && !deadSet.has(c2)) {
+              activeCombos++;
+              evals.push(evaluate7([c1, c2, ...board]));
+            }
+          }
+        }
+      }
+
+      const totalCombos = i === j ? 6 : (i < j ? 4 : 12);
+
+      // ── 代表コンボ（最高スコア）を選ぶ ──
+      // 設計リファクタ（v3.7）: 以前は数値スコアの配列からMath.maxで
+      // 最高値を取り、その数値からgetHandName()で役名を「逆算」していた。
+      // これはボード補正やポテンシャル加算で数値が閾値を跨ぐたびに
+      // 役名がズレるバグの温床だった（ロイヤル取り逃がし・トリップスが
+      // ストレート扱い等、いずれもこの1session内で発見・修正済み）。
+      // 今は evaluate7() が判定した「本物のカテゴリ」をそのまま運ぶため、
+      // 数値がどれだけ揺れても「スコアと役名が食い違う」バグは構造上発生しない
+      // （detectHandCategory自体の役判定ロジックが誤っていれば話は別）。
+      let best = null;
+      for (const e of evals) {
+        if (!best || e.score > best.score) best = e;
+      }
+      const rawEval7 = best ? best.score : 0;
+
+      const potStrength = classifyPotential(hand, board);
+      const madeStr     = computeMadeStrength(rawEval7, board);
+      const rawScore    = computeProjectedRawScore(madeStr, potStrength);
+
+      // ── Live Combo数 ──
+      // バグ修正: activeCombosは「dead cardでブロックされていないコンボ数」であって、
+      // 「代表コンボと同じ役に到達したコンボ数」ではない。通常スートは対称なので
+      // 問題にならないが、ボード自体に濃いフラッシュ関連（3+同スート等）がある場合、
+      // スーテッドハンド4通りのうち実際にボードと同スートが揃うのは1通りだけ、
+      // というケースが起きる（例: 4-flushボード+スーテッドハンド=ロイヤルは
+      // 実質1コンボしかないのに、activeCombosは4のまま＝表示上「Live: 4」の誤表示）。
+      // 代表コンボの category と直接一致するコンボだけを数える（スコアの逆算比較ではない）。
+      const topClassCombos = best ? evals.filter(e => e.category === best.category).length : 0;
+
+      results.push({
+        hand:             hand,
+        rawScore:         rawScore,
+        madeStrength:     madeStr,
+        potentialStrength: potStrength,
+        class:            classifyHandClass(rawScore),
+        handName:         best ? best.categoryName : 'HIGH CARD', // ← getHandName()による逆算をやめ、判定済みcategoryをそのまま使う
+        activeCombos:     activeCombos,
+        topClassCombos:   topClassCombos,
+        totalCombos:      totalCombos,
+        potential:        potStrength,    // alias: UI/rangeEngine との互換
+        drawType:         classifyDraw(hand, board),
+        outs:             Math.round(potStrength * 20) // potStrength = outs/20 から逆算
+      });
+    }
+  }
+
+  return results;
+}
+
+
+function evalRange169(board, hero, context) {
+  const raw = eval169(board, hero); // hero passed for removal
+  return raw.map(item => ({
+    hand:              item.hand,
+    rawScore:          item.rawScore,
+    madeStrength:      item.madeStrength,
+    potentialStrength: item.potentialStrength,
+    potential:         item.potential,    // alias (UI互換)
+    density:           item.totalCombos > 0 ? item.activeCombos / item.totalCombos : 0,
+    class:             item.class,
+    handName:          item.handName,
+    drawType:          item.drawType,     // UI: renderNuts で使用
+    outs:              item.outs,         // UI: アウツ表示で使用
+    topClassCombos:    item.topClassCombos, // UI: renderNutsのLive Combo表示で使用（同じ役に到達したコンボ数）
+    totalCombos:       item.totalCombos     // UI: renderNutsでのbaseTotal算出に使用
+  }));
+}
+
+
+function computeRangeStats(rangeMatrix) {
+  if (!rangeMatrix || rangeMatrix.length === 0) {
+    return { madeAvg: 0, potAvg: 0, drawHeavy: 0, madeSpread: 0 };
+  }
+  const total   = rangeMatrix.length;
+  const madeAvg = rangeMatrix.reduce((s, h) => s + (h.madeStrength      || 0), 0) / total;
+  const potAvg  = rangeMatrix.reduce((s, h) => s + (h.potentialStrength || 0), 0) / total;
+  const drawHeavy = rangeMatrix.filter(h => (h.potentialStrength || 0) > 0.15).length / total;
+
+  const sortedMade = [...rangeMatrix].sort((a, b) => b.madeStrength - a.madeStrength);
+  const n25 = Math.max(1, Math.floor(total * 0.25));
+  const topMade = sortedMade.slice(0,  n25).reduce((s, h) => s + h.madeStrength, 0) / n25;
+  const botMade = sortedMade.slice(-n25).reduce((s, h) => s + h.madeStrength, 0) / n25;
+  const madeSpread = topMade - botMade;
+
+  return { madeAvg, potAvg, drawHeavy, madeSpread };
+}
+
+
+/* ══════════════════════════════
+   computeStructureFeatures
+   5軸すべて 0-100 (整数)
+
+   データソース別に独立した指標を計算する。
+   PokerのGTOや戦略的判断は含まない — 純粋な構造統計。
+
+   Entropy      rawScore分布 → 複雑さ
+                0=全ハンドが同一強度  100=あらゆる強さが均等に分布
+   Polarization rawScore分布 → 強弱差
+                0=上下25%の差なし    100=上位と下位が最大乖離
+   Coverage     density      → レンジの広さ
+                0=全コンボデッド      100=169ハンド全生存
+   DrawStructure drawType    → ドロー構造  (UI表示名: Draw Pressure)
+                0=ドロー要素皆無      100=複合ドローが充満
+   Dominance    rawScore分布 → Gini不平等度
+                0=全ハンドの強さが均等  100=一部ハンドが格差を独占
+                ← モノトーンボードで高い、クアッズボードで低い
+══════════════════════════════ */
+function computeStructureFeatures(rangeMatrix) {
+  const live = rangeMatrix.filter(h => h.density > 0);
+  if (live.length === 0) {
+    return { entropy: 0, polarization: 0, coverage: 0, drawStructure: 0, dominance: 0 };
+  }
+
+  const n      = live.length;
+  const scores = live.map(h => h.rawScore);
+  const total  = scores.reduce((s, v) => s + v, 0);
+
+  // A. Entropy（rawScore → 複雑さ）
+  // Shannon entropy を 20ビンで計算し、log2(20) で正規化
+  const BIN  = 20;
+  const bins = new Array(BIN).fill(0);
+  scores.forEach(s => bins[Math.min(BIN - 1, Math.floor(s * BIN))]++);
+  const entropyRaw = -bins.reduce((sum, c) => {
+    if (!c) return sum;
+    const p = c / n;
+    return sum + p * Math.log2(p);
+  }, 0);
+  const entropy = Math.round((entropyRaw / Math.log2(BIN)) * 100);
+
+  // B. Polarization（rawScore → 強弱差）
+  // 上位25%平均 - 下位25%平均
+  const sorted = [...scores].sort((a, b) => b - a);
+  const q25    = Math.max(1, Math.floor(n * 0.25));
+  const topAvg = sorted.slice(0, q25).reduce((s, v) => s + v, 0) / q25;
+  const botAvg = sorted.slice(-q25).reduce((s, v) => s + v, 0) / q25;
+  const polarization = Math.round((topAvg - botAvg) * 100);
+
+  // C. Coverage（density → レンジの広さ）
+  // バグ修正: 従来は「169ハンドのうち生存コンボが1つでもあるか」を数えていたが、
+  // 同ランクが3枚以上ボードに出るような極端なケース以外ではほぼ全ハンドが
+  // 多少なりとも生き残るため、実質常に100固定になっていた
+  // （レーダーのCOV軸が常に最大表示になる原因）。
+  // → 169ハンド全体の平均density（生存コンボの割合）に変更し、
+  //   カード除去の影響量を連続的に反映するようにする。
+  const avgDensityAll = rangeMatrix.reduce((s, h) => s + (h.density || 0), 0) / 169;
+  const coverage = Math.round(avgDensityAll * 100);
+
+  // D. DrawStructure（drawType → ドロー構造）
+  // LiveDrawRatio×0.4 + DrawComplexity×0.4 + DrawOverlap×0.2
+  const withDraw      = live.filter(h => h.drawType && h.drawType !== '--');
+  const liveDrawRatio = withDraw.length / n;
+  const drawTypes     = new Set(withDraw.map(h => h.drawType));
+  const drawComplexity = drawTypes.size / 4; // FD/OESD/GSD/BD-FD → max 4種
+  const fdSet   = new Set(withDraw.filter(h => h.drawType.includes('FD')).map(h => h.hand));
+  const sdSet   = new Set(withDraw.filter(h => h.drawType === 'OESD' || h.drawType === 'GSD').map(h => h.hand));
+  const drawOverlap   = [...fdSet].filter(h => sdSet.has(h)).length / n;
+  const drawStructure = Math.round(
+    clamp01(liveDrawRatio * 0.40 + drawComplexity * 0.40 + drawOverlap * 0.20) * 100
+  );
+
+  // E. Dominance（rawScore → Gini不平等度）
+  // Gini係数: 0=完全均等、1=完全集中
+  // モノトーンボードで高い（フラッシュ持ちだけが圧倒的強さ）
+  // クアッズボードで低い（ほぼ全ハンドがフルハウス帯に密集）
+  const ascended = [...scores].sort((a, b) => a - b);
+  let giniNum = 0;
+  ascended.forEach((v, i) => { giniNum += (2 * (i + 1) - n - 1) * v; });
+  const dominance = Math.round(
+    (total > 0 ? Math.max(0, giniNum / (n * total)) : 0) * 100
+  );
+
+  return { entropy, polarization, coverage, drawStructure, dominance };
+}
+
+
+function computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix) {
+  // Position profiles
+  const heroProf    = getPositionProfile(heroPos    || 'BTN');
+  const villainProf = getPositionProfile(villainPos || 'BB');
+
+  // Position-based base (hero openWidth vs villain defensibility)
+  const heroBase    = (heroProf.openWidth    || 1.0) * (heroProf.adjustmentFactor    || 1.0);
+  const villainBase = (villainProf.openWidth || 1.0) * (villainProf.adjustmentFactor || 1.0);
+  let posAdv = (heroBase - villainBase) / Math.max(heroBase, villainBase, 0.01); // -1..+1 approx
+
+  // Board modifier
+  if (board && board.length >= 3) {
+    const tex  = calcBoardTexture(board);
+    const rank = classifyRankStructure(board);
+    const conn = classifyConnectivity(board);
+    const pair = classifyPairStructure(board);
+
+    if (rank === 'HIGH' && conn === 'LOW_CONNECTED') posAdv += 0.18;
+    if (tex.texture === 'DRY' || tex.texture === 'VERY_DRY') posAdv += 0.10;
+    if (tex.texture === 'WET' || tex.texture === 'VERY_WET') posAdv -= 0.10;
+    if (conn === 'CONNECTED' || conn === 'HIGHLY_CONNECTED') posAdv -= 0.12;
+    if (pair === 'PAIRED' || pair === 'DOUBLE_PAIRED') posAdv -= 0.12;
+    if (rank === 'LOW') posAdv -= 0.14;
+  }
+
+  // Top-range score differential (upper 30% of rangeMatrix)
+  if (rangeMatrix && rangeMatrix.length > 0) {
+    const sorted  = [...rangeMatrix].sort((a, b) => b.rawScore - a.rawScore);
+    const topN    = Math.max(1, Math.floor(sorted.length * 0.30));
+    const topAvg  = sorted.slice(0, topN).reduce((s, h) => s + h.rawScore, 0) / topN;
+    // Shift toward hero if topAvg is high (strong board for aggressor)
+    const scoreShift = (topAvg - 0.5) * 0.20;
+    posAdv += scoreShift;
+  }
+
+  return Math.max(-1, Math.min(1, posAdv));
+}
+
+
+function computeNutAdvantage(board, heroPos, villainPos, rangeMatrix) {
+  const heroProf    = getPositionProfile(heroPos    || 'BTN');
+  const villainProf = getPositionProfile(villainPos || 'BB');
+
+  const heroDens    = heroProf.nutDensity    || 1.0;
+  const villainDens = villainProf.nutDensity || 1.0;
+
+  // Nut threshold: top 8% of rangeMatrix rawScores
+  let nutDensity  = 0;
+  let nutCoverage = 0;
+
+  if (rangeMatrix && rangeMatrix.length > 0) {
+    const sorted   = [...rangeMatrix].sort((a, b) => b.rawScore - a.rawScore);
+    const nutCutoff = sorted[Math.floor(sorted.length * 0.08)]?.rawScore ?? 0.80;
+    const nutHands  = sorted.filter(h => h.rawScore >= nutCutoff);
+    nutDensity  = nutHands.length / rangeMatrix.length;
+    // coverage: fraction of nut hands that are active (density field)
+    const activeDens = nutHands.reduce((s, h) => s + (h.density || 0), 0);
+    nutCoverage = nutHands.length > 0 ? activeDens / nutHands.length : 0;
+  }
+
+  // Position-based nut advantage
+  const rawAdv = (heroDens - villainDens) / Math.max(heroDens, villainDens, 0.01);
+  // Board: high-card boards favor BTN nut region, low boards favor BB
+  let boardNutShift = 0;
+  if (board && board.length >= 3) {
+    const rank = classifyRankStructure(board);
+    if (rank === 'HIGH') boardNutShift += 0.12;
+    if (rank === 'LOW')  boardNutShift -= 0.15;
+  }
+
+  const advantage = Math.max(-1, Math.min(1, rawAdv + boardNutShift));
+
+  return { advantage, density: nutDensity, coverage: nutCoverage };
+}
+
+
+/* ---- core/board_intel.js ---- */
+
+/* core/board_intel.js — board features, range dynamics, aggression. Deps: texture, position */
+
+function extractBoardFeatures(board, context) {
+  // ─ Single source of truth: texture ─
+  const textureData = calcBoardTexture(board);
+  
+  // ─ All derived from this single texture ─
+  const connectivity = classifyConnectivity(board);
+  const flushPressure = classifyFlushPressure(board);
+  const pairStructure = classifyPairStructure(board);
+  const rankStructure = classifyRankStructure(board);
+  
+  // ─ Now rangeDynamics uses Position Matrix + board ─
+  const rangeDynamicsResult = calcRangeDynamics(
+    textureData.texture,
+    connectivity,
+    rankStructure,
+    pairStructure,
+    context  // Includes heroPos, villainPos, archetype
+  );
+  
+  let rangeDynamics = rangeDynamicsResult.label;
+  
+  let nutDynamics = classifyNutDynamics(board, context);
+  
+  // ─ Phase 4A: Apply Archetype to Range/Nut (upstream) ─
+  const archetype = context.archetype || 'STANDARD';
+  rangeDynamics = applyArchetypeToRangeDynamics(rangeDynamics, archetype);
+  nutDynamics = applyArchetypeToNutDynamics(nutDynamics, archetype);
+  
+  const aggressionSignal = deriveAggressionSignal({
+    texture: textureData.texture,
+    connectivity,
+    flushPressure,
+    pairStructure,
+    rankStructure,
+    rangeDynamics,
+    nutDynamics
+  });
+
+  return {
+    texture: textureData.texture,
+    connectivity,
+    flushPressure,
+    pairStructure,
+    rankStructure,
+    rangeDynamics,
+    nutDynamics,
+    aggressionSignal,
+    wetnessScore: textureData.wetnessScore,
+    connectivityScore: textureData.connectivityScore,
+    flushScore: textureData.flushScore,
+    archetype: archetype // Carry archetype forward for interpretation
+  };
+}
+
+
+function calcRangeDynamics(texture, connectivity, rankStructure, pairStructure, context) {
+  // Phase 4B: Position Matrix replaces discrete labels
+  // Extract positions from context
+  const heroPos = context.heroPos || 'BTN';
+  const villainPos = context.villainPos || 'BB';
+
+  // ─ Get position-based advantage scores (0.0-1.0) ─
+  const positionAdvantage = getOrderedPositionAdvantage(heroPos, villainPos);
+  
+  // ─ Physical layer: texture + connectivity ─
+  const isHighCardAdvantage = rankStructure === 'HIGH' && connectivity === 'LOW_CONNECTED';
+  const isDrawHeavy = texture === 'VERY_WET' || texture === 'WET';
+  const isConnected = connectivity === 'CONNECTED' || connectivity === 'HIGHLY_CONNECTED';
+  const isPaired = pairStructure === 'PAIRED' || pairStructure === 'DOUBLE_PAIRED' || pairStructure === 'TRIPS_BOARD';
+
+  // ─ Board adjustments to position advantage ─
+  let boardModifier = 1.0;
+
+  if (isHighCardAdvantage) {
+    boardModifier += 0.2; // Hero gains on high cards
+  }
+
+  if (isDrawHeavy) {
+    boardModifier -= 0.1; // Villain (typically in-position/defensive) gains on draws
+  }
+
+  if (isConnected) {
+    boardModifier -= 0.15; // Villain's connected ranges strengthen
+  }
+
+  if (isPaired) {
+    boardModifier -= 0.15; // Villain can trap with sets
+  }
+
+  if (texture === 'DRY' || texture === 'VERY_DRY') {
+    boardModifier += 0.12; // Hero can pressure
+  }
+
+  // ─ Calculate final range advantage ─
+  const rangeAdvantage = clamp01(positionAdvantage * boardModifier);
+
+  // ─ Convert to discrete label for backward compatibility (optional) ─
+  // But store the continuous score
+  let rangeDynamics;
+  if (rangeAdvantage > 0.6) {
+    rangeDynamics = 'RANGE_ADV_HERO';
+  } else if (rangeAdvantage < 0.4) {
+    rangeDynamics = 'RANGE_ADV_VILLAIN';
+  } else {
+    rangeDynamics = 'NEUTRAL';
+  }
+
+  return {
+    label: rangeDynamics,
+    score: rangeAdvantage,
+    heroScore: rangeAdvantage,
+    villainScore: 1.0 - rangeAdvantage
+  };
+}
+
+
+function classifyNutDynamics(board, context) {
+  const hasAce = board.some(c => c[0] === 'A');
+  const hasKing = board.some(c => c[0] === 'K');
+  const connectivity = classifyConnectivity(board);
+  const pairStruct = classifyPairStructure(board);
+
+  // バグ修正: context.positions('BTN_VS_BB'等の文字列)を見ていたが、
+  // 実際にUIから渡されるcontextはcontext.heroPos/context.villainPosのみで、
+  // context.positionsはWorkerのフォールバックデフォルトにしか存在しない。
+  // そのため実運用では常にundefinedとの比較になり、
+  // 常にNEUTRAL/NUT_ADV_VILLAIN固定になってしまっていた（実際のポジションを無視）。
+  const isBtnVsBb = context.heroPos === 'BTN' && context.villainPos === 'BB';
+
+  if ((hasAce || hasKing) && connectivity === 'LOW_CONNECTED' && pairStruct === 'UNPAIRED') {
+    return isBtnVsBb ? 'NUT_ADV_HERO' : 'NEUTRAL';
+  }
+
+  if (connectivity === 'HIGHLY_CONNECTED' && (pairStruct === 'PAIRED' || pairStruct === 'DOUBLE_PAIRED')) {
+    return isBtnVsBb ? 'NEUTRAL' : 'NUT_ADV_VILLAIN';
+  }
+
+  return 'NEUTRAL';
+}
+
+
+function deriveAggressionSignal(features) {
+  const { texture, connectivity, flushPressure, pairStructure, rankStructure, rangeDynamics, nutDynamics } = features;
+
+  if (rangeDynamics === 'RANGE_ADV_HERO' && nutDynamics === 'NUT_ADV_HERO' && (rankStructure === 'HIGH' || texture === 'DRY' || texture === 'VERY_DRY')) {
+    return 'ATTACK';
+  }
+
+  if (texture === 'VERY_WET' && connectivity === 'HIGHLY_CONNECTED' && (flushPressure === 'THREE_FLUSH' || flushPressure === 'FOUR_FLUSH')) {
+    return 'CAUTION';
+  }
+
+  if (rangeDynamics === 'RANGE_ADV_VILLAIN' && nutDynamics === 'NUT_ADV_VILLAIN') {
+    return 'DEFEND';
+  }
+
+  if (pairStructure === 'PAIRED' || pairStructure === 'DOUBLE_PAIRED' || pairStructure === 'TRIPS_BOARD') {
+    return 'POLARIZE';
+  }
+
+  return 'NEUTRAL';
+}
+
+
+/* ---- core/interpretations.js ---- */
+
+/* core/interpretations.js — INTERP_META, confidence, derivation. Deps: utils, position */
+
+const INTERP_META = {
+
+  // ── DRAW ──
+  MAX_DRAW_PRESSURE: {
+    category: 'DRAW', importance: 0.85,
+    confidence_rules: [
+      { w: 0.40, test: f => f.texture === 'VERY_WET' },
+      { w: 0.25, test: f => f.connectivity === 'HIGHLY_CONNECTED' },
+      { w: 0.20, test: f => f.flushPressure === 'THREE_FLUSH' || f.flushPressure === 'FOUR_FLUSH' },
+      { w: 0.15, test: f => (f.rangeStats?.drawHeavy || 0) > 0.60 } // rangeStats: 60%+ of hands have draw potential
+    ]
+  },
+
+  HIGH_DRAW_PRESSURE: {
+    category: 'DRAW', importance: 0.70,
+    confidence_rules: [
+      { w: 0.40, test: f => f.texture === 'WET' },
+      { w: 0.25, test: f => f.connectivity === 'CONNECTED' || f.connectivity === 'HIGHLY_CONNECTED' },
+      { w: 0.20, test: f => f.flushPressure === 'TWO_FLUSH' || f.flushPressure === 'THREE_FLUSH' },
+      { w: 0.15, test: f => (f.rangeStats?.drawHeavy || 0) > 0.35 } // rangeStats: 35%+ of hands draw-heavy
+    ]
+  },
+
+  LOW_DRAW_PRESSURE: {
+    category: 'DRAW', importance: 0.30, // rainbow/dry is self-evident; low narrative value
+    confidence_rules: [
+      { w: 0.60, test: f => f.texture === 'DRY' || f.texture === 'VERY_DRY' },
+      { w: 0.40, test: f => f.flushPressure === 'RAINBOW' }
+    ]
+  },
+
+  FLUSH_THREAT_ACTIVE: {
+    category: 'DRAW', importance: 0.80,
+    confidence_rules: [
+      { w: 0.70, test: f => f.flushPressure === 'THREE_FLUSH' },
+      { w: 0.30, test: f => f.texture === 'WET' || f.texture === 'VERY_WET' }
+    ]
+  },
+
+  FLUSH_COMPLETED_BOARD: {
+    category: 'DRAW', importance: 0.90, // flush live = immediate decision impact
+    confidence_rules: [
+      { w: 0.80, test: f => f.flushPressure === 'FOUR_FLUSH' },
+      { w: 0.20, test: f => (f.flushScore || 0) >= 80 }
+    ]
+  },
+
+  STRAIGHT_THREAT_ACTIVE: {
+    category: 'DRAW', importance: 0.75,
+    confidence_rules: [
+      { w: 0.60, test: f => f.connectivity === 'HIGHLY_CONNECTED' },
+      { w: 0.40, test: f => (f.connectivityScore || 0) >= 70 }
+    ]
+  },
+
+  MULTI_DRAW_BOARD: {
+    category: 'DRAW', importance: 0.80,
+    // Needs both connectivity AND flush; both rules carry equal weight
+    confidence_rules: [
+      { w: 0.50, test: f => f.connectivity === 'CONNECTED' || f.connectivity === 'HIGHLY_CONNECTED' },
+      { w: 0.50, test: f => f.flushPressure === 'TWO_FLUSH' || f.flushPressure === 'THREE_FLUSH' }
+    ]
+  },
+
+  // ── NUT ──
+  NUT_REGION_NARROW: {
+    category: 'NUT', importance: 0.80,
+    confidence_rules: [
+      { w: 0.50, test: f => f.pairStructure === 'DOUBLE_PAIRED' },
+      { w: 0.20, test: f => f.nutAdvantage && Math.abs(f.nutAdvantage.advantage) > 0.2 },
+      { w: 0.15, test: f => f.rankStructure === 'HIGH' },
+      { w: 0.15, test: f => (f.rangeStats?.madeSpread || 0) > 0.18 } // wide spread = nut hands much stronger than weak hands
+    ]
+  },
+
+  NUT_REGION_POLARIZED: {
+    category: 'NUT', importance: 0.85,
+    confidence_rules: [
+      { w: 0.55, test: f => f.pairStructure === 'TRIPS_BOARD' },
+      { w: 0.20, test: f => f.nutAdvantage && Math.abs(f.nutAdvantage.advantage) > 0.3 },
+      { w: 0.15, test: f => f.rankStructure === 'HIGH' || f.rankStructure === 'LOW' },
+      { w: 0.10, test: f => (f.rangeStats?.madeSpread || 0) > 0.22 } // extreme spread = very polarized
+    ]
+  },
+
+  BOARD_LOCKED: {
+    category: 'NUT', importance: 0.85, // quads board is unusual, not always the key decision factor
+    confidence_rules: [
+      { w: 0.90, test: f => f.pairStructure === 'QUADS_BOARD' },
+      { w: 0.10, test: f => (f.wetnessScore || 0) <= 20 }
+    ]
+  },
+
+  // ── RANGE ──
+  HIGH_CARD_LEVERAGE: {
+    category: 'RANGE', importance: 0.95, // most actionable strategic signal
+    confidence_rules: [
+      { w: 0.35, test: f => f.rankStructure === 'HIGH' },           // primary evidence
+      { w: 0.25, test: f => f.rangeDynamics === 'RANGE_ADV_HERO' },
+      { w: 0.20, test: f => (f.rangeAdvantage || 0) > 0.2 },        // continuous corroboration
+      { w: 0.12, test: f => f.nutAdvantage && f.nutAdvantage.advantage > 0 },
+      { w: 0.08, test: f => f.texture === 'DRY' || f.texture === 'VERY_DRY' }
+    ]
+  },
+
+  LOW_BOARD_DEFENDER_EDGE: {
+    category: 'RANGE', importance: 0.75,
+    confidence_rules: [
+      { w: 0.40, test: f => f.rankStructure === 'LOW' },
+      { w: 0.35, test: f => f.rangeDynamics === 'RANGE_ADV_VILLAIN' },
+      { w: 0.25, test: f => (f.rangeAdvantage || 0) < -0.1 }
+    ]
+  },
+
+  // ── SIGNAL ──
+  BTN_FAVORS_AGGRESSION: {
+    category: 'SIGNAL', importance: 0.85,
+    confidence_rules: [
+      { w: 0.40, test: f => f.aggressionSignal === 'ATTACK' },
+      { w: 0.25, test: f => f.rangeDynamics === 'RANGE_ADV_HERO' },
+      { w: 0.20, test: f => f.nutDynamics === 'NUT_ADV_HERO' },
+      { w: 0.15, test: f => f.texture === 'DRY' || f.rankStructure === 'HIGH' }
+    ]
+  },
+
+  AGGRESSION_REQUIRES_DISCIPLINE: {
+    category: 'SIGNAL', importance: 0.70,
+    confidence_rules: [
+      { w: 0.45, test: f => f.aggressionSignal === 'CAUTION' },
+      { w: 0.30, test: f => f.texture === 'VERY_WET' || f.texture === 'WET' },
+      { w: 0.25, test: f => f.connectivity === 'HIGHLY_CONNECTED' }
+    ]
+  },
+
+  DEFENDER_CAN_RESIST: {
+    category: 'SIGNAL', importance: 0.65,
+    confidence_rules: [
+      { w: 0.45, test: f => f.aggressionSignal === 'DEFEND' },
+      { w: 0.30, test: f => f.rangeDynamics === 'RANGE_ADV_VILLAIN' },
+      { w: 0.25, test: f => f.rankStructure === 'LOW' }
+    ]
+  },
+
+  VALUE_BETTING_POLARIZED: {
+    category: 'SIGNAL', importance: 0.80,
+    confidence_rules: [
+      { w: 0.50, test: f => f.aggressionSignal === 'POLARIZE' },
+      { w: 0.30, test: f => f.pairStructure === 'PAIRED' || f.pairStructure === 'DOUBLE_PAIRED' },
+      { w: 0.20, test: f => f.nutAdvantage && Math.abs(f.nutAdvantage.advantage) > 0.25 }
+    ]
+  },
+
+  // ── RANGE-STAT derived (P1-D: rangeStats を使う新Interpretation) ──
+  // これらは盤面全体のmade/potential分布から導かれる
+  DRAW_HEAVY_RANGE: {
+    category: 'RANGE', importance: 0.75, // RANGEカテゴリ: レンジ分布の特性であってboard textureのDRAWではない
+    confidence_rules: [
+      { w: 0.55, test: f => (f.rangeStats?.drawHeavy || 0) > 0.50 },    // majority draw-heavy
+      { w: 0.30, test: f => (f.rangeStats?.potAvg    || 0) > 0.15 },    // range-wide potential
+      { w: 0.15, test: f => f.connectivity === 'CONNECTED' || f.connectivity === 'HIGHLY_CONNECTED' }
+    ]
+  },
+
+  MADE_STRENGTH_DOMINANT: {
+    category: 'RANGE', importance: 0.80,
+    confidence_rules: [
+      { w: 0.50, test: f => (f.rangeStats?.madeAvg   || 0) > 0.20 },    // above-average made strength
+      { w: 0.30, test: f => (f.rangeStats?.drawHeavy || 0) < 0.20 },    // few draws = made hands dominate
+      { w: 0.20, test: f => f.texture === 'DRY' || f.texture === 'VERY_DRY' }
+    ]
+  },
+
+  NEUTRAL: {
+    category: 'SIGNAL', importance: 0.0,
+    confidence_rules: []
+  }
+};
+
+
+const INTERP_WEIGHTS = {
+  MAX_DRAW_PRESSURE: 0.95,
+  HIGH_DRAW_PRESSURE: 0.75,
+  LOW_DRAW_PRESSURE: 0.30,
+
+  FLUSH_THREAT_ACTIVE: 0.80,
+  FLUSH_COMPLETED_BOARD: 0.90,
+
+  NUT_REGION_NARROW: 0.85,
+  NUT_REGION_POLARIZED: 0.88,
+  BOARD_LOCKED: 1.00,
+
+  HIGH_CARD_LEVERAGE: 0.70,
+  LOW_BOARD_DEFENDER_EDGE: 0.65,
+
+  STRAIGHT_THREAT_ACTIVE: 0.78,
+  MULTI_DRAW_BOARD: 0.82,
+
+  BTN_FAVORS_AGGRESSION: 0.74,
+  AGGRESSION_REQUIRES_DISCIPLINE: 0.68,
+  DEFENDER_CAN_RESIST: 0.60,
+  VALUE_BETTING_POLARIZED: 0.80,
+
+  DRAW_HEAVY_RANGE: 0.70,      // range-stat derived
+  MADE_STRENGTH_DOMINANT: 0.65,
+
+  NEUTRAL: 0.0
+};
+
+
+function computeConfidence(key, features) {
+  const meta = INTERP_META[key];
+  if (!meta || !meta.confidence_rules || meta.confidence_rules.length === 0) return 0.5;
+
+  const rules     = meta.confidence_rules;
+  const totalW    = rules.reduce((s, r) => s + r.w, 0);
+  let hitW = 0, hitCount = 0;
+  for (const r of rules) {
+    let pass = false;
+    try { pass = r.test(features); } catch { pass = false; }
+    if (pass) { hitW += r.w; hitCount++; }
+  }
+
+  const coverage = totalW > 0 ? hitW / totalW : 0;  // weighted ratio
+  const depth    = hitCount / rules.length;           // rule count ratio
+
+  return coverage * 0.7 + depth * 0.3;
+}
+
+
+function contextMultiplier(features) {
+  let m = 1.0;
+
+  if (features.texture === 'VERY_WET') m *= 1.15;
+  else if (features.texture === 'WET') m *= 1.08;
+  else if (features.texture === 'VERY_DRY') m *= 1.05;
+
+  if (features.connectivity === 'HIGHLY_CONNECTED') m *= 1.2;
+  else if (features.connectivity === 'CONNECTED') m *= 1.1;
+
+  if (features.pairStructure === 'DOUBLE_PAIRED') m *= 1.25;
+  else if (features.pairStructure === 'TRIPS_BOARD') m *= 1.2;
+
+  if (features.flushPressure === 'THREE_FLUSH') m *= 1.2;
+  else if (features.flushPressure === 'FOUR_FLUSH') m *= 1.25;
+
+  return m;
+}
+
+
+function structuralBonus(features, key) {
+  let b = 1.0;
+
+  if (key.includes('DRAW') && features.connectivity === 'HIGHLY_CONNECTED') {
+    b += 0.1;
+  }
+
+  if (key.includes('LEVERAGE') && features.rankStructure === 'HIGH') {
+    b += 0.08;
+  }
+
+  if (key.includes('NUT') && features.pairStructure !== 'UNPAIRED') {
+    b += 0.12;
+  }
+
+  if (key.includes('THREAT') && features.flushPressure !== 'RAINBOW') {
+    b += 0.06;
+  }
+
+  return Math.min(1.5, b); // cap at 1.5x
+}
+
+
+function deriveInterpretations(features) {
+  const base = [];
+
+  // ─ Texture layer ─
+  if (features.texture === 'VERY_WET') base.push('MAX_DRAW_PRESSURE');
+  else if (features.texture === 'WET') base.push('HIGH_DRAW_PRESSURE');
+  else if (features.texture === 'VERY_DRY') base.push('LOW_DRAW_PRESSURE');
+  else if (features.texture === 'DRY') base.push('LOW_DRAW_PRESSURE');
+
+  // ─ Flush pressure layer ─
+  if (features.flushPressure === 'THREE_FLUSH') base.push('FLUSH_THREAT_ACTIVE');
+  if (features.flushPressure === 'FOUR_FLUSH') base.push('FLUSH_COMPLETED_BOARD');
+
+  // ─ Pair structure layer ─
+  if (features.pairStructure === 'DOUBLE_PAIRED') base.push('NUT_REGION_NARROW');
+  if (features.pairStructure === 'TRIPS_BOARD') base.push('NUT_REGION_POLARIZED');
+  if (features.pairStructure === 'QUADS_BOARD') base.push('BOARD_LOCKED');
+
+  // ─ Rank + Range layer (NOW ARCHETYPE-MODULATED UPSTREAM) ─
+  if (features.rankStructure === 'HIGH' && features.rangeDynamics === 'RANGE_ADV_HERO') {
+    base.push('HIGH_CARD_LEVERAGE');
+  }
+  if (features.rankStructure === 'LOW' && features.rangeDynamics === 'RANGE_ADV_VILLAIN') {
+    base.push('LOW_BOARD_DEFENDER_EDGE');
+  }
+
+  // ─ Connectivity layer ─
+  if (features.connectivity === 'HIGHLY_CONNECTED') base.push('STRAIGHT_THREAT_ACTIVE');
+  if (features.connectivity === 'CONNECTED' && features.flushPressure === 'TWO_FLUSH') {
+    base.push('MULTI_DRAW_BOARD');
+  }
+
+  // ─ Aggression signal layer ─
+  if (features.aggressionSignal === 'ATTACK') base.push('BTN_FAVORS_AGGRESSION');
+  if (features.aggressionSignal === 'CAUTION') base.push('AGGRESSION_REQUIRES_DISCIPLINE');
+  if (features.aggressionSignal === 'DEFEND') base.push('DEFENDER_CAN_RESIST');
+  if (features.aggressionSignal === 'POLARIZE') base.push('VALUE_BETTING_POLARIZED');
+
+  // ─ Range-stat derived layer (P1-D: rangeStats) ─
+  const rs = features.rangeStats;
+  if (rs) {
+    if (rs.drawHeavy > 0.50) base.push('DRAW_HEAVY_RANGE');
+    if (rs.drawHeavy < 0.20 && rs.madeAvg > 0.18) base.push('MADE_STRENGTH_DOMINANT');
+  }
+
+  if (base.length === 0) base.push('NEUTRAL');
+
+  // ─ Score calculation ─
+  const m = contextMultiplier(features);
+  const archetype = features.archetype || 'STANDARD';
+
+  return base.map(key => {
+    const w = INTERP_WEIGHTS[key] ?? 0.5;
+    const b = structuralBonus(features, key);
+    let score = clamp01(w * m * b);
+
+    // ─ Phase 4A: Apply archetype bonus at interpretation generation time ─
+    score = applyArchetypeBonus(score, key, archetype);
+
+    // ─ P1: Confidence Layer ─
+    const confidence    = computeConfidence(key, features);
+    const importance    = INTERP_META[key]?.importance ?? 0.5;
+    const narrativeRank = score * confidence * importance;
+
+    return { key, score, confidence, importance, narrativeRank };
+  }).sort((a, b) => b.score - a.score); // Primary sort: score (HUD uses this order)
+                                        // Narrative re-sorts by narrativeRank internally
+}
+
+
+/* ---- core/narrative.js ---- */
+
+/* core/narrative.js — HUD, narrative, strategy profiles. Deps: utils, interpretations */
+
+const INTERP_META_BTN_VS_BB = {
+  MAX_DRAW_PRESSURE: { attack: -0.10, value: 0.00, bluff: -0.40, capped: 0.00 },
+  HIGH_DRAW_PRESSURE: { attack: -0.05, value: 0.05, bluff: -0.20, capped: 0.05 },
+  LOW_DRAW_PRESSURE: { attack: 0.15, value: 0.10, bluff: -0.15, capped: -0.05 },
+  FLUSH_THREAT_ACTIVE: { attack: -0.15, value: 0.10, bluff: -0.30, capped: 0.10 },
+  FLUSH_COMPLETED_BOARD: { attack: -0.20, value: 0.20, bluff: -0.35, capped: 0.15 },
+  NUT_REGION_NARROW: { attack: 0.10, value: 0.35, bluff: -0.25, capped: 0.20 },
+  NUT_REGION_POLARIZED: { attack: 0.05, value: 0.40, bluff: -0.30, capped: 0.25 },
+  BOARD_LOCKED: { attack: -0.25, value: 0.45, bluff: -0.40, capped: 0.35 },
+  HIGH_CARD_LEVERAGE: { attack: 0.30, value: 0.40, bluff: 0.10, capped: 0.00 },
+  LOW_BOARD_DEFENDER_EDGE: { attack: -0.20, value: 0.10, bluff: -0.10, capped: 0.15 },
+  STRAIGHT_THREAT_ACTIVE: { attack: -0.10, value: 0.05, bluff: -0.25, capped: 0.05 },
+  MULTI_DRAW_BOARD: { attack: -0.05, value: 0.00, bluff: -0.15, capped: 0.05 },
+  BTN_FAVORS_AGGRESSION: { attack: 0.50, value: 0.10, bluff: 0.20, capped: 0.00 },
+  AGGRESSION_REQUIRES_DISCIPLINE: { attack: -0.20, value: 0.15, bluff: -0.10, capped: 0.10 },
+  DEFENDER_CAN_RESIST: { attack: -0.30, value: 0.05, bluff: -0.20, capped: 0.15 },
+  VALUE_BETTING_POLARIZED: { attack: 0.00, value: 0.50, bluff: -0.20, capped: 0.30 },
+  DRAW_HEAVY_RANGE:       { attack: -0.08, value: 0.05, bluff: -0.20, capped: 0.05 },
+  MADE_STRENGTH_DOMINANT: { attack: 0.12, value: 0.08, bluff: 0.05, capped: -0.05 },
+  NEUTRAL: { attack: 0.00, value: 0.00, bluff: 0.00, capped: 0.00 }
+};
+
+
+const INTERP_META_3BET_IP = {
+  MAX_DRAW_PRESSURE: { attack: 0.05, value: -0.10, bluff: -0.15, capped: 0.00 },
+  HIGH_DRAW_PRESSURE: { attack: 0.10, value: 0.00, bluff: -0.05, capped: 0.05 },
+  LOW_DRAW_PRESSURE: { attack: 0.25, value: 0.05, bluff: 0.10, capped: -0.10 },
+  FLUSH_THREAT_ACTIVE: { attack: 0.00, value: 0.15, bluff: -0.10, capped: 0.10 },
+  FLUSH_COMPLETED_BOARD: { attack: -0.05, value: 0.30, bluff: -0.15, capped: 0.20 },
+  NUT_REGION_NARROW: { attack: 0.25, value: 0.50, bluff: 0.00, capped: 0.15 },
+  NUT_REGION_POLARIZED: { attack: 0.20, value: 0.55, bluff: -0.05, capped: 0.20 },
+  BOARD_LOCKED: { attack: -0.10, value: 0.60, bluff: -0.25, capped: 0.35 },
+  HIGH_CARD_LEVERAGE: { attack: 0.60, value: 0.20, bluff: 0.35, capped: 0.00 },
+  LOW_BOARD_DEFENDER_EDGE: { attack: -0.05, value: 0.20, bluff: 0.05, capped: 0.20 },
+  STRAIGHT_THREAT_ACTIVE: { attack: 0.00, value: 0.10, bluff: -0.05, capped: 0.10 },
+  MULTI_DRAW_BOARD: { attack: 0.10, value: 0.05, bluff: 0.15, capped: 0.05 },
+  BTN_FAVORS_AGGRESSION: { attack: 0.70, value: 0.05, bluff: 0.40, capped: -0.05 },
+  AGGRESSION_REQUIRES_DISCIPLINE: { attack: -0.10, value: 0.20, bluff: 0.10, capped: 0.10 },
+  DEFENDER_CAN_RESIST: { attack: -0.40, value: 0.15, bluff: -0.10, capped: 0.20 },
+  VALUE_BETTING_POLARIZED: { attack: 0.15, value: 0.65, bluff: 0.00, capped: 0.40 },
+  DRAW_HEAVY_RANGE:       { attack: 0.05, value: -0.05, bluff: -0.10, capped: 0.05 },
+  MADE_STRENGTH_DOMINANT: { attack: 0.20, value: 0.10, bluff: 0.15, capped: -0.10 },
+  NEUTRAL: { attack: 0.00, value: 0.00, bluff: 0.00, capped: 0.00 }
+};
+
+
+const INTERP_META_SRP_IP = {
+  MAX_DRAW_PRESSURE: { attack: -0.05, value: 0.05, bluff: -0.25, capped: 0.05 },
+  HIGH_DRAW_PRESSURE: { attack: 0.00, value: 0.10, bluff: -0.10, capped: 0.05 },
+  LOW_DRAW_PRESSURE: { attack: 0.10, value: 0.15, bluff: -0.05, capped: 0.00 },
+  FLUSH_THREAT_ACTIVE: { attack: -0.10, value: 0.15, bluff: -0.20, capped: 0.10 },
+  FLUSH_COMPLETED_BOARD: { attack: -0.15, value: 0.25, bluff: -0.25, capped: 0.15 },
+  NUT_REGION_NARROW: { attack: 0.05, value: 0.40, bluff: -0.20, capped: 0.15 },
+  NUT_REGION_POLARIZED: { attack: 0.00, value: 0.45, bluff: -0.25, capped: 0.20 },
+  BOARD_LOCKED: { attack: -0.20, value: 0.50, bluff: -0.35, capped: 0.30 },
+  HIGH_CARD_LEVERAGE: { attack: 0.20, value: 0.35, bluff: 0.05, capped: -0.05 },
+  LOW_BOARD_DEFENDER_EDGE: { attack: -0.15, value: 0.15, bluff: -0.15, capped: 0.10 },
+  STRAIGHT_THREAT_ACTIVE: { attack: -0.05, value: 0.10, bluff: -0.15, capped: 0.05 },
+  MULTI_DRAW_BOARD: { attack: -0.05, value: 0.05, bluff: -0.10, capped: 0.05 },
+  BTN_FAVORS_AGGRESSION: { attack: 0.35, value: 0.15, bluff: 0.15, capped: 0.00 },
+  AGGRESSION_REQUIRES_DISCIPLINE: { attack: -0.15, value: 0.15, bluff: -0.05, capped: 0.10 },
+  DEFENDER_CAN_RESIST: { attack: -0.25, value: 0.10, bluff: -0.15, capped: 0.10 },
+  VALUE_BETTING_POLARIZED: { attack: -0.05, value: 0.45, bluff: -0.15, capped: 0.25 },
+  DRAW_HEAVY_RANGE:       { attack: -0.05, value: 0.05, bluff: -0.15, capped: 0.05 },
+  MADE_STRENGTH_DOMINANT: { attack: 0.08, value: 0.10, bluff: 0.03, capped: -0.05 },
+  NEUTRAL: { attack: 0.00, value: 0.00, bluff: 0.00, capped: 0.00 }
+};
+
+
+const STRATEGY_PROFILE = {
+  BTN_VS_BB:  INTERP_META_BTN_VS_BB,
+  '3BET_IP':  INTERP_META_3BET_IP,
+  SRP_IP:     INTERP_META_SRP_IP
+  // Future: SB_VS_BTN, CO_VS_BTN, HJ_VS_BTN, Multiway, etc.
+};
+
+
+const NARRATIVE_MAP = {
+  'MAX_DRAW_PRESSURE': 'Draw pressure is extreme.',
+  'HIGH_DRAW_PRESSURE': 'Draw pressure is elevated.',
+  'LOW_DRAW_PRESSURE': 'Draw pressure is limited.',
+  'FLUSH_THREAT_ACTIVE': 'Flush threat is active.',
+  'FLUSH_COMPLETED_BOARD': 'Flushes are already live.',
+  'NUT_REGION_NARROW': 'Nut region is concentrated.',
+  'NUT_REGION_POLARIZED': 'Nut advantage is polarized.',
+  'BOARD_LOCKED': 'Board is heavily locked.',
+  'HIGH_CARD_LEVERAGE': 'High-card leverage favors BTN.',
+  'LOW_BOARD_DEFENDER_EDGE': 'Low board favors the defender.',
+  'STRAIGHT_THREAT_ACTIVE': 'Straight pressure is active.',
+  'MULTI_DRAW_BOARD': 'Multiple draws are available.',
+  'BTN_FAVORS_AGGRESSION': 'BTN can attack at high frequency.',
+  'AGGRESSION_REQUIRES_DISCIPLINE': 'Aggression needs more selectivity.',
+  'DEFENDER_CAN_RESIST': 'Defender can continue more often.',
+  'VALUE_BETTING_POLARIZED': 'Value is more polarized here.',
+  'DRAW_HEAVY_RANGE':      'Range-wide draw potential is elevated.',
+  'MADE_STRENGTH_DOMINANT':'Made hands dominate this board.',
+  'NEUTRAL': '--'
+};
+
+
+function getStrategyProfile(context) {
+  // Resolve situation profile from context (Situation Layer)
+  if (context.profile) {
+    return STRATEGY_PROFILE[context.profile] || STRATEGY_PROFILE.BTN_VS_BB;
+  }
+
+  // Fallback: infer from positions
+  if (context.positions === 'BTN_VS_BB') {
+    return STRATEGY_PROFILE.BTN_VS_BB;
+  }
+
+  return STRATEGY_PROFILE.BTN_VS_BB; // Default
+}
+
+
+function enrichNarrativeLine(key, baseLine, features) {
+  const rs = features?.rangeStats;
+  if (!rs) return baseLine;
+
+  const pct = (x) => Math.round(x * 100);
+
+  switch (key) {
+    case 'MAX_DRAW_PRESSURE':
+      return `${baseLine} ${pct(rs.drawHeavy)}% of range carries draw equity.`;
+
+    case 'HIGH_DRAW_PRESSURE':
+      return `${baseLine} ${pct(rs.drawHeavy)}% of hands have draw potential.`;
+
+    case 'DRAW_HEAVY_RANGE':
+      return rs.potAvg > 0.20
+        ? `${baseLine} Avg draw equity across range: ${pct(rs.potAvg)}%.`
+        : baseLine;
+
+    case 'MADE_STRENGTH_DOMINANT':
+      return `${baseLine} Avg made strength: ${pct(rs.madeAvg)}%, draw-heavy hands: ${pct(rs.drawHeavy)}%.`;
+
+    case 'NUT_REGION_NARROW':
+    case 'NUT_REGION_POLARIZED':
+      return rs.madeSpread > 0.18
+        ? `${baseLine} Nut spread: ${rs.madeSpread.toFixed(2)} — wide gap between strong and weak hands.`
+        : baseLine;
+
+    case 'LOW_DRAW_PRESSURE':
+      // 自明すぎる情報は数値を追加しない（Narrativeが冗長にならないよう）
+      return baseLine;
+
+    default:
+      return baseLine;
+  }
+}
+
+
+function buildNarrative(interpretations, maxLines = 3, features = null) {
+  // Narrative Budget (P1):
+  //   1. Re-sort by narrativeRank (score × confidence × importance)
+  //   2. Filter: score >= 0.50 AND confidence >= 0.40
+  //   3. Category diversity: at most 1 per category (DRAW / NUT / RANGE / SIGNAL)
+  //   4. Hard cap: maxLines (default 3)
+  // Narrative Enrichment (P1.5):
+  //   5. enrichNarrativeLine() で rangeStats の定量値を文言に付加
+  if (!interpretations || interpretations.length === 0) return ['--'];
+
+  const SCORE_FLOOR      = 0.50;
+  const CONFIDENCE_FLOOR = 0.40;
+
+  const eligible = [...interpretations]
+    .sort((a, b) => b.narrativeRank - a.narrativeRank)
+    .filter(i => i.score >= SCORE_FLOOR && i.confidence >= CONFIDENCE_FLOOR);
+
+  // Category diversity: take top-ranked from each category
+  const seen   = new Set();
+  const picked = [];
+  for (const i of eligible) {
+    const cat = INTERP_META[i.key]?.category ?? 'OTHER';
+    if (!seen.has(cat)) {
+      seen.add(cat);
+      picked.push(i);
+    }
+    if (picked.length >= maxLines) break;
+  }
+
+  const lines = picked
+    .map(i => {
+      const base = NARRATIVE_MAP[i.key];
+      if (!base || base === '--') return null;
+      return enrichNarrativeLine(i.key, base, features);
+    })
+    .filter(Boolean);
+
+  return lines.length ? lines : ['--'];
+}
+
+
+function deriveHudSignals(features, interpretations, context) {
+  // Phase 2.75: Situation-aware strategy selection
+  // Phase 4A: Archetype already applied to features & interpretations (upstream)
+  const strategyProfile = getStrategyProfile(context);
+
+  let attack = 0.5;
+  let value = 0.5;
+  let bluff = 0.5;
+  let capped = 0.0;
+
+  // ─ Matrix-driven aggregation with situation profile ─
+  for (const interp of interpretations) {
+    const meta = strategyProfile[interp.key];
+    if (!meta) continue;
+
+    // P1: weight by score × confidence (importance excluded — HUD reflects board reality)
+    const w = interp.score * (interp.confidence ?? 1.0);
+    attack += meta.attack * w;
+    value  += meta.value  * w;
+    bluff  += meta.bluff  * w;
+    capped += meta.capped * w;
+  }
+
+  // ─ Structural modifiers (feature-level, not interpretation-level) ─
+  if (features.pairStructure === 'QUADS_BOARD') {
+    value += 0.2;
+    capped += 0.15;
+  }
+
+  return {
+    attack: clamp01(attack),
+    value: clamp01(value),
+    bluff: clamp01(bluff),
+    capped: clamp01(capped)
+  };
+}
+
+
+function extractMetrics(features) {
+  return {
+    wetnessScore: features.wetnessScore || 0,
+    connectivityScore: features.connectivityScore || 0,
+    flushScore: features.flushScore || 0,
+    highCardScore: features.rankStructure === 'HIGH' ? 80 : (features.rankStructure === 'LOW' ? 20 : 50)
+  };
+}
+
+
+/* ---- core/board_intelligence.js ---- */
+
+/* core/board_intelligence.js — orchestrator. Deps: ALL */
+
+function detectStreet(board) {
+  if (!board || board.length < 3) return 'PREFLOP';
+  if (board.length === 3) return 'FLOP';
+  if (board.length === 4) return 'TURN';
+  return 'RIVER';
+}
+
+
+function buildPreFlopIntelligence(context) {
+  return {
+    street: 'PREFLOP',
+    features: {
+      texture: 'NEUTRAL',
+      connectivity: 'NEUTRAL',
+      flushPressure: 'NEUTRAL',
+      pairStructure: 'NEUTRAL',
+      rankStructure: 'NEUTRAL',
+      rangeDynamics: 'NEUTRAL',
+      nutDynamics: 'NEUTRAL',
+      aggressionSignal: 'NEUTRAL'
+    },
+    metrics: {
+      wetnessScore: 0,
+      connectivityScore: 0,
+      flushScore: 0,
+      highCardScore: 0
+    },
+    interpretations: ['WAITING_FOR_BOARD'],
+    narrative: ['Waiting for board.'],
+    hudSignals: { attack: 'NEUTRAL', value: 'NEUTRAL', bluff: 'NEUTRAL', capped: 'NONE' }
+  };
+}
+
+
+function analyzeBoard(board, context) {
+  if (!board || board.length < 3) {
+    return buildPreFlopIntelligence(context);
+  }
+
+  const heroPos    = context.heroPos    || 'BTN';
+  const villainPos = context.villainPos || 'BB';
+
+  // ── Unified evaluation core ──
+  // 1. Range matrix (169 hands × board)
+  const rangeMatrix = evalRange169(board, [], context);
+
+  // 2. Board features (texture / connectivity / pair / rank)
+  const features = extractBoardFeatures(board, context);
+
+  // 3. Advantage engine (-1..+1 scalars)
+  const rangeAdv        = computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix);
+  const nutAdv          = computeNutAdvantage(board, heroPos, villainPos, rangeMatrix);
+  const rangeStats      = computeRangeStats(rangeMatrix);
+  const structureFeatures = computeStructureFeatures(rangeMatrix);
+
+  // Attach continuous advantage values + range stats to features for downstream consumers
+  features.rangeAdvantage    = rangeAdv;              // -1..+1
+  features.nutAdvantage      = nutAdv;                // { advantage, density, coverage }
+  features.rangeStats        = rangeStats;            // { madeAvg, potAvg, drawHeavy, madeSpread }
+  features.structureFeatures = structureFeatures;     // { entropy, polarization, coverage, drawStructure, dominance } (0-100)
+
+  // 4. Interpretations (use enriched features)
+  const interpretations = deriveInterpretations(features);
+
+  // 5. Narrative + HUD
+  const narrative  = buildNarrative(interpretations, 3, features);
+  const hudSignals = deriveHudSignals(features, interpretations, context);
+  const metrics    = extractMetrics(features);
+
+  return {
+    street: context.street || detectStreet(board),
+    features,
+    metrics,
+    interpretations,
+    narrative,
+    hudSignals,
+    structureFeatures,  // レーダー表示用（0-100, 5軸）
+    rangeMatrix         // include for consumers that want raw matrix
+  };
+}
+
+
+/* ---- spectra-worker.js (importScripts除去済み) ---- */
+
+/**
+ * SPECTRA v3.9.1 Worker — Entry Point
+ *
+ * このファイルは「公開APIの窓口」のみを担う。
+ * 計算・評価・意味生成はすべて core/ モジュールが行う。
+ *
+ * importScripts 読込順（依存グラフ順）:
+ *   utils → texture → position → strength → range_matrix
+ *   → board_intel → interpretations → narrative → board_intelligence
+ */
+
+console.log('[SPECTRA v3.9.1] All modules loaded OK');
+
+/* ══════════════════════════════
+   PUBLIC API
+   BOARD_INTELLIGENCE — unified entry (P1.5〜)
+   EVAL_169, TEXTURE  — backward compat (legacy)
+   INIT               — handshake
+══════════════════════════════ */
+self.onmessage = function (e) {
+  const { type, payload, requestId } = e.data;
+
+  try {
+    if (type === 'INIT') {
+      self.postMessage({
+        type: 'INIT_OK',
+        version: '3.9.1',
+        capabilities: ['BOARD_INTELLIGENCE', 'EVAL_169', 'TEXTURE']
+      });
+      return;
+    }
+
+    if (type === 'BOARD_INTELLIGENCE') {
+      const t0      = performance.now();
+      const board   = payload.board   || [];
+      const context = payload.context || { street: 'FLOP', positions: 'BTN_VS_BB' };
+
+      const cacheKey = board.join(',') + '|'
+        + (context.heroPos    || 'BTN') + '|'
+        + (context.villainPos || 'BB')  + '|'
+        + (context.archetype  || 'STANDARD') + '|'
+        + (context.profile    || 'BTN_VS_BB');
+
+      if (evalCache.has(cacheKey)) {
+        self.postMessage({
+          type: 'BOARD_INTELLIGENCE',
+          requestId,
+          data: evalCache.get(cacheKey),
+          cached: true,
+          calcTime: 0
+        });
+        return;
+      }
+
+      const intel = analyzeBoard(board, context);
+      intel.texture = calcBoardTexture(board);
+
+      const ms = Math.round(performance.now() - t0);
+      cacheSet(cacheKey, intel);
+
+      self.postMessage({
+        type: 'BOARD_INTELLIGENCE',
+        requestId,
+        data: intel,
+        cached: false,
+        calcTime: ms
+      });
+      return;
+    }
+
+    if (type === 'EVAL_169') {
+      const t0       = performance.now();
+      const board    = payload.board || [];
+      const cacheKey = 'e169:' + board.join(',');
+
+      if (evalCache.has(cacheKey)) {
+        self.postMessage({
+          type: 'EVAL_169',
+          requestId,
+          data: evalCache.get(cacheKey),
+          cached: true,
+          calcTime: 0
+        });
+        return;
+      }
+
+      const results = eval169(board);
+      const ms      = Math.round(performance.now() - t0);
+      cacheSet(cacheKey, results);
+
+      self.postMessage({
+        type: 'EVAL_169',
+        requestId,
+        data: results,
+        cached: false,
+        calcTime: ms
+      });
+      return;
+    }
+
+    if (type === 'TEXTURE') {
+      self.postMessage({
+        type: 'TEXTURE',
+        requestId,
+        data: calcBoardTexture(payload.board || [])
+      });
+      return;
+    }
+  } catch (err) {
+    self.postMessage({
+      type: 'ENGINE_ERROR',
+      requestId,
+      data: {
+        message: err?.message || String(err),
+        stack: err?.stack || ''
+      }
+    });
+  }
+};
+
+</script>
+
 <!-- TOOLTIP -->
 <div id="hm-tooltip">
   <div class="tt-hand" id="tt-hand">--</div>
   <div class="tt-row"><span class="tt-label">現在の強さ:</span><span class="tt-val" id="tt-eq">--%</span></div>
-  <div class="tt-row"><span class="tt-label">将来性(ドロー):</span><span class="tt-val" id="tt-pot-lvl" style="font-weight:700;">--</span></div>
-  <div class="tt-row"><span class="tt-label">ドロー種類:</span><span class="tt-val" id="tt-draw">--</span></div>
-  <div class="tt-row"><span class="tt-label">枠(ハンド分類):</span><span class="tt-val" id="tt-cat">--</span></div>
-  <div class="tt-row"><span class="tt-label">コンボ密度:</span><span class="tt-val" id="tt-den">--%</span></div>
+  <div class="tt-row"><span class="tt-label">将来性:</span><span class="tt-val" id="tt-pot-lvl" style="font-weight:700;">--</span></div>
+  <div class="tt-row"><span class="tt-label">分類:</span><span class="tt-val" id="tt-cat">--</span></div>
 </div>
 
 <!-- HEADER -->
@@ -721,19 +3001,19 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
         <div style="width:55px;height:5px;border-radius:2px;background:linear-gradient(90deg, hsl(225,35%,12%), hsl(210,58%,22%), hsl(145,70%,32%), hsl(45,82%,38%), hsl(0,100%,48%));border:1px solid rgba(255,255,255,0.15);"></div>
         <span style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(200,220,240,.7);">エアー → ナッツ</span>
         <span style="color:rgba(160,200,230,.25);">|</span>
-        <span style="font-family:'Orbitron',monospace;font-size:7px;color:#ffd700;font-weight:700;">将来性 ◥ (5段階):</span>
-        <span style="font-size:7.5px;color:#ffd700;font-weight:700;">★5(黄:特大)</span>
-        <span style="font-size:7.5px;color:#ff8c00;font-weight:700;">★4(橙:大)</span>
-        <span style="font-size:7.5px;color:#00d4ff;font-weight:700;">★3(青:中)</span>
-        <span style="font-size:7.5px;color:#00ff9d;font-weight:700;">★2(緑:小)</span>
-        <span style="font-size:7.5px;color:#88aacc;">★1(灰:微)</span>
+        <span style="font-family:'Orbitron',monospace;font-size:7px;color:#ff6a1a;font-weight:700;">将来性 ◥ (5段階):</span>
+        <span style="font-size:7.5px;color:#ff2d2d;font-weight:700;">★5(赤:特大)</span>
+        <span style="font-size:7.5px;color:#ff6a1a;font-weight:700;">★4(橙:大)</span>
+        <span style="font-size:7.5px;color:#ff9d40;font-weight:700;">★3(淡橙:中)</span>
+        <span style="font-size:7.5px;color:#ffc478;font-weight:700;">★2(薄黄:小)</span>
+        <span style="font-size:7.5px;color:#c9a878;">★1(ベージュ:微)</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.05);padding-top:3px;">
         <span style="font-family:'Orbitron',monospace;font-size:7px;color:#00d4ff;font-weight:700;">枠線の意味:</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:2px solid rgba(255,255,255,.7);"></span>ポケットペア</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:2px double rgba(255,255,255,.7);"></span>Sブロードウェイ</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:1px dashed rgba(255,255,255,.7);"></span>Sコネクター</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:1px dotted rgba(255,255,255,.7);"></span>Oブロードウェイ</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:2px solid rgba(0,212,255,.75);box-shadow:inset 0 0 3px rgba(0,212,255,.4);"></span>ポケットペア</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:2px solid rgba(255,215,0,.7);box-shadow:inset 0 0 3px rgba(255,215,0,.35);"></span>Sブロードウェイ</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:1.5px solid rgba(0,255,157,.7);"></span>Sコネクター</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:1px solid rgba(170,150,255,.6);"></span>Oブロードウェイ</span>
       </div>
     </div>
     <div id="hm-wrap">
@@ -798,6 +3078,16 @@ let _ttHideTimer = null;     // モバイルツールチップの自動非表示
 let lastNutsFeatures = null;   // renderNuts再描画（帯の折りたたみ）用にfeaturesをキャッシュ
 let collapsedNutBands = new Set(['HIGH CARD']); // 折りたたみ状態（デフォルトHIGH CARDのみ畳む）
 
+let spectraWorkerUrl = null; // Blob URL（一度作れば使い回す）
+function getSpectraWorkerUrl() {
+  if (spectraWorkerUrl) return spectraWorkerUrl;
+  const srcEl = document.getElementById('spectra-worker-src');
+  const src   = srcEl ? srcEl.textContent : '';
+  const blob  = new Blob([src], { type: 'application/javascript' });
+  spectraWorkerUrl = URL.createObjectURL(blob);
+  return spectraWorkerUrl;
+}
+
 /* ══════════════════════════════
    WORKER INIT
 ══════════════════════════════ */
@@ -805,7 +3095,8 @@ function initEngine() {
   setBrainMsg('LOADING JS ENGINE...','spectra-worker.js',20);
 
   try {
-    spectraWorker = new Worker('spectra-worker.js');
+    // v3.9.5: file:// でも動くようBlob URL経由でWorkerを起動（詳細はバンドル埋め込み側のコメント参照）
+    spectraWorker = new Worker(getSpectraWorkerUrl());
     spectraWorker.onmessage = onWorkerMessage;
     spectraWorker.onerror   = (e) => {
       console.warn('[SPECTRA] Worker error, using fallback:', e.message);
@@ -1357,21 +3648,30 @@ function render3DHeatmap(data) {
 }
 
 function getDrawPotentialLevelColor(pot) {
-  if (!pot || pot < 0.05) return { color: 'transparent', shadow: 'none', level: 0, label: 'なし' };
-  if (pot >= 0.55) return { color: '#ffd700', shadow: '0 0 6px #ffd700', level: 5, label: '★5 特大(複合強力ドロー)' };
-  if (pot >= 0.40) return { color: '#ff8c00', shadow: '0 0 5px #ff8c00', level: 4, label: '★4 大(OESD/FD等)' };
-  if (pot >= 0.25) return { color: '#00d4ff', shadow: '0 0 4px #00d4ff', level: 3, label: '★3 中(強ガット等)' };
-  if (pot >= 0.15) return { color: '#00ff9d', shadow: '0 0 3px #00ff9d', level: 2, label: '★2 小(ガット等)' };
-  return           { color: '#88aacc', shadow: 'none',               level: 1, label: '★1 微(バックドア等)' };
+  // v3.9.6: 色相をバラつかせず、淡い→鮮烈のグラデーションだけで段階を表現
+  if (!pot || pot < 0.05) return { color: 'transparent',              shadow: 'none',                  level: 0, label: 'なし' };
+  if (pot >= 0.55) return { color: '#ff2d2d', shadow: '0 0 6px #ff2d2d', level: 5, label: '★5 特大(複合強力ドロー)' };
+  if (pot >= 0.40) return { color: '#ff6a1a', shadow: '0 0 5px #ff6a1a', level: 4, label: '★4 大(OESD/FD等)' };
+  if (pot >= 0.25) return { color: '#ff9d40', shadow: '0 0 4px #ff9d40', level: 3, label: '★3 中(強ガット等)' };
+  if (pot >= 0.15) return { color: '#ffc478', shadow: 'none',            level: 2, label: '★2 小(ガット等)' };
+  return           { color: '#c9a878', shadow: 'none',                  level: 1, label: '★1 微(バックドア等)' };
 }
 
 function getBorderCategoryJP(hand) {
   const cat = classifyHandCategory(hand);
-  if (cat === 'cat-pair')       return 'ポケットペア [実線]';
-  if (cat === 'cat-suited-bw')  return 'Sブロードウェイ [二重線]';
-  if (cat === 'cat-connector')  return 'Sコネクター系 [破線]';
-  if (cat === 'cat-offsuit-bw') return 'Oブロードウェイ [点線]';
-  return 'その他オフスート [薄線]';
+  if (cat === 'cat-pair')       return 'ポケットペア';
+  if (cat === 'cat-suited-bw')  return 'Sブロードウェイ';
+  if (cat === 'cat-connector')  return 'Sコネクター系';
+  if (cat === 'cat-offsuit-bw') return 'Oブロードウェイ';
+  return 'その他';
+}
+function getBorderCategoryColor(hand) {
+  const cat = classifyHandCategory(hand);
+  if (cat === 'cat-pair')       return '#00d4ff';
+  if (cat === 'cat-suited-bw')  return '#ffd700';
+  if (cat === 'cat-connector')  return '#00ff9d';
+  if (cat === 'cat-offsuit-bw') return '#a996ff';
+  return '#fff';
 }
 
 /* ══════════════════════════════
@@ -2762,19 +5062,25 @@ function onCellTouch(e) {
 function showTooltip(c, x, y) {
   document.getElementById('tt-hand').textContent = c.dataset.hand || '--';
   document.getElementById('tt-eq').textContent   = (c.dataset.eq||'--')+'%';
-  const potLvl = c.dataset.potLevel || 'なし';
+  // v3.9.6: レベル(★N)とドロー種類を1行に統合し、コンボ密度の行は削除してシンプル化
+  const potLvl   = c.dataset.potLevel || 'なし';
+  const drawType = c.dataset.draw;
+  const starMatch = potLvl.match(/★\d/);
+  const star = starMatch ? starMatch[0] : potLvl;
   const potEl = document.getElementById('tt-pot-lvl');
   if (potEl) {
-    potEl.textContent = potLvl;
-    potEl.style.color = potLvl.includes('★5') ? '#ffd700' : potLvl.includes('★4') ? '#ff8c00' : potLvl.includes('★3') ? '#00d4ff' : potLvl.includes('★2') ? '#00ff9d' : '#fff';
+    potEl.textContent = (drawType && drawType !== '--') ? `${star}（${drawType}）` : star;
+    potEl.style.color = potLvl.includes('★5') ? '#ff2d2d' : potLvl.includes('★4') ? '#ff6a1a' : potLvl.includes('★3') ? '#ff9d40' : potLvl.includes('★2') ? '#ffc478' : '#c9a878';
   }
-  document.getElementById('tt-den').textContent  = (c.dataset.den||'--')+'%';
-  document.getElementById('tt-draw').textContent = c.dataset.draw||'--';
   const catEl = document.getElementById('tt-cat');
-  if (catEl) catEl.textContent = getBorderCategoryJP(c.dataset.hand || '');
+  if (catEl) {
+    catEl.textContent = getBorderCategoryJP(c.dataset.hand || '');
+    catEl.style.color = getBorderCategoryColor(c.dataset.hand || '');
+    catEl.style.fontWeight = '700';
+  }
   tooltip.style.display = 'block';
   // Position: keep inside window
-  const tw = 180, th = 110;
+  const tw = 180, th = 90;
   let lft = x + 12;
   let top = y - 30;
   if (lft + tw > window.innerWidth)  lft = x - tw - 8;
@@ -3321,7 +5627,7 @@ function renderChallengeStreak(state) {
 function ensureChallengeWorker() {
   if (challengeWorker) return;
   try {
-    challengeWorker = new Worker('spectra-worker.js');
+    challengeWorker = new Worker(getSpectraWorkerUrl());
     challengeWorker.onmessage = (e) => {
       const { type, data } = e.data;
       if (type === 'BOARD_INTELLIGENCE') {
