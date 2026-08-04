@@ -3349,9 +3349,17 @@ function getDisplayStrength(item) {
      render3DHeatmap()側で、セル右上の独立したドット（シアン系）
      として別チャンネルで表現する。
 ══════════════════════════════ */
+/* v3.9.7: 非線形カラーマッピング — ガンマ補正で中間帯(よく出る0.3〜0.75あたり)の
+   コントラストを持ち上げる。単調変換なので絶対値スケール・順序はそのまま保たれる。
+   指数を小さくするほど中間帯が持ち上がる（1.0で変換なし＝元のまま）。 */
+function remapMadeStrength(v) {
+  return Math.pow(v, 0.6);
+}
+
 function calc3DHSL(item) {
-  const made    = Math.max(0, Math.min(1, item.madeStrength ?? 0));
-  const density = Math.max(0, Math.min(1, item.density ?? 1));
+  const made0    = Math.max(0, Math.min(1, item.madeStrength ?? 0));
+  const made     = remapMadeStrength(made0); // v3.9.7: 非線形マッピング（ガンマ補正）
+  const density  = Math.max(0, Math.min(1, item.density ?? 1));
 
   if (density === 0) {
     return 'hsl(220, 25%, 8%)'; // デッドコンボ
