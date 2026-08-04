@@ -439,3 +439,14 @@ ui/    … メインスレッド側（index.htmlが<script src="...">で読み�
 
 5. **✅ ◥部の色合い（完了）**
    2色（シアン/ゴールド）ではなく、potential強度に応じた5段階配色に変更（`getDrawPotentialLevelColor()`）: ★1灰(微)→★2緑(小)→★3青(中)→★4橙(大)→★5金(特大・複合強力ドロー)。ヒートマップ凡例にも5段階の色見本を追加。
+
+6. **未着手: Workerバンドルのビルドスクリプト化**
+   v3.9.5でWorkerを`file://`でも起動できるようBlob URL方式に変更した際、`core/*.js` 9ファイル + `spectra-worker.js`を連結したコピーを`index.html`内の`<script type="text/plain" id="spectra-worker-src">`に埋め込む方式にした。
+   現状はこのコピーを手動で再生成しており、`core/*.js`側を編集してもこの埋め込みコピーに反映し忘れるとWorkerの動作だけ古いまま、というズレが発生しうる。連結処理を行う小さなビルドスクリプト（Node/Python）を用意し、`core/*.js`編集後に実行する運用にするか、ビルド時に自動生成する仕組みにするかを検討。
+
+7. **未着手: フォールバック評価エンジン（`fallbackEval169`一式）の整理**
+   上記のBlob URL化により`file://`でもWorkerがほぼ確実に起動するようになったため、メインスレッド側の代替評価ロジック（`classifyHandCategory` `chenScore` `fallbackEval169` `evalHandFallback` `classifyDrawInline`等、「切り出し候補」セクションに列挙済みの一群）は実質発動しなくなったと見られる。
+   Worker側ロジックとは別に保守されている二重実装であり、v3.6.2の「フォールバック時に戦況バッジが固まる」バグの原因もここだった。①使われなくなったなら削除する、②保険として残すなら「Worker側ロジックを変更したらこちらも追随させる」運用ルールを明文化する、のどちらかの判断が必要。
+
+8. **未着手: NUTSパネル以外のフォントサイズ底上げ**
+   上記「主要定数」欄に既出の通り、NUTSパネルはv3.6.2で文字サイズを底上げ済みだが、他パネル（HERO HAND / POSITION MATRIX / STRUCTURE RADAR / HERO OUTS / BOARD INTELLIGENCE / 3D HEATMAP等）は未対応のまま。
