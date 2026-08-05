@@ -59,9 +59,9 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .sit-sub{font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(160,200,230,.65);margin-left:auto;}
 
 /* ─── LEFT: STREET + NUTS ─── */
-#street-box{background:rgba(0,180,255,.06);border:1px solid rgba(0,255,157,.2);border-radius:2px;padding:8px;text-align:center;flex-shrink:0;}
-#street-name{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;color:#00ff9d;text-shadow:0 0 20px rgba(0,255,157,.7);letter-spacing:2px;}
-#street-cnt{font-family:'JetBrains Mono','Share Tech Mono',monospace;font-variant-numeric:tabular-nums;font-size:13px;font-weight:700;color:rgba(160,200,230,.7);margin-top:2px;}
+#street-box{background:rgba(0,180,255,.06);border:1px solid rgba(0,255,157,.2);border-radius:2px;padding:4px;text-align:center;flex-shrink:0;}
+#street-name{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;color:#00ff9d;text-shadow:0 0 10px rgba(0,255,157,.6);letter-spacing:1.5px;}
+#street-cnt{font-family:'JetBrains Mono','Share Tech Mono',monospace;font-variant-numeric:tabular-nums;font-size:9px;font-weight:700;color:rgba(160,200,230,.7);margin-top:1px;}
 
 #nuts-list{display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;}
 .nuts-row{display:flex;align-items:center;gap:5px;padding:4px;border-bottom:1px solid rgba(255,255,255,.05);border-radius:2px;transition:background .2s;}
@@ -2882,6 +2882,13 @@ self.onmessage = function (e) {
       <div id="fb-hero-pos"></div><div id="fb-villain-pos"></div><div id="fb-situation"></div>
     </div>
 
+    <!-- v3.9.9: 盤面自体がフラッシュ/ストレートに化ける確率（残りの流れで完成する確率）。
+         確定済み(100%)の時は表示しない -->
+    <div id="board-texture-probs" style="display:none;align-items:center;justify-content:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(200,220,240,.7);margin:3px 0;">
+      <span id="flush-prob-row" style="display:none;">FLUSH <b id="flush-prob-val" class="num-font" style="color:#00d4ff;">--</b></span>
+      <span id="straight-prob-row" style="display:none;">STRAIGHT <b id="straight-prob-val" class="num-font" style="color:#00ff9d;">--</b></span>
+    </div>
+
     <!-- HERO HAND（v3.7.2でコメントアウト。実装は残す。再度使う場合はコメントを外すだけでよい）
     <div id="hero-section">
       <div title="自分の手札を選択すると、ヒートマップ上での自分の位置が光ります" style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1.5px;color:rgba(255,215,0,.45);margin-bottom:3px;cursor:help;">▐ HERO HAND</div>
@@ -4991,6 +4998,89 @@ function updateSituationBadge(tex) {
 /* ══════════════════════════════
    TEXTURE
 ══════════════════════════════ */
+/* ══════════════════════════════
+   v3.9.9: 盤面自体がフラッシュ/ストレートになる確率
+   （役自体の確率ではなく、5枚のボードカードそのものが
+   モノスート/5連続ランクになる確率。残りの流れで完成するかの目安）
+══════════════════════════════ */
+const RANK_TO_NUM = {A:14,K:13,Q:12,J:11,T:10,9:9,8:8,7:7,6:6,5:5,4:4,3:3,2:2};
+
+function nCr(n, r) {
+  if (r < 0 || r > n) return 0;
+  r = Math.min(r, n - r);
+  let num = 1, den = 1;
+  for (let i = 0; i < r; i++) { num *= (n - i); den *= (i + 1); }
+  return num / den;
+}
+
+// ボードがそのままフラッシュ（5枚同スート）になる確率(%)。0〜100。
+function computeBoardFlushPct(board) {
+  if (board.length < 3 || board.length >= 5) return null; // riverは確定済みなので対象外
+  const suitCount = {};
+  board.forEach(c => { suitCount[c[1]] = (suitCount[c[1]] || 0) + 1; });
+  const maxSuit = Object.keys(suitCount).reduce((a,b) => suitCount[a] >= suitCount[b] ? a : b);
+  const have    = suitCount[maxSuit];
+  if (have !== board.length) return 0; // 現時点で全カードが同スートでなければ5枚には届かない
+  const need          = 5 - board.length;
+  const remainingDeck = 52 - board.length;
+  const suitLeft       = 13 - have; // その色の残り枚数（1スートは13枚。手札は追跡していないため考慮しない）
+  if (suitLeft < need) return 0;
+  const favorable = nCr(suitLeft, need);
+  const total     = nCr(remainingDeck, need);
+  return total > 0 ? (favorable / total) * 100 : 0;
+}
+
+// ボードがそのままストレート（5連続ランク）になる確率(%)。0〜100。
+function computeBoardStraightPct(board) {
+  if (board.length < 3 || board.length >= 5) return null; // riverは確定済みなので対象外
+  const nums = board.map(c => RANK_TO_NUM[c[0]]);
+  if (new Set(nums).size !== nums.length) return 0; // ペア済みなら5連続にはなり得ない
+
+  const need = 5 - board.length;
+  const remainingDeck = 52 - board.length;
+  // 10通りの5連続窓（ホイールA-2-3-4-5を含む）
+  const windows = [];
+  for (let high = 6; high <= 14; high++) windows.push([high-4,high-3,high-2,high-1,high]);
+  windows.push([1,2,3,4,5]); // ホイール（Aは1として扱う）
+
+  let totalPct = 0;
+  windows.forEach(win => {
+    const winSet = new Set(win);
+    const boardNums = win.includes(14) || !win.includes(1) ? nums : nums.map(n => n === 14 ? 1 : n);
+    // ホイール窓の判定時のみA=1として読み替える
+    const effNums = win[0] === 1 ? nums.map(n => n === 14 ? 1 : n) : nums;
+    if (!effNums.every(n => winSet.has(n))) return; // この窓にボードの全ランクが収まらない → 対象外
+    const missingRanks = win.filter(r => !effNums.includes(r));
+    if (missingRanks.length !== need) return; // 理論上は常に一致するはずの安全チェック
+    // 各不足ランクにつき残り4枚（手札は追跡していないため考慮しない）
+    const favorable = Math.pow(4, need);
+    const total = nCr(remainingDeck, need);
+    if (total > 0) totalPct += (favorable / total) * 100;
+  });
+  return Math.min(100, totalPct);
+}
+
+function renderBoardTextureProbs() {
+  const wrap    = document.getElementById('board-texture-probs');
+  const fRow    = document.getElementById('flush-prob-row');
+  const sRow    = document.getElementById('straight-prob-row');
+  if (!wrap || !fRow || !sRow) return;
+
+  const flushPct    = computeBoardFlushPct(currentBoard);
+  const straightPct = computeBoardStraightPct(currentBoard);
+
+  // 確定済み(100%程度)の時は表示しない。flop未到達(null)も非表示。
+  const showFlush    = flushPct    !== null && flushPct    < 99.5;
+  const showStraight = straightPct !== null && straightPct < 99.5;
+
+  fRow.style.display = showFlush ? 'inline' : 'none';
+  sRow.style.display = showStraight ? 'inline' : 'none';
+  wrap.style.display = (showFlush || showStraight) ? 'flex' : 'none';
+
+  if (showFlush)    document.getElementById('flush-prob-val').textContent    = flushPct.toFixed(1) + '%';
+  if (showStraight) document.getElementById('straight-prob-val').textContent = straightPct.toFixed(1) + '%';
+}
+
 function calcTexture(board) {
   if (board.length < 3) return null;
   const ranks  = board.map(c => RANK_IDX[c[0]]);
@@ -5204,14 +5294,16 @@ function onCellTouch(e) {
 function showTooltip(c, x, y) {
   document.getElementById('tt-hand').textContent = c.dataset.hand || '--';
   document.getElementById('tt-eq').textContent   = (c.dataset.eq||'--')+'%';
-  // v3.9.6: レベル(★N)とドロー種類を1行に統合し、コンボ密度の行は削除してシンプル化
-  const potLvl   = c.dataset.potLevel || 'なし';
-  const drawType = c.dataset.draw;
+  // v3.9.10: レベルが0(なし)の時も含め、常にパーセンテージを表示する
+  const potPct    = c.dataset.pot || '0';
+  const potLvl    = c.dataset.potLevel || 'なし';
+  const drawType  = c.dataset.draw;
   const starMatch = potLvl.match(/★\d/);
-  const star = starMatch ? starMatch[0] : potLvl;
-  const potEl = document.getElementById('tt-pot-lvl');
+  const star      = starMatch ? starMatch[0] : null;
+  const potEl     = document.getElementById('tt-pot-lvl');
   if (potEl) {
-    potEl.textContent = (drawType && drawType !== '--') ? `${star}（${drawType}）` : star;
+    const base = star ? `${star} ${potPct}%` : `${potPct}%`;
+    potEl.textContent = (drawType && drawType !== '--') ? `${base}（${drawType}）` : base;
     potEl.style.color = potLvl.includes('★5') ? '#ff2d2d' : potLvl.includes('★4') ? '#ff6a1a' : potLvl.includes('★3') ? '#ff9d40' : potLvl.includes('★2') ? '#ffc478' : '#c9a878';
   }
   const catEl = document.getElementById('tt-cat');
@@ -5327,6 +5419,7 @@ function onInputChanged() {
   updateDuplicateGuard();
   renderStreet(currentBoard);
   updateBoardCards();
+  renderBoardTextureProbs(); // v3.9.9: FLUSH/STRAIGHT確率表示
 
   const tex = calcTexture(currentBoard);
   if (tex) applyTexture(tex);
@@ -5336,6 +5429,10 @@ function onInputChanged() {
     ['bar-con','bar-fls','bar-btn','bar-bb'].forEach(id => document.getElementById(id).style.width='0%');
     ['val-con','val-fls','val-btn','val-bb'].forEach(id => document.getElementById(id).textContent='--%');
     updateSituationBadge(null);
+    // v3.9.9: 戻る操作等でboard<3に戻った際、直前の計算結果（◥バッジ含む）が
+    // ヒートマップに残り続けるバグの修正。clearBoard()と同様にリセットする。
+    resetHeatmapUI();
+    renderDefaultZeroState();
   }
 
   if (currentBoard.length >= 3) {
@@ -5407,7 +5504,17 @@ function clearBoard() {
 function resetHeatmapUI() {
   for (let i=0; i<169; i++) {
     const c = document.getElementById('hc'+i);
-    if (c) { c.style.backgroundColor='#0d1a2a'; delete c.dataset.eq; }
+    if (c) {
+      c.style.backgroundColor='#0d1a2a';
+      delete c.dataset.eq;
+      // v3.9.9: ◥(draw potential)バッジが盤面リセット後も残ってしまうバグの修正
+      const dot = c.querySelector('.hm-pot-dot');
+      if (dot) { dot.style.background = 'transparent'; dot.style.boxShadow = 'none'; }
+      delete c.dataset.pot;
+      delete c.dataset.potLevel;
+      delete c.dataset.draw;
+      delete c.dataset.den;
+    }
   }
   document.getElementById('nuts-list').innerHTML =
     '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:rgba(160,200,230,.3);padding:10px 4px;line-height:1.6;">ボードを3枚以上<br>入力するとNUTS<br>が表示されます</div>';
