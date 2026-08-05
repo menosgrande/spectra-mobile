@@ -2872,21 +2872,12 @@ self.onmessage = function (e) {
       <div class="sit-sub" id="sit-sub">--</div>
     </div>
 
-    <!-- POSITION CONFIG (v3.9.8: 6-max/9-max対応) -->
-    <div id="pos-config-row" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:5px 0 6px;">
-      <span style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.5);">TABLE:</span>
-      <button class="table-size-tab active" data-size="6MAX" onclick="setTableSize('6MAX')">6-MAX</button>
-      <button class="table-size-tab" data-size="9MAX" onclick="setTableSize('9MAX')">9-MAX</button>
-      <span style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.5);margin-left:4px;">HERO:</span>
-      <select id="hero-pos-select" class="pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN" selected>BTN</option><option value="SB">SB</option></select>
-      <span style="font-family:'Orbitron',monospace;font-size:7px;color:rgba(160,200,230,.4);">VS</span>
-      <select id="villain-pos-select" class="pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN">BTN</option><option value="SB">SB</option><option value="BB" selected>BB</option></select>
-    </div>
-
-    <!-- 非表示Worker用DOM（Situation/Archetypeは当面固定運用。将来UIを設けるまで保留） -->
+    <!-- 非表示Worker用DOM（Situation/Archetype/Hero/Villainは当面固定運用。将来UIを設けるまで保留） -->
     <div style="display:none;">
       <select id="situation-select" onchange="onInputChanged();updateConfigFeedback();"><option value="BTN_VS_BB" selected>BTN vs BB</option><option value="3BET_IP">3-Bet IP</option><option value="SRP_IP">SRP IP</option><option value="4BET_POT">4-Bet Pot</option><option value="LIMP_POT">Limped Pot</option></select>
       <select id="archetype-select" onchange="onInputChanged();"><option value="STANDARD" selected>Standard</option><option value="TIGHT">Tight</option><option value="LOOSE">Loose</option><option value="GTO">GTO</option><option value="RECREATIONAL">Recreational</option></select>
+      <select id="hero-pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN" selected>BTN</option><option value="SB">SB</option></select>
+      <select id="villain-pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN">BTN</option><option value="SB">SB</option><option value="BB" selected>BB</option></select>
       <div id="fb-archetype"></div>
       <div id="fb-hero-pos"></div><div id="fb-villain-pos"></div><div id="fb-situation"></div>
     </div>
@@ -3078,19 +3069,15 @@ self.onmessage = function (e) {
       </div>
     </div>
     <div id="hm-wrap">
+      <div id="pos-config-row" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:4px;">
+        <span style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.5);">TABLE:</span>
+        <button class="table-size-tab active" data-size="6MAX" onclick="setTableSize('6MAX')">6-MAX</button>
+        <button class="table-size-tab" data-size="9MAX" onclick="setTableSize('9MAX')">9-MAX</button>
+      </div>
       <div id="hm-pos-tabs" style="display:flex;align-items:center;gap:3px;margin-bottom:4px;flex-shrink:0;flex-wrap:wrap;">
-        <button class="hm-pos-tab active" data-pos="OFF" onclick="setHeatmapPosTab('OFF')" style="margin-right:14px;">OFF</button>
-        <button class="hm-pos-tab" data-pos="UTG" onclick="setHeatmapPosTab('UTG')">UTG</button>
-        <button class="hm-pos-tab" data-pos="HJ"  onclick="setHeatmapPosTab('HJ')">HJ</button>
-        <button class="hm-pos-tab" data-pos="CO"  onclick="setHeatmapPosTab('CO')">CO</button>
-        <button class="hm-pos-tab" data-pos="BTN" onclick="setHeatmapPosTab('BTN')">BTN</button>
-        <button class="hm-pos-tab" data-pos="SB"  onclick="setHeatmapPosTab('SB')">SB</button>
-        <button class="hm-pos-tab" data-pos="BB"  onclick="setHeatmapPosTab('BB')">BB</button>
-        <label style="margin-left:6px;display:flex;align-items:center;gap:3px;cursor:pointer;
-               font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(200,220,240,.6);">
-          <input type="checkbox" id="hm-vs3bet" onchange="renderVillainOverlay()" style="cursor:pointer;">
-          vs 3bet<span class="help-q" title="選択中のポジションが3ベットに直面した際のコンティニューレンジ（かなり絞られたレンジ）の目安に切り替えます。Chen Formulaによるヒューリスティックな推定で、GTOソルバーの解ではありません">?</span>
-        </label>
+        <!-- v3.9.9: 中身はrebuildPositionUI()が起動時に必ず生成する（タブ+vs3betチェック）。
+             ここに静的HTMLを書くと、rebuildPositionUI()のinnerHTML総入れ替えで消えるだけの
+             二重管理になるので空のままにしておく。 -->
       </div>
       <div id="hm-grid"></div>
       <div id="hm-spin">CALCULATING...</div>
@@ -3343,15 +3330,28 @@ function build169ChenPercentile() {
 }
 const CHEN_PERCENTILE = build169ChenPercentile();
 
-// ポジション別の大まかなオープン/ディフェンドレンジ幅（目安・ヒューリスティック）
-// 参考: 一般的に公開されているレンジ表の中央値付近。GTOソルバーで導出した値ではない。
-const POSITION_RANGE_PCT = { UTG: 0.12, UTG1: 0.13, UTG2: 0.14, LJ: 0.15, HJ: 0.16, CO: 0.22, BTN: 0.32, SB: 0.25, BB: 0.42 };
+// ポジション別のオープンレンジ幅（169ハンド中の割合）。テーブルサイズごとに別テーブルを持つ
+// （例: HJは6maxだと2番目に行動するポジションだが9maxだと5番目なので、同じキーでも意味する
+// 広さが異なるため、フラットな共有テーブルにはできない）。
+// 出典: https://tokyo-pokerroom-rent.jp/blog/strategy/hand-range-chart のプレイ頻度(概算)値。
+// 6max: UTG17.5 / HJ26.0 / CO34.6 / BTN45.6 / SB34.0
+// 9max: UTG13.9 / UTG+1 16.9 / MP21.9(→UTG2/LJ/HJへ補間) / CO31.4 / BTN42.0 / SB30.8
+// BBはオープン側ではなくディフェンス側のレンジのため出典対象外。既存の目安値を維持。
+const POSITION_RANGE_PCT = {
+  '6MAX': { UTG: 0.175, HJ: 0.260, CO: 0.346, BTN: 0.456, SB: 0.340, BB: 0.42 },
+  '9MAX': { UTG: 0.139, UTG1: 0.169, UTG2: 0.185, LJ: 0.205, HJ: 0.219, CO: 0.314, BTN: 0.420, SB: 0.308, BB: 0.42 }
+};
 
-// vs 3bet時のコンティニューレンジ幅（大幅に絞られる想定の目安値）
-const POSITION_3BET_RANGE_PCT = { UTG: 0.04, UTG1: 0.042, UTG2: 0.045, LJ: 0.048, HJ: 0.05, CO: 0.07, BTN: 0.10, SB: 0.08, BB: 0.14 };
+// vs 3bet時のコンティニューレンジ幅（出典なし。上記オープン幅の約32%という
+// 元のヒューリスティックな比率をそのまま新しい幅に適用した目安値）
+const POSITION_3BET_RANGE_PCT = {
+  '6MAX': { UTG: 0.056, HJ: 0.083, CO: 0.111, BTN: 0.146, SB: 0.109, BB: 0.14 },
+  '9MAX': { UTG: 0.044, UTG1: 0.054, UTG2: 0.059, LJ: 0.066, HJ: 0.070, CO: 0.100, BTN: 0.134, SB: 0.099, BB: 0.14 }
+};
 
 function isInVillainRange(hand, villainPos, vs3bet) {
-  const table = vs3bet ? POSITION_3BET_RANGE_PCT : POSITION_RANGE_PCT;
+  const sizeKey = (typeof currentTableSize !== 'undefined' && POSITION_RANGE_PCT[currentTableSize]) ? currentTableSize : '6MAX';
+  const table = (vs3bet ? POSITION_3BET_RANGE_PCT : POSITION_RANGE_PCT)[sizeKey];
   const widthPct = table[villainPos] ?? 0.25;
   return CHEN_PERCENTILE[hand] <= widthPct;
 }
@@ -3359,6 +3359,8 @@ function isInVillainRange(hand, villainPos, vs3bet) {
 // 'OFF' = フィルターなし（HERO VIEW相当）。UTG〜BB = そのポジションのレンジ幅で暗くする。
 let heatmapPosTab = 'OFF';
 function setHeatmapPosTab(pos) {
+  // v3.9.9: 選択中のタブをもう一度押すとOFFに戻す（トグル動作）
+  if (pos === heatmapPosTab && pos !== 'OFF') pos = 'OFF';
   heatmapPosTab = pos;
   document.querySelectorAll('.hm-pos-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.pos === pos);
@@ -3386,6 +3388,10 @@ function setTableSize(size) {
     btn.classList.toggle('active', btn.dataset.size === size);
   });
   rebuildPositionUI();
+  // v3.9.9: UTG等、新旧テーブルサイズ双方に存在するタブを選択中だと
+  // rebuildPositionUI()内のsetHeatmapPosTab('OFF')分岐を通らずオーバーレイが
+  // 再計算されないままになるバグがあったため、ここで明示的に再描画する
+  renderVillainOverlay();
   onInputChanged();
   updateConfigFeedback();
 }
@@ -3393,13 +3399,21 @@ function setTableSize(size) {
 function rebuildPositionUI() {
   const positions = TABLE_POSITIONS[currentTableSize];
 
-  // --- ヒートマップ VILLAIN VIEW タブ（OFF + 各ポジション） ---
+  // --- ヒートマップ VILLAIN VIEW タブ（OFF + 各ポジション + vs3betチェック） ---
   const tabsWrap = document.getElementById('hm-pos-tabs');
   if (tabsWrap) {
+    // v3.9.9: 元の静的HTMLにあった「vs 3bet」チェックボックスがinnerHTML総入れ替えで
+    // 消えてしまうバグがあったため、チェック状態を保持したまま一緒に再生成する
+    const wasChecked = document.getElementById('hm-vs3bet')?.checked || false;
     let html = `<button class="hm-pos-tab${heatmapPosTab==='OFF'?' active':''}" data-pos="OFF" onclick="setHeatmapPosTab('OFF')" style="margin-right:14px;">OFF</button>`;
     positions.forEach(pos => {
       html += `<button class="hm-pos-tab${heatmapPosTab===pos?' active':''}" data-pos="${pos}" onclick="setHeatmapPosTab('${pos}')">${pos}</button>`;
     });
+    html += `<label style="margin-left:6px;display:flex;align-items:center;gap:3px;cursor:pointer;
+               font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(200,220,240,.6);">
+          <input type="checkbox" id="hm-vs3bet" onchange="renderVillainOverlay()" style="cursor:pointer;"${wasChecked?' checked':''}>
+          vs 3bet<span class="help-q" title="選択中のポジションが3ベットに直面した際のコンティニューレンジ（かなり絞られたレンジ）の目安に切り替えます。Chen Formulaによるヒューリスティックな推定で、GTOソルバーの解ではありません">?</span>
+        </label>`;
     tabsWrap.innerHTML = html;
     // 切り替え前に選んでいたポジションが新しいテーブルサイズに存在しなければOFFへ戻す
     if (heatmapPosTab !== 'OFF' && !positions.includes(heatmapPosTab)) {
