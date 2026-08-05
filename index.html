@@ -46,7 +46,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 /* ─── PANEL ─── */
 .pnl{background:#080e1a;border:1px solid rgba(0,180,255,0.15);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow-y:auto;overflow-x:hidden;}
 .pnl::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.4),transparent);}
-.sec{font-family:'Orbitron',monospace;font-size:7.5px;letter-spacing:2.5px;color:rgba(0,212,255,.7);text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid rgba(0,180,255,.12);flex-shrink:0;}
+.sec{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2.5px;color:rgba(0,212,255,.75);text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid rgba(0,180,255,.12);flex-shrink:0;}
 
 /* ─── SITUATION BADGE ─── */
 #sit-badge{
@@ -55,22 +55,22 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   transition:all .4s ease;
 }
 .sit-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-.sit-label{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:2px;}
-.sit-sub{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.5);margin-left:auto;}
+.sit-label{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:2px;}
+.sit-sub{font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(160,200,230,.65);margin-left:auto;}
 
 /* ─── LEFT: STREET + NUTS ─── */
 #street-box{background:rgba(0,180,255,.06);border:1px solid rgba(0,255,157,.2);border-radius:2px;padding:8px;text-align:center;flex-shrink:0;}
 #street-name{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;color:#00ff9d;text-shadow:0 0 20px rgba(0,255,157,.7);letter-spacing:2px;}
-#street-cnt{font-family:'JetBrains Mono','Share Tech Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px;font-weight:700;color:rgba(160,200,230,.6);margin-top:2px;}
+#street-cnt{font-family:'JetBrains Mono','Share Tech Mono',monospace;font-variant-numeric:tabular-nums;font-size:13px;font-weight:700;color:rgba(160,200,230,.7);margin-top:2px;}
 
 #nuts-list{display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;}
 .nuts-row{display:flex;align-items:center;gap:5px;padding:4px;border-bottom:1px solid rgba(255,255,255,.05);border-radius:2px;transition:background .2s;}
 .nuts-row:hover{background:rgba(0,180,255,.06);}
-.n-rank{font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px;font-weight:800;color:#ffb800;min-width:18px;}
-.n-eq{font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;font-weight:800;color:#00f0ff;background:rgba(0,200,255,.12);border:1px solid rgba(0,200,255,.35);border-radius:2px;padding:2px 5px;min-width:48px;text-align:center;}
+.n-rank{font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:13px;font-weight:800;color:#ffb800;min-width:18px;}
+.n-eq{font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px;font-weight:800;color:#00f0ff;background:rgba(0,200,255,.12);border:1px solid rgba(0,200,255,.35);border-radius:2px;padding:2px 5px;min-width:48px;text-align:center;}
 .n-hand{font-size:16px;font-weight:700;flex:1;}
-.n-type{font-size:8px;color:rgba(160,200,230,.45);text-align:right;line-height:1.3;}
-.n-draw{font-family:'Share Tech Mono',monospace;font-size:8px;margin-top:1px;}
+.n-type{font-size:9.5px;color:rgba(160,200,230,.6);text-align:right;line-height:1.3;}
+.n-draw{font-family:'Share Tech Mono',monospace;font-size:9px;margin-top:1px;}
 
 /* ─── NUTS SUB-ROW: outs cards ─── */
 .nuts-subrow{
@@ -80,37 +80,37 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 }
 .outs-up{
   display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;
-  font-size:8px;color:#00ff9d;
+  font-size:9px;color:#00ff9d;
 }
 .outs-down{
   display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;
-  font-size:8px;color:#ff3b3b;
+  font-size:9px;color:#ff3b3b;
 }
 .outs-arrow{font-size:10px;font-weight:900;}
 .outs-card-tag{
   display:inline-flex;align-items:center;gap:1px;
   background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.25);
-  border-radius:2px;padding:1px 4px;font-size:8px;letter-spacing:.5px;
+  border-radius:2px;padding:1px 4px;font-size:9px;letter-spacing:.5px;
   white-space:nowrap;
 }
 .outs-card-tag.down{background:rgba(255,59,59,.08);border-color:rgba(255,59,59,.25);}
 .outs-count{
-  font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;
-  color:rgba(160,200,230,.4);margin-left:2px;
+  font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1px;
+  color:rgba(160,200,230,.5);margin-left:2px;
 }
 
 /* ─── RIVER POLARIZED VIEW ─── */
 #river-polar{display:none;flex-direction:column;gap:4px;flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;}
 .polar-section{border-radius:3px;padding:5px 6px;flex-shrink:0;}
 .polar-title{
-  font-family:'Orbitron',monospace;font-size:7.5px;letter-spacing:2px;
+  font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;
   font-weight:700;margin-bottom:4px;
 }
 .polar-hands{
   display:flex;flex-wrap:wrap;gap:3px;
 }
 .polar-hand{
-  font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;
+  font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:700;
   padding:2px 5px;border-radius:2px;cursor:default;
   transition:opacity .2s;
 }
@@ -147,18 +147,16 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 /* ─── CENTER ─── */
 #center-pnl{padding:5px;gap:4px;display:flex;flex-direction:column;}
 .cam-hdr{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
-.cam-lbl{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:rgba(0,212,255,.7);}
+.cam-lbl{font-family:'Orbitron',monospace;font-size:9.5px;letter-spacing:2px;color:rgba(0,212,255,.85);}
 .cam-lbl span{color:#00d4ff;}
 
-/* v3.7.2: 各セクション見出しの隣に置く「？」ヘルプバッジ。
-   titleツールチップだけだと気付かれにくい、というフィードバックにより
-   視覚的に「押せそう/見れそう」なマークを常設する。 */
+/* v3.7.2: 各セクション見出しの隣に置く「？」ヘルプバッジ。 */
 .help-q{
   display:inline-flex;align-items:center;justify-content:center;
-  width:11px;height:11px;border-radius:50%;
+  width:12px;height:12px;border-radius:50%;
   border:1px solid rgba(0,180,255,.45);
-  color:rgba(0,180,255,.75);
-  font-size:8px;font-family:'Share Tech Mono',monospace;font-weight:700;
+  color:rgba(0,180,255,.85);
+  font-size:8.5px;font-family:'Share Tech Mono',monospace;font-weight:700;
   margin-left:4px;cursor:help;vertical-align:middle;line-height:1;
   flex-shrink:0;
 }
@@ -166,7 +164,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 /* ─── BOARD CARDS ─── */
 #board-area{display:flex;flex-direction:column;justify-content:flex-start;padding:4px 2px;flex:0 0 auto;}
 .board-slot{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:0;}
-.slot-hdr-lbl{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.5);user-select:none;}
+.slot-hdr-lbl{font-family:'Orbitron',monospace;font-size:8.5px;letter-spacing:1px;color:rgba(0,180,255,.65);user-select:none;}
 
 /* ─── CARD DISPLAY ─── */
 .board-card{
@@ -386,6 +384,25 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   background:rgba(0,212,255,.15);border-color:rgba(0,212,255,.5);color:#00d4ff;
   box-shadow:0 -1px 6px rgba(0,212,255,.2);
 }
+/* v3.9.8: TABLE(6-max/9-max)トグル + Hero/Villainポジション選択 */
+.table-size-tab{
+  padding:2px 8px;border-radius:3px;
+  border:1px solid rgba(160,200,230,.25);
+  background:rgba(0,20,40,.3);color:rgba(160,200,230,.5);
+  font-family:'Orbitron',monospace;font-size:7px;letter-spacing:.5px;
+  cursor:pointer;transition:all .15s;
+}
+.table-size-tab:hover{background:rgba(0,60,100,.35);color:rgba(200,220,240,.8);}
+.table-size-tab.active{
+  background:rgba(0,212,255,.15);border-color:rgba(0,212,255,.55);
+  color:#00d4ff;box-shadow:0 0 6px rgba(0,212,255,.2);
+}
+.pos-select{
+  background:rgba(0,20,40,.4);border:1px solid rgba(160,200,230,.25);
+  color:rgba(210,230,250,.9);font-family:'Share Tech Mono',monospace;
+  font-size:9px;border-radius:3px;padding:2px 4px;cursor:pointer;
+}
+.pos-select:hover{border-color:rgba(0,212,255,.5);}
 
 /* Tooltip */
 #hm-tooltip{
@@ -474,9 +491,9 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
      クロスオリジン制限を受けずWorkerを起動できるようにするための完全オフライン対応。
      spectra-worker.js / core/*.js を編集したら、このブロックも再生成が必要。 -->
 <script type="text/plain" id="spectra-worker-src">
-/* ===== SPECTRA WORKER BUNDLE (auto-embedded, offline対応) ===== */
+/* SPECTRA WORKER BUNDLE AUTO-GENERATED */
 
-/* ---- core/utils.js ---- */
+/* --- core/utils.js --- */
 
 /* core/utils.js — constants, cache, clamp01. No deps. */
 
@@ -532,7 +549,7 @@ function clamp01(x) {
 }
 
 
-/* ---- core/texture.js ---- */
+/* --- core/texture.js --- */
 
 /* core/texture.js — board texture & classifiers. Deps: utils.js */
 
@@ -660,7 +677,7 @@ function classifyRankStructure(board) {
 }
 
 
-/* ---- core/position.js ---- */
+/* --- core/position.js --- */
 
 /* core/position.js — position profiles & archetype. Deps: utils.js, texture.js */
 
@@ -674,6 +691,38 @@ const POSITION_PROFILE = {
     drawCoverage: 0.8,        // Fewer draws in opening range
     defensibility: 0.7,       // Hard to defend against aggression
     adjustmentFactor: 1.0     // baseline
+  },
+
+  // v3.9.8: 9-max対応で追加。UTG〜HJの間を内挿したヒューリスティック値
+  // （GTOソルバー由来ではなく、公開レンジ表の中央値付近を目安に補間）。
+  UTG1: {
+    label: 'UTG+1',
+    openWidth: 0.65,
+    nutDensity: 1.17,
+    highCardDensity: 1.08,
+    drawCoverage: 0.82,
+    defensibility: 0.71,
+    adjustmentFactor: 1.02
+  },
+
+  UTG2: {
+    label: 'UTG+2',
+    openWidth: 0.70,
+    nutDensity: 1.15,
+    highCardDensity: 1.06,
+    drawCoverage: 0.84,
+    defensibility: 0.72,
+    adjustmentFactor: 1.05
+  },
+
+  LJ: {
+    label: 'LJ (Lojack)',
+    openWidth: 0.75,
+    nutDensity: 1.12,
+    highCardDensity: 1.03,
+    drawCoverage: 0.87,
+    defensibility: 0.73,
+    adjustmentFactor: 1.08
   },
 
   HJ: {
@@ -881,7 +930,7 @@ function applyArchetypeBonus(score, key, archetype) {
 }
 
 
-/* ---- core/strength.js ---- */
+/* --- core/strength.js --- */
 
 /* core/strength.js — hand evaluation & strength decomp. Deps: utils.js */
 
@@ -1334,7 +1383,7 @@ function computeProjectedRawScore(madeStrength, potentialStrength) {
 }
 
 
-/* ---- core/range_matrix.js ---- */
+/* --- core/range_matrix.js --- */
 
 /* core/range_matrix.js — 169 matrix, draw classif, range stats. Deps: utils, strength, texture, position */
 
@@ -1780,7 +1829,7 @@ function computeNutAdvantage(board, heroPos, villainPos, rangeMatrix) {
 }
 
 
-/* ---- core/board_intel.js ---- */
+/* --- core/board_intel.js --- */
 
 /* core/board_intel.js — board features, range dynamics, aggression. Deps: texture, position */
 
@@ -1948,7 +1997,7 @@ function deriveAggressionSignal(features) {
 }
 
 
-/* ---- core/interpretations.js ---- */
+/* --- core/interpretations.js --- */
 
 /* core/interpretations.js — INTERP_META, confidence, derivation. Deps: utils, position */
 
@@ -2294,7 +2343,7 @@ function deriveInterpretations(features) {
 }
 
 
-/* ---- core/narrative.js ---- */
+/* --- core/narrative.js --- */
 
 /* core/narrative.js — HUD, narrative, strategy profiles. Deps: utils, interpretations */
 
@@ -2539,7 +2588,7 @@ function extractMetrics(features) {
 }
 
 
-/* ---- core/board_intelligence.js ---- */
+/* --- core/board_intelligence.js --- */
 
 /* core/board_intelligence.js — orchestrator. Deps: ALL */
 
@@ -2625,7 +2674,10 @@ function analyzeBoard(board, context) {
 }
 
 
-/* ---- spectra-worker.js (importScripts除去済み) ---- */
+/* --- spectra-worker.js --- */
+
+/* importScripts stripped for bundled worker */
+
 
 /**
  * SPECTRA v3.9.1 Worker — Entry Point
@@ -2820,13 +2872,22 @@ self.onmessage = function (e) {
       <div class="sit-sub" id="sit-sub">--</div>
     </div>
 
-    <!-- 非表示Worker用DOM -->
+    <!-- POSITION CONFIG (v3.9.8: 6-max/9-max対応) -->
+    <div id="pos-config-row" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:5px 0 6px;">
+      <span style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.5);">TABLE:</span>
+      <button class="table-size-tab active" data-size="6MAX" onclick="setTableSize('6MAX')">6-MAX</button>
+      <button class="table-size-tab" data-size="9MAX" onclick="setTableSize('9MAX')">9-MAX</button>
+      <span style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.5);margin-left:4px;">HERO:</span>
+      <select id="hero-pos-select" class="pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN" selected>BTN</option><option value="SB">SB</option></select>
+      <span style="font-family:'Orbitron',monospace;font-size:7px;color:rgba(160,200,230,.4);">VS</span>
+      <select id="villain-pos-select" class="pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN">BTN</option><option value="SB">SB</option><option value="BB" selected>BB</option></select>
+    </div>
+
+    <!-- 非表示Worker用DOM（Situation/Archetypeは当面固定運用。将来UIを設けるまで保留） -->
     <div style="display:none;">
       <select id="situation-select" onchange="onInputChanged();updateConfigFeedback();"><option value="BTN_VS_BB" selected>BTN vs BB</option><option value="3BET_IP">3-Bet IP</option><option value="SRP_IP">SRP IP</option><option value="4BET_POT">4-Bet Pot</option><option value="LIMP_POT">Limped Pot</option></select>
       <select id="archetype-select" onchange="onInputChanged();"><option value="STANDARD" selected>Standard</option><option value="TIGHT">Tight</option><option value="LOOSE">Loose</option><option value="GTO">GTO</option><option value="RECREATIONAL">Recreational</option></select>
       <div id="fb-archetype"></div>
-      <select id="hero-pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN" selected>BTN</option><option value="SB">SB</option></select>
-      <select id="villain-pos-select" onchange="onInputChanged();updateConfigFeedback();"><option value="UTG">UTG</option><option value="HJ">HJ</option><option value="CO">CO</option><option value="BTN">BTN</option><option value="SB">SB</option><option value="BB" selected>BB</option></select>
       <div id="fb-hero-pos"></div><div id="fb-villain-pos"></div><div id="fb-situation"></div>
     </div>
 
@@ -2920,12 +2981,12 @@ self.onmessage = function (e) {
       <!-- TOP BLOCK: RANGE PROFILE -->
       <div id="range-profile-block" style="padding:5px 7px;border-radius:4px;border:1px solid rgba(0,180,255,.2);background:linear-gradient(180deg, rgba(0,15,30,.6), rgba(0,6,16,.4));display:flex;flex-direction:column;justify-content:space-between;">
         <div>
-          <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:7.5px;font-weight:700;letter-spacing:1px;color:#00d4ff;margin-bottom:4px;display:flex;align-items:center;gap:4px;">
+          <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:8.5px;font-weight:700;letter-spacing:1px;color:#00d4ff;margin-bottom:4px;display:flex;align-items:center;gap:4px;">
             <span>▐ レンジ分析 (RANGE PROFILE)</span>
             <span class="help-q" title="Hero側のレンジが今どんな性質か（バリュー寄り/ブラフ寄り/レンジCap等）を表すHUD指標です">?</span>
           </div>
           <div id="range-profile-hud" style="display:flex;flex-direction:column;gap:4px;">
-            <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.25);padding:2px 0;">--</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.35);padding:2px 0;">--</div>
           </div>
         </div>
       </div>
@@ -2934,14 +2995,14 @@ self.onmessage = function (e) {
       <div style="background:linear-gradient(180deg, rgba(0,15,30,.6), rgba(0,6,16,.4));border:1px solid rgba(0,180,255,.2);border-radius:4px;padding:5px 7px;display:flex;flex-direction:column;justify-content:space-between;">
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:7.5px;font-weight:700;letter-spacing:1px;color:#00d4ff;display:flex;align-items:center;gap:4px;">
+            <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:8.5px;font-weight:700;letter-spacing:1px;color:#00d4ff;display:flex;align-items:center;gap:4px;">
               <span>▐ 盤面評価 (STRUCTURE RATING)</span>
               <span class="help-q" title="盤面の性質を4項目（ドロー感/二極化/レンジ密度/ナッツ偏り）・5段階の★評価で表します">?</span>
             </div>
-            <div id="radar-street-lbl" style="font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(160,200,230,.5);font-weight:600;">--</div>
+            <div id="radar-street-lbl" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.6);font-weight:600;">--</div>
           </div>
           <div id="star-rating-list">
-            <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.25);padding:2px 0;">--</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.35);padding:2px 0;">--</div>
           </div>
         </div>
         <!-- 既存texture互換DOM（非表示・applyTextureが参照） -->
@@ -2957,12 +3018,12 @@ self.onmessage = function (e) {
     <div id="tactical-insights-block" style="background:linear-gradient(135deg, rgba(0,18,36,.65), rgba(0,8,20,.45));border:1px solid rgba(0,212,255,.25);border-radius:4px;padding:5px 6px;margin-bottom:4px;box-shadow:0 2px 8px rgba(0,0,0,.25);"></div>
 
       <!-- Narrative -->
-      <div id="conclusion-narrative" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.4);line-height:1.6;border-top:1px solid rgba(0,180,255,.08);padding-top:4px;display:none;"></div>
+      <div id="conclusion-narrative" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.5);line-height:1.6;border-top:1px solid rgba(0,180,255,.08);padding-top:4px;display:none;"></div>
     </div>
 
     <!-- HERO OUTS（v3.7.2でコメントアウト。実装は残す。再度使う場合はコメントを外すだけでよい）
     <div id="outs-panel" style="display:none;">
-      <div title="次のカードで役が強くなる可能性（ドロー）の一覧です" style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1px;color:rgba(0,180,255,.4);margin-bottom:4px;cursor:help;">▐ HERO OUTS</div>
+      <div title="次のカードで役が強くなる可能性（ドロー）の一覧です" style="font-family:'Orbitron',monospace;font-size:7.5px;letter-spacing:1px;color:rgba(0,180,255,.5);margin-bottom:4px;cursor:help;">▐ HERO OUTS</div>
       <div id="outs-list"></div>
     </div>
     -->
@@ -2971,16 +3032,16 @@ self.onmessage = function (e) {
     <div style="flex-shrink:0;">
       <div id="bi-toggle" onclick="toggleBiPanel()" title="盤面の細かい性質（テクスチャ・レンジ有利不利など）とHUD指標の詳細です" style="
         cursor:pointer;
-        font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1.5px;
-        color:rgba(0,212,255,.35);padding:4px 0;
+        font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1.5px;
+        color:rgba(0,212,255,.5);padding:4px 0;
         border-top:1px solid rgba(0,180,255,.08);
         display:flex;align-items:center;justify-content:space-between;">
         <span>▐ BOARD INTELLIGENCE<span class="help-q" title="盤面の細かい性質（テクスチャ・レンジ有利不利など）とHUD指標の詳細です">?</span></span>
-        <span id="bi-toggle-icon" style="font-size:9px;">▼</span>
+        <span id="bi-toggle-icon" style="font-size:10px;">▼</span>
       </div>
       <div id="bi-panel" style="display:none;background:rgba(0,0,0,.2);border:1px solid rgba(0,180,255,.08);border-radius:3px;padding:6px;margin-top:3px;">
-        <div id="bi-features" style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(160,200,230,.45);margin-bottom:5px;line-height:1.7;"></div>
-        <div id="bi-narrative" style="background:rgba(0,180,255,.05);border-left:2px solid rgba(0,180,255,.25);padding:4px 6px;border-radius:2px;margin-bottom:5px;font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(0,200,255,.75);line-height:1.5;"></div>
+        <div id="bi-features" style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(160,200,230,.55);margin-bottom:5px;line-height:1.7;"></div>
+        <div id="bi-narrative" style="background:rgba(0,180,255,.05);border-left:2px solid rgba(0,180,255,.25);padding:4px 6px;border-radius:2px;margin-bottom:5px;font-family:'Share Tech Mono',monospace;font-size:9.5px;color:rgba(0,200,255,.85);line-height:1.5;"></div>
         <div id="bi-signals" style="display:flex;gap:3px;flex-wrap:wrap;"></div>
       </div>
     </div>
@@ -2994,26 +3055,26 @@ self.onmessage = function (e) {
     </div>
 
     <!-- ══ L3: 3D HEATMAP（主役・大きく） ══ -->
-    <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:7.5px;letter-spacing:1.5px;color:rgba(0,212,255,.7);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札一覧です。色の濃さ=現在の強さ、右上の三角マーク◥=将来性(ドロー力・5段階)、枠線=ハンド分類(ペア/ブロードウェイ等)">?</span></div>
+    <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:8.5px;letter-spacing:1.5px;color:rgba(0,212,255,.8);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札一覧です。色の濃さ=現在の強さ、右上の三角マーク◥=将来性(ドロー力・5段階)、枠線=ハンド分類(ペア/ブロードウェイ等)">?</span></div>
     <div id="hm-legend" style="display:flex;flex-direction:column;gap:3px;padding:5px 6px;background:rgba(0,15,35,.5);border:1px solid rgba(0,180,255,.2);border-radius:3px;flex-shrink:0;margin-bottom:3px;">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <span style="font-family:'Orbitron',monospace;font-size:7px;color:#00d4ff;font-weight:700;">STRENGTH:</span>
+        <span style="font-family:'Orbitron',monospace;font-size:8px;color:#00d4ff;font-weight:700;">STRENGTH:</span>
         <div style="width:55px;height:5px;border-radius:2px;background:linear-gradient(90deg, hsl(225,35%,12%), hsl(210,58%,22%), hsl(145,70%,32%), hsl(45,82%,38%), hsl(0,100%,48%));border:1px solid rgba(255,255,255,0.15);"></div>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(200,220,240,.7);">エアー → ナッツ</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(200,220,240,.8);">エアー → ナッツ</span>
         <span style="color:rgba(160,200,230,.25);">|</span>
-        <span style="font-family:'Orbitron',monospace;font-size:7px;color:#ff6a1a;font-weight:700;">将来性 ◥ (5段階):</span>
-        <span style="font-size:7.5px;color:#ff2d2d;font-weight:700;">★5(赤:特大)</span>
-        <span style="font-size:7.5px;color:#ff6a1a;font-weight:700;">★4(橙:大)</span>
-        <span style="font-size:7.5px;color:#ff9d40;font-weight:700;">★3(淡橙:中)</span>
-        <span style="font-size:7.5px;color:#ffc478;font-weight:700;">★2(薄黄:小)</span>
-        <span style="font-size:7.5px;color:#c9a878;">★1(ベージュ:微)</span>
+        <span style="font-family:'Orbitron',monospace;font-size:8px;color:#ff6a1a;font-weight:700;">将来性 ◥ (5段階):</span>
+        <span style="font-size:8.5px;color:#ff2d2d;font-weight:700;">★5(赤:特大)</span>
+        <span style="font-size:8.5px;color:#ff6a1a;font-weight:700;">★4(橙:大)</span>
+        <span style="font-size:8.5px;color:#ff9d40;font-weight:700;">★3(淡橙:中)</span>
+        <span style="font-size:8.5px;color:#ffc478;font-weight:700;">★2(薄黄:小)</span>
+        <span style="font-size:8.5px;color:#c9a878;">★1(ベージュ:微)</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.05);padding-top:3px;">
-        <span style="font-family:'Orbitron',monospace;font-size:7px;color:#00d4ff;font-weight:700;">枠線の意味:</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:2px solid rgba(0,212,255,.75);box-shadow:inset 0 0 3px rgba(0,212,255,.4);"></span>ポケットペア</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:2px solid rgba(255,215,0,.7);box-shadow:inset 0 0 3px rgba(255,215,0,.35);"></span>Sブロードウェイ</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:1.5px solid rgba(0,255,157,.7);"></span>Sコネクター</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;font-size:7.5px;color:rgba(210,230,250,.85);"><span style="display:inline-block;width:9px;height:9px;border:1px solid rgba(170,150,255,.6);"></span>Oブロードウェイ</span>
+        <span style="font-family:'Orbitron',monospace;font-size:8px;color:#00d4ff;font-weight:700;">枠線の意味:</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:8.5px;color:rgba(210,230,250,.9);"><span style="display:inline-block;width:9px;height:9px;border:2px solid rgba(0,212,255,.75);box-shadow:inset 0 0 3px rgba(0,212,255,.4);"></span>ポケットペア</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:8.5px;color:rgba(210,230,250,.9);"><span style="display:inline-block;width:9px;height:9px;border:2px solid rgba(255,215,0,.7);box-shadow:inset 0 0 3px rgba(255,215,0,.35);"></span>Sブロードウェイ</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:8.5px;color:rgba(210,230,250,.9);"><span style="display:inline-block;width:9px;height:9px;border:1.5px solid rgba(0,255,157,.7);"></span>Sコネクター</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;font-size:8.5px;color:rgba(210,230,250,.9);"><span style="display:inline-block;width:9px;height:9px;border:1px solid rgba(170,150,255,.6);"></span>Oブロードウェイ</span>
       </div>
     </div>
     <div id="hm-wrap">
@@ -3082,10 +3143,12 @@ let spectraWorkerUrl = null; // Blob URL（一度作れば使い回す）
 function getSpectraWorkerUrl() {
   if (spectraWorkerUrl) return spectraWorkerUrl;
   const srcEl = document.getElementById('spectra-worker-src');
-  const src   = srcEl ? srcEl.textContent : '';
-  const blob  = new Blob([src], { type: 'application/javascript' });
-  spectraWorkerUrl = URL.createObjectURL(blob);
-  return spectraWorkerUrl;
+  if (srcEl && srcEl.textContent.trim().length > 0) {
+    const blob  = new Blob([srcEl.textContent], { type: 'application/javascript' });
+    spectraWorkerUrl = URL.createObjectURL(blob);
+    return spectraWorkerUrl;
+  }
+  return './spectra-worker.js';
 }
 
 /* ══════════════════════════════
@@ -3282,10 +3345,10 @@ const CHEN_PERCENTILE = build169ChenPercentile();
 
 // ポジション別の大まかなオープン/ディフェンドレンジ幅（目安・ヒューリスティック）
 // 参考: 一般的に公開されているレンジ表の中央値付近。GTOソルバーで導出した値ではない。
-const POSITION_RANGE_PCT = { UTG: 0.12, HJ: 0.16, CO: 0.22, BTN: 0.32, SB: 0.25, BB: 0.42 };
+const POSITION_RANGE_PCT = { UTG: 0.12, UTG1: 0.13, UTG2: 0.14, LJ: 0.15, HJ: 0.16, CO: 0.22, BTN: 0.32, SB: 0.25, BB: 0.42 };
 
 // vs 3bet時のコンティニューレンジ幅（大幅に絞られる想定の目安値）
-const POSITION_3BET_RANGE_PCT = { UTG: 0.04, HJ: 0.05, CO: 0.07, BTN: 0.10, SB: 0.08, BB: 0.14 };
+const POSITION_3BET_RANGE_PCT = { UTG: 0.04, UTG1: 0.042, UTG2: 0.045, LJ: 0.048, HJ: 0.05, CO: 0.07, BTN: 0.10, SB: 0.08, BB: 0.14 };
 
 function isInVillainRange(hand, villainPos, vs3bet) {
   const table = vs3bet ? POSITION_3BET_RANGE_PCT : POSITION_RANGE_PCT;
@@ -3301,6 +3364,63 @@ function setHeatmapPosTab(pos) {
     btn.classList.toggle('active', btn.dataset.pos === pos);
   });
   renderVillainOverlay();
+}
+
+/* ══════════════════════════════
+   v3.9.8: TABLE SIZE (6-max / 9-max)
+   ポジションの一覧をテーブルサイズに応じて出し分ける。
+   POSITION_PROFILE / POSITION_RANGE_PCT / POSITION_3BET_RANGE_PCT は
+   9-max分のキー(UTG1/UTG2/LJ)を既に持っているので、ここでは
+   「どのポジションを選択肢として見せるか」の一覧だけを切り替える。
+══════════════════════════════ */
+const TABLE_POSITIONS = {
+  '6MAX': ['UTG','HJ','CO','BTN','SB','BB'],
+  '9MAX': ['UTG','UTG1','UTG2','LJ','HJ','CO','BTN','SB','BB']
+};
+let currentTableSize = '6MAX';
+
+function setTableSize(size) {
+  if (!TABLE_POSITIONS[size] || size === currentTableSize) return;
+  currentTableSize = size;
+  document.querySelectorAll('.table-size-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.size === size);
+  });
+  rebuildPositionUI();
+  onInputChanged();
+  updateConfigFeedback();
+}
+
+function rebuildPositionUI() {
+  const positions = TABLE_POSITIONS[currentTableSize];
+
+  // --- ヒートマップ VILLAIN VIEW タブ（OFF + 各ポジション） ---
+  const tabsWrap = document.getElementById('hm-pos-tabs');
+  if (tabsWrap) {
+    let html = `<button class="hm-pos-tab${heatmapPosTab==='OFF'?' active':''}" data-pos="OFF" onclick="setHeatmapPosTab('OFF')" style="margin-right:14px;">OFF</button>`;
+    positions.forEach(pos => {
+      html += `<button class="hm-pos-tab${heatmapPosTab===pos?' active':''}" data-pos="${pos}" onclick="setHeatmapPosTab('${pos}')">${pos}</button>`;
+    });
+    tabsWrap.innerHTML = html;
+    // 切り替え前に選んでいたポジションが新しいテーブルサイズに存在しなければOFFへ戻す
+    if (heatmapPosTab !== 'OFF' && !positions.includes(heatmapPosTab)) {
+      setHeatmapPosTab('OFF');
+    }
+  }
+
+  // --- HERO（オープンレンジ想定なのでBBは含めない） ---
+  const heroSel = document.getElementById('hero-pos-select');
+  if (heroSel) {
+    const heroOpts = positions.filter(p => p !== 'BB');
+    const keep = heroOpts.includes(heroSel.value) ? heroSel.value : 'BTN';
+    heroSel.innerHTML = heroOpts.map(p => `<option value="${p}"${p===keep?' selected':''}>${p}</option>`).join('');
+  }
+
+  // --- VILLAIN（BB含む全ポジション） ---
+  const villSel = document.getElementById('villain-pos-select');
+  if (villSel) {
+    const keep = positions.includes(villSel.value) ? villSel.value : 'BB';
+    villSel.innerHTML = positions.map(p => `<option value="${p}"${p===keep?' selected':''}>${p}</option>`).join('');
+  }
 }
 
 // v3.9: プリフロップ（ボード未入力）でも機能するよう、Worker応答を待たず
@@ -6108,6 +6228,7 @@ function loadPresetBoard(cards) {
 
 buildBoardArea();
 buildHeatmap();
+rebuildPositionUI();
 renderDefaultZeroState();
 // buildHeroSelects(); // v3.7.2: HERO HANDをコメントアウトしたため無効化（関数自体は残置）
 initEngine();
