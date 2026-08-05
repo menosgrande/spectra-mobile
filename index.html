@@ -1396,10 +1396,15 @@ function classifyPotential(hand, board) {
   if (board.length >= 5) return 0;
 
   // ── Flush draw potential ──
-  // Suited hands only: hand[2] === 's'
-  const isSuited = hand[2] === 's';
-  let hasFlushDraw = false;
-  if (isSuited) {
+  // Suited hands: hand[2] === 's' (100%のコンボがそのスートを持つ)
+  // ペア: hand[2]はundefinedだが、6コンボ中3コンボ(50%)は特定の1スートと一致する
+  // （例: AAの6通りのうち、スペードを含むのは3通り）。バグ修正: 以前はisSuitedの
+  // 判定にペアが一切含まれず、ペアは常にフラッシュドロー系のpotentialが0だった。
+  const isSuited  = hand[2] === 's';
+  const isPair    = hand[0] === hand[1] && hand[2] === undefined;
+  const suitedWeight = isSuited ? 1.0 : (isPair ? 0.5 : 0);
+  let hasFlushDraw = false, hasBackdoorFD = false;
+  if (suitedWeight > 0) {
     // Find which suit this hand would be — we don't know the specific suit here,
     // so we check the most common suit on the board (proxy for flush draw presence)
     const suitCounts = {};
@@ -1411,7 +1416,8 @@ function classifyPotential(hand, board) {
     // 例: 4-flushボード+スーテッドハンド = ロイヤル/フラッシュ完成なのに
     // 「まだドロー中」として二重にpotentialを加算していた。
     // → ちょうど2枚（=まだ1枚足りない、本物のドロー）の時だけ加算する。
-    hasFlushDraw = maxSuitOnBoard === 2;
+    hasFlushDraw  = maxSuitOnBoard === 2;
+    hasBackdoorFD = maxSuitOnBoard === 1; // バグ修正: 以前はバックドアに数値を一切与えていなかった
   }
 
   // ── Straight draw potential ──
@@ -1449,10 +1455,11 @@ function classifyPotential(hand, board) {
   }
 
   // ── Score ──
-  // FD  = 0.45 (9 outs), OESD = 0.40 (8 outs), GSD = 0.20 (4 outs)
-  // Combos: FD+OESD can coexist → cap at 0.85
+  // FD  = 0.45 (9 outs), OESD = 0.40 (8 outs), GSD = 0.20 (4 outs), BD-FD = 0.10 (目安)
+  // ペアはsuitedWeight(0.5)で按分。Combos: FD+OESD can coexist → cap at 0.85
   let potential = 0;
-  if (hasFlushDraw) potential += 0.45;
+  if (hasFlushDraw)       potential += 0.45 * suitedWeight;
+  else if (hasBackdoorFD) potential += 0.10 * suitedWeight;
   if (hasOESD)      potential += 0.40;
   else if (hasGSD)  potential += 0.20;
 
@@ -1501,10 +1508,13 @@ function classifyDraw(hand, board) {
     }
   }
 
-  // ── Flush draw checks (suited hands only) ──
-  // hand[2] === 's' means the hand notation is suited; pair hands have no [2]
+  // ── Flush draw checks (suited hands + pairs) ──
+  // hand[2] === 's' means the hand notation is suited; pair hands have no [2].
+  // バグ修正: ペアは6コンボ中3コンボ(50%)が特定スートと一致するため、
+  // 完全に除外せずFD/BD-FDタグの対象に含める（数値側の重みはclassifyPotential参照）。
   const isSuited = hand[2] === 's';
-  if (isSuited) {
+  const isPair   = hand[0] === hand[1] && hand[2] === undefined;
+  if (isSuited || isPair) {
     // We don't know the exact suit of the hand in the 169 canonical form,
     // but we know suited hands share one suit. Use board's most frequent suit
     // as a proxy: if the board has 2+ of the same suit, a suited hand will
@@ -3744,14 +3754,20 @@ function classifyDrawInline(r1, r2, suited, pair, board) {
       if (span === 4) { outs = 4; drawType = 'GSD'; break; }
     }
   }
-  // FD
-  if (suited) {
+  // FD/BD-FD: suited hands get full weight, pairs get 50% (6コンボ中3コンボが
+  // 特定スートと一致するため)。バグ修正: pair引数が渡されていたのに未使用で、
+  // ペアは常にフラッシュドロー系が0のままだった。
+  const suitedWeight = suited ? 1.0 : (pair ? 0.5 : 0);
+  if (suitedWeight > 0) {
     const boardSuits = board.map(c => c[1]);
     const targetSuit = board[0][1]; // simplification
     const cnt = boardSuits.filter(s => s === targetSuit).length;
     if (cnt >= 2) {
-      outs = Math.max(outs, 9);
+      outs = Math.max(outs, Math.round(9 * suitedWeight));
       drawType = drawType ? 'OESD+FD' : 'FD';
+    } else if (cnt === 1) {
+      outs = Math.max(outs, Math.round(2 * suitedWeight)); // バックドア（目安）
+      drawType = drawType || 'BD-FD';
     }
   }
 
