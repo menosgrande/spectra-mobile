@@ -3168,6 +3168,9 @@ const RANK_IDX = {};
 RANKS_LIST.forEach((r,i) => RANK_IDX[r] = i);
 
 let currentBoard   = [];
+// v3.9.13: requestId — 高速連続入力時にstale response(古い盤面の結果)が
+// 新しい盤面の結果を上書きしてしまう競合を防ぐ（README記載の既知課題への対応）
+let currentRequestId = 0;
 let heroHand       = [];     // ['As','Kd'] 等
 let spectraWorker  = null;
 let workerReady    = false;
@@ -3233,18 +3236,19 @@ function startFallback(reason = 'inline js eval') {
 }
 
 function onWorkerMessage(e) {
-
-  // ★ 追加：stale response を即座に無視
-  if (e.data.requestId !== currentRequestId) return;
-
-  const { type, data, cached, calcTime } = e.data;
+  const { type, data, cached, calcTime, requestId } = e.data;
 
   if (type === 'INIT_OK') {
     workerReady = true;
     setBrainMsg('BRAIN ONLINE','worker ready',100);
     finalizeBrainReady();
     return;
-}
+  }
+
+  // v3.9.13: stale response対策。INIT_OK以外は、送信時点のrequestIdと
+  // 一致しない（＝その後さらに新しい盤面変更が発生し、この応答が古くなった）
+  // 場合は無視する。
+  if (requestId !== undefined && requestId !== currentRequestId) return;
 
   switch(type) {
     // バグ修正: spectra-worker.jsは実行時例外をcatchしてENGINE_ERRORを
@@ -5213,8 +5217,10 @@ function triggerUpdate() {
   const villainPos       = document.getElementById('villain-pos-select')?.value  || 'BB';
 
   if (spectraWorker) {
+    currentRequestId++;
     spectraWorker.postMessage({
       type: 'BOARD_INTELLIGENCE',
+      requestId: currentRequestId,
       payload: {
         board: currentBoard,
         context: {

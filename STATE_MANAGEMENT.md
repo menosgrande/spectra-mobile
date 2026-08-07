@@ -499,3 +499,7 @@ ui/    … メインスレッド側（index.htmlが<script src="...">で読み�
 
 22. **未着手: `tests/`（`engine.test.js`, `crossval.js`）の動作確認**
     上記11〜18の一連のロジック変更（◥重み付け、ガンマ、boardHazard等）に対するテストの実行・更新はまだ行っていない。次にcore側ロジックを大きく変える前に一度確認しておく価値がある。
+
+23. **✅ v3.9.13: requestId照合の実装（完了）**
+    README記載の既知課題（「高速連続入力時、古い盤面のWorker応答が新しい盤面の結果を上書きするstale response競合が起きうる」）に対応。
+    Worker側(`spectra-worker.js`)は元々`requestId`を受け取って全レスポンス（`BOARD_INTELLIGENCE`/`EVAL_169`/`TEXTURE`/`ENGINE_ERROR`）にそのまま付け返す設計だったため変更不要。UI側に`currentRequestId`のグローバル状態を追加し、`triggerUpdate()`の`BOARD_INTELLIGENCE`送信時にインクリメントして付与、`onWorkerMessage()`冒頭で`INIT_OK`以外は`requestId !== currentRequestId`なら即returnして無視するようにした。
