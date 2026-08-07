@@ -3233,6 +3233,10 @@ function startFallback(reason = 'inline js eval') {
 }
 
 function onWorkerMessage(e) {
+
+  // ★ 追加：stale response を即座に無視
+  if (e.data.requestId !== currentRequestId) return;
+
   const { type, data, cached, calcTime } = e.data;
 
   if (type === 'INIT_OK') {
@@ -3240,7 +3244,7 @@ function onWorkerMessage(e) {
     setBrainMsg('BRAIN ONLINE','worker ready',100);
     finalizeBrainReady();
     return;
-  }
+}
 
   switch(type) {
     // バグ修正: spectra-worker.jsは実行時例外をcatchしてENGINE_ERRORを
