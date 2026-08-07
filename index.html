@@ -347,9 +347,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
    可読性を潰さないよう、枠線の太さ/実線・点線・二重線の違いだけで区別する。 */
 /* v3.9.4: 枠線を「線種の違い」から「色+太さ」で統一し、小さいセルでも判別しやすく整理 */
 .hm-c.cat-pair       { border: 2px solid rgba(0,212,255,.65); box-shadow: inset 0 0 5px rgba(0,212,255,.25); }
-.hm-c.cat-suited-bw  { border: 2px solid rgba(255,215,0,.6);  box-shadow: inset 0 0 5px rgba(255,215,0,.2);  }
 .hm-c.cat-connector  { border: 1.5px solid rgba(0,255,157,.55); }
-.hm-c.cat-offsuit-bw { border: 1px solid rgba(170,150,255,.4); }
 .hm-c.cat-other      { border:1px solid rgba(255,255,255,.06); }
 
 /* v3.9.6: Draw Potential（将来性）はセルの右上の三角バッジ「◥」で直感表示（5段階色分け）
@@ -1372,7 +1370,9 @@ function boardHazard(board) {
 
 function computeMadeStrength(rawEval7, board) {
   const haz     = boardHazard(board);
-  const penalty = haz * 0.03 * (1 - rawEval7);
+  // v3.9.12: 係数0.03→0.10。以前は最大でも0.03程度しか下がらず、モノトーン
+  // ボードでオフスートがフラッシュ持ちに対して弱いという現実がほぼ色に出なかった。
+  const penalty = haz * 0.10 * (1 - rawEval7);
   return Math.max(0, rawEval7 - penalty);
 }
 
@@ -1396,13 +1396,17 @@ function classifyPotential(hand, board) {
   if (board.length >= 5) return 0;
 
   // ── Flush draw potential ──
-  // Suited hands: hand[2] === 's' (100%のコンボがそのスートを持つ)
+  // バグ修正: 以前はスーテッドハンドを「4コンボ全部がそのスートを持つ」かのように
+  // 重み1.0で扱っていたが、実際にはAKs等の4コンボ（各スート1つずつ）のうち、
+  // ボードの特定の1スートと一致するのは1コンボだけ（25%）。残り3コンボは
+  // その特定スートとは無関係（ボードが完全レインボーならさらに別スートと
+  // 一致し得るが、それは別カテゴリの内訳＝categoryBreakdownで表現する話であり、
+  // ここでの◥バッジの数値は「代表的な一致コンボ」の重みとして25%が正しい）。
   // ペア: hand[2]はundefinedだが、6コンボ中3コンボ(50%)は特定の1スートと一致する
-  // （例: AAの6通りのうち、スペードを含むのは3通り）。バグ修正: 以前はisSuitedの
-  // 判定にペアが一切含まれず、ペアは常にフラッシュドロー系のpotentialが0だった。
+  // （例: AAの6通りのうち、スペードを含むのは3通り）。
   const isSuited  = hand[2] === 's';
   const isPair    = hand[0] === hand[1] && hand[2] === undefined;
-  const suitedWeight = isSuited ? 1.0 : (isPair ? 0.5 : 0);
+  const suitedWeight = isSuited ? 0.25 : (isPair ? 0.5 : 0);
   let hasFlushDraw = false, hasBackdoorFD = false;
   if (suitedWeight > 0) {
     // Find which suit this hand would be — we don't know the specific suit here,
@@ -1555,7 +1559,9 @@ function eval169(board, hero) {
             const c2 = r1 + SUITS[s2];
             if (!deadSet.has(c1) && !deadSet.has(c2)) {
               activeCombos++;
-              evals.push(evaluate7([c1, c2, ...board]));
+              const e = evaluate7([c1, c2, ...board]);
+              e.comboSuits = [SUITS[s1], SUITS[s2]]; // v3.9.11: どのスートの組み合わせか記録
+              evals.push(e);
             }
           }
         }
@@ -1567,7 +1573,9 @@ function eval169(board, hero) {
           const c2 = r2 + SUITS[s];
           if (!deadSet.has(c1) && !deadSet.has(c2)) {
             activeCombos++;
-            evals.push(evaluate7([c1, c2, ...board]));
+            const e = evaluate7([c1, c2, ...board]);
+            e.comboSuits = [SUITS[s]]; // v3.9.11: スーテッドは単一スート
+            evals.push(e);
           }
         }
       } else {
@@ -1617,6 +1625,30 @@ function eval169(board, hero) {
       // 代表コンボの category と直接一致するコンボだけを数える（スコアの逆算比較ではない）。
       const topClassCombos = best ? evals.filter(e => e.category === best.category).length : 0;
 
+      // v3.9.11: カテゴリ内訳を「役名+件数」から「実際の勝率(平均madeStrength)+関与スート」に
+      // 強化。例: モノトーンボードのAKsは「♠(1/4コンボ): 68%（フラッシュ）」
+      // 「他(3/4コンボ): 42%（ハイカード）」のように、弱い方の実際の強さも数値で見える形にする。
+      const categoryGroups = {};
+      evals.forEach(e => {
+        if (!categoryGroups[e.category]) {
+          categoryGroups[e.category] = { count: 0, name: e.categoryName, score: e.score, scoreSum: 0, suitSet: new Set() };
+        }
+        const g = categoryGroups[e.category];
+        g.count++;
+        g.scoreSum += e.score;
+        if (e.score > g.score) g.score = e.score;
+        (e.comboSuits || []).forEach(s => g.suitSet.add(s));
+      });
+      const categoryBreakdown = Object.values(categoryGroups)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3)
+        .map(g => ({
+          name:  g.name,
+          count: g.count,
+          avgMadeStrength: computeMadeStrength(g.scoreSum / g.count, board), // 0-1
+          suits: [...g.suitSet] // 空配列 = オフスート等、スート特定なし
+        }));
+
       results.push({
         hand:             hand,
         rawScore:         rawScore,
@@ -1627,6 +1659,7 @@ function eval169(board, hero) {
         activeCombos:     activeCombos,
         topClassCombos:   topClassCombos,
         totalCombos:      totalCombos,
+        categoryBreakdown: categoryBreakdown,
         potential:        potStrength,    // alias: UI/rangeEngine との互換
         drawType:         classifyDraw(hand, board),
         outs:             Math.round(potStrength * 20) // potStrength = outs/20 から逆算
@@ -1652,7 +1685,8 @@ function evalRange169(board, hero, context) {
     drawType:          item.drawType,     // UI: renderNuts で使用
     outs:              item.outs,         // UI: アウツ表示で使用
     topClassCombos:    item.topClassCombos, // UI: renderNutsのLive Combo表示で使用（同じ役に到達したコンボ数）
-    totalCombos:       item.totalCombos     // UI: renderNutsでのbaseTotal算出に使用
+    totalCombos:       item.totalCombos,    // UI: renderNutsでのbaseTotal算出に使用
+    categoryBreakdown: item.categoryBreakdown // UI: ヒートマップのポップアップ・三角塗りで使用
   }));
 }
 
@@ -2814,9 +2848,12 @@ self.onmessage = function (e) {
 <!-- TOOLTIP -->
 <div id="hm-tooltip">
   <div class="tt-hand" id="tt-hand">--</div>
-  <div class="tt-row"><span class="tt-label">現在の強さ:</span><span class="tt-val" id="tt-eq">--%</span></div>
-  <div class="tt-row"><span class="tt-label">将来性:</span><span class="tt-val" id="tt-pot-lvl" style="font-weight:700;">--</span></div>
-  <div class="tt-row"><span class="tt-label">分類:</span><span class="tt-val" id="tt-cat">--</span></div>
+  <div class="tt-row" id="tt-dead-row" style="display:none;"><span class="tt-val" style="color:#ff6a6a;font-weight:700;">盤面と被っていて成立しません</span></div>
+  <div class="tt-row" id="tt-eq-row"><span class="tt-label">現在の強さ:</span><span class="tt-val" id="tt-eq">--%</span></div>
+  <div class="tt-row" id="tt-pot-row"><span class="tt-label">将来性:</span><span class="tt-val" id="tt-pot-lvl" style="font-weight:700;">--</span></div>
+  <div class="tt-row" id="tt-cat-row"><span class="tt-label">分類:</span><span class="tt-val" id="tt-cat">--</span></div>
+  <div class="tt-row" id="tt-break-row1" style="display:none;"><span class="tt-label">内訳:</span><span class="tt-val" id="tt-break-val1" style="font-size:8px;"></span></div>
+  <div class="tt-row" id="tt-break-row2" style="display:none;"><span class="tt-label"></span><span class="tt-val" id="tt-break-val2" style="font-size:8px;"></span></div>
 </div>
 
 <!-- HEADER -->
@@ -3063,7 +3100,7 @@ self.onmessage = function (e) {
     </div>
 
     <!-- ══ L3: 3D HEATMAP（主役・大きく） ══ -->
-    <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:8.5px;letter-spacing:1.5px;color:rgba(0,212,255,.8);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札一覧です。色の濃さ=現在の強さ、右上の三角マーク◥=将来性(ドロー力・5段階)、枠線=ハンド分類(ペア/ブロードウェイ等)">?</span></div>
+    <div style="font-family:'Orbitron','Noto Sans JP',monospace;font-size:8.5px;letter-spacing:1.5px;color:rgba(0,212,255,.8);flex-shrink:0;">▐ 3D HEATMAP<span class="help-q" title="169通りの手札一覧です。色の濃さ=現在の強さ、右上の三角マーク◥=将来性(ドロー力・5段階)、枠線=ハンド分類(ペア/コネクター)">?</span></div>
     <div id="hm-legend" style="display:flex;flex-direction:column;gap:3px;padding:5px 6px;background:rgba(0,15,35,.5);border:1px solid rgba(0,180,255,.2);border-radius:3px;flex-shrink:0;margin-bottom:3px;">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <span style="font-family:'Orbitron',monospace;font-size:8px;color:#00d4ff;font-weight:700;">STRENGTH:</span>
@@ -3080,9 +3117,7 @@ self.onmessage = function (e) {
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.05);padding-top:3px;">
         <span style="font-family:'Orbitron',monospace;font-size:8px;color:#00d4ff;font-weight:700;">枠線の意味:</span>
         <span style="display:inline-flex;align-items:center;gap:3px;font-size:8.5px;color:rgba(210,230,250,.9);"><span style="display:inline-block;width:9px;height:9px;border:2px solid rgba(0,212,255,.75);box-shadow:inset 0 0 3px rgba(0,212,255,.4);"></span>ポケットペア</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;font-size:8.5px;color:rgba(210,230,250,.9);"><span style="display:inline-block;width:9px;height:9px;border:2px solid rgba(255,215,0,.7);box-shadow:inset 0 0 3px rgba(255,215,0,.35);"></span>Sブロードウェイ</span>
         <span style="display:inline-flex;align-items:center;gap:3px;font-size:8.5px;color:rgba(210,230,250,.9);"><span style="display:inline-block;width:9px;height:9px;border:1.5px solid rgba(0,255,157,.7);"></span>Sコネクター</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;font-size:8.5px;color:rgba(210,230,250,.9);"><span style="display:inline-block;width:9px;height:9px;border:1px solid rgba(170,150,255,.6);"></span>Oブロードウェイ</span>
       </div>
     </div>
     <div id="hm-wrap">
@@ -3300,9 +3335,10 @@ function classifyHandCategory(hand) {
   if (isPair) return 'cat-pair';
   const suited = hand.endsWith('s');
   const i1 = RANK_IDX[hand[0]], i2 = RANK_IDX[hand[1]];
-  const isBroadway = i1 <= 4 && i2 <= 4; // 両方 A/K/Q/J/T
-  if (isBroadway) return suited ? 'cat-suited-bw' : 'cat-offsuit-bw';
   const gap = Math.abs(i1 - i2) - 1;
+  // v3.9.12: ブロードウェイ(cat-suited-bw/cat-offsuit-bw)は廃止。
+  // 「ハイカードを含む」という情報はハンド自体のラベル表記(AKo等)で
+  // 既にわかるため、枠で二重に強調する価値が薄いという判断。
   if (suited && gap <= 2) return 'cat-connector'; // スーテッドコネクター/ワンギャッパー/ツーギャッパー
   return 'cat-other';
 }
@@ -3490,8 +3526,8 @@ function getDisplayStrength(item) {
    各チャンネルの役割を完全に分離した。
 
    - 背景マスク（枠線スタイル）: ハンドの静的カテゴリ（盤面非依存）
-     buildHeatmap()で一度だけ付与済み。cat-pair/cat-suited-bw/
-     cat-connector/cat-offsuit-bw/cat-other の5種。
+     buildHeatmap()で一度だけ付与済み。cat-pair/cat-connector/cat-other
+     の3種（v3.9.12でブロードウェイ系は廃止）。
    - 彩度（Saturation）: 現在のMade Strengthのみ。弱い=くすんだ色、
      強い=鮮やかな色。potentialは一切混ぜない。
    - 明度（Lightness）: 固定値。以前はストリートごとに複雑に
@@ -3500,11 +3536,22 @@ function getDisplayStrength(item) {
      render3DHeatmap()側で、セル右上の独立したドット（シアン系）
      として別チャンネルで表現する。
 ══════════════════════════════ */
-/* v3.9.7: 非線形カラーマッピング — ガンマ補正で中間帯(よく出る0.3〜0.75あたり)の
-   コントラストを持ち上げる。単調変換なので絶対値スケール・順序はそのまま保たれる。
-   指数を小さくするほど中間帯が持ち上がる（1.0で変換なし＝元のまま）。 */
+/* v3.9.12: 区分的な非線形マッピングに変更。
+   低〜中域(0〜0.45)は従来通りガンマ0.55で強く持ち上げ（ドライボードのナッツ対策）、
+   高域(0.45〜1.0)はガンマ0.85（線形に近い）に緩め、フラッシュ/ストレート帯が
+   互いに潰れて同じ色になる問題を軽減する。breakpointで連続になるよう接続。 */
 function remapMadeStrength(v) {
-  return Math.pow(v, 0.6);
+  const bp = 0.45, yAtBp = 0.6, lowGamma = 0.55, highGamma = 0.85;
+  if (v <= bp) return yAtBp * Math.pow(v / bp, lowGamma);
+  return yAtBp + (1 - yAtBp) * Math.pow((v - bp) / (1 - bp), highGamma);
+}
+
+/* v3.9.10: HSL文字列を彩度・明度だけ落として「くすんだ版」にする（コンボ内訳の対角塗りで使用） */
+function dimHSL(hslStr, satMul, lightMul) {
+  const m = hslStr.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
+  if (!m) return hslStr;
+  const h = +m[1], s = +m[2], l = +m[3];
+  return `hsl(${h},${Math.round(s * satMul)}%,${Math.round(l * lightMul)}%)`;
 }
 
 function calc3DHSL(item) {
@@ -3754,10 +3801,9 @@ function classifyDrawInline(r1, r2, suited, pair, board) {
       if (span === 4) { outs = 4; drawType = 'GSD'; break; }
     }
   }
-  // FD/BD-FD: suited hands get full weight, pairs get 50% (6コンボ中3コンボが
-  // 特定スートと一致するため)。バグ修正: pair引数が渡されていたのに未使用で、
-  // ペアは常にフラッシュドロー系が0のままだった。
-  const suitedWeight = suited ? 1.0 : (pair ? 0.5 : 0);
+  // FD/BD-FD: suitedハンドは4コンボ中1コンボ(25%)だけがボードの特定スートと一致。
+  // pairは6コンボ中3コンボ(50%)。
+  const suitedWeight = suited ? 0.25 : (pair ? 0.5 : 0);
   if (suitedWeight > 0) {
     const boardSuits = board.map(c => c[1]);
     const targetSuit = board[0][1]; // simplification
@@ -3785,9 +3831,27 @@ function render3DHeatmap(data) {
   data.forEach((item, idx) => {
     const cell = document.getElementById('hc' + idx);
     if (!cell) return;
-    cell.style.backgroundColor = item.potential !== undefined
+    const baseColor = item.potential !== undefined
       ? calc3DHSL(item)
       : fallbackColor(getDisplayStrength(item));
+
+    // v3.9.10: 案B — 代表役に到達したコンボの割合を対角グラデーションで表現。
+    // 例: モノトーンボードのAKsは4コンボ中1コンボしかナットフラッシュにならないため、
+    // セルの1/4だけを本来の色で塗り、残りはくすんだ色にする（「常にナット色」の誤解を防ぐ）。
+    const totalCombos = item.totalCombos || 0;
+    const topCombos    = item.topClassCombos ?? totalCombos;
+    const reachRatio   = totalCombos > 0 ? Math.max(0, Math.min(1, topCombos / totalCombos)) : 1;
+    // v3.9.12: 閾値を0.999→0.9に緩和。ごくわずかな端数の割れ(例: 0.98)でまで
+    // 斜め塗りを発動させると視覚ノイズになるため、明確に割れているセルだけ対象にする
+    if (reachRatio < 0.9 && item.potential !== undefined) {
+      const dimColor = dimHSL(baseColor, 0.35, 0.55);
+      const pct = Math.round(reachRatio * 100);
+      cell.style.backgroundColor = '';
+      cell.style.background = `linear-gradient(135deg, ${dimColor} 0%, ${dimColor} ${100-pct}%, ${baseColor} ${100-pct}%, ${baseColor} 100%)`;
+    } else {
+      cell.style.background = '';
+      cell.style.backgroundColor = baseColor;
+    }
 
     const madeForDisplay = item.madeStrength !== undefined ? item.madeStrength * 100 : getDisplayStrength(item);
     cell.dataset.eq   = madeForDisplay.toFixed(1);
@@ -3796,6 +3860,9 @@ function render3DHeatmap(data) {
     cell.dataset.draw = item.drawType || '--';
     cell.dataset.hand = item.hand || '';
     cell.dataset.madeCategory = item.madeCategory || '';
+    // v3.9.10: カテゴリ内訳（同スート/異スート等でコンボごとに役が割れる場合の詳細）
+    cell.dataset.catBreak = (item.categoryBreakdown && item.categoryBreakdown.length > 1)
+      ? JSON.stringify(item.categoryBreakdown) : '';
 
     // v3.9.3: Draw Potential（将来性）はセルの右上の三角バッジ「◥」で直感表示（5段階色分け）
     const dot = cell.querySelector('.hm-pot-dot');
@@ -3825,17 +3892,13 @@ function getDrawPotentialLevelColor(pot) {
 function getBorderCategoryJP(hand) {
   const cat = classifyHandCategory(hand);
   if (cat === 'cat-pair')       return 'ポケットペア';
-  if (cat === 'cat-suited-bw')  return 'Sブロードウェイ';
   if (cat === 'cat-connector')  return 'Sコネクター系';
-  if (cat === 'cat-offsuit-bw') return 'Oブロードウェイ';
   return 'その他';
 }
 function getBorderCategoryColor(hand) {
   const cat = classifyHandCategory(hand);
   if (cat === 'cat-pair')       return '#00d4ff';
-  if (cat === 'cat-suited-bw')  return '#ffd700';
   if (cat === 'cat-connector')  return '#00ff9d';
-  if (cat === 'cat-offsuit-bw') return '#a996ff';
   return '#fff';
 }
 
@@ -5309,6 +5372,27 @@ function onCellTouch(e) {
 
 function showTooltip(c, x, y) {
   document.getElementById('tt-hand').textContent = c.dataset.hand || '--';
+
+  // v3.9.12: デッドコンボ（盤面カードと被って0通りしか成立しない）は
+  // 専用メッセージだけ出し、他の行（強さ/将来性/分類等）は意味を持たないため隠す
+  const isDead = c.dataset.den === '0';
+  document.getElementById('tt-dead-row').style.display = isDead ? 'flex' : 'none';
+  ['tt-eq-row','tt-pot-row','tt-cat-row'].forEach(id => {
+    document.getElementById(id).style.display = isDead ? 'none' : 'flex';
+  });
+  if (isDead) {
+    document.getElementById('tt-break-row1').style.display = 'none';
+    document.getElementById('tt-break-row2').style.display = 'none';
+    tooltip.style.display = 'block';
+    const dtw = 180, dth = 50;
+    let dLeft = x + 14, dTop = y + 14;
+    if (dLeft + dtw > window.innerWidth)  dLeft = x - dtw - 14;
+    if (dTop + dth > window.innerHeight)  dTop = y - dth - 14;
+    tooltip.style.left = dLeft + 'px';
+    tooltip.style.top  = dTop + 'px';
+    return;
+  }
+
   document.getElementById('tt-eq').textContent   = (c.dataset.eq||'--')+'%';
   // v3.9.10: レベルが0(なし)の時も含め、常にパーセンテージを表示する
   const potPct    = c.dataset.pot || '0';
@@ -5327,6 +5411,41 @@ function showTooltip(c, x, y) {
     catEl.textContent = getBorderCategoryJP(c.dataset.hand || '');
     catEl.style.color = getBorderCategoryColor(c.dataset.hand || '');
     catEl.style.fontWeight = '700';
+  }
+  // v3.9.11: コンボごとに役が割れる場合の内訳を2行までに集約して表示。
+  // 例: モノトーンボードのAKs → 「♠(1/4): 68%（フラッシュ）」「他(3/4): 42%（ハイカード）」
+  // 役名の羅列ではなく実際の勝率(%)を出すことで弱い側のコンボの強さも見える。
+  const breakRow1 = document.getElementById('tt-break-row1');
+  const breakRow2 = document.getElementById('tt-break-row2');
+  if (breakRow1 && breakRow2) {
+    let breakdown = null;
+    try { breakdown = c.dataset.catBreak ? JSON.parse(c.dataset.catBreak) : null; } catch (e) { breakdown = null; }
+    if (breakdown && breakdown.length > 1) {
+      const totalCount = breakdown.reduce((s, g) => s + g.count, 0);
+      const fmtRow = (g, rowEl, valEl, isTop) => {
+        const suits = g.suits || [];
+        const label = !isTop ? '他' : (suits.length === 1 ? SUIT_SYM[suits[0]] : (suits.length > 1 ? suits.map(s => SUIT_SYM[s]).join('') : '他'));
+        const color = isTop && suits.length === 1 ? SUIT_COLORS[suits[0]] : 'rgba(200,220,240,.75)';
+        const pct   = (g.avgMadeStrength * 100).toFixed(0);
+        valEl.innerHTML = `<span style="color:${color};font-weight:700;">${label}</span>(${g.count}/${totalCount}): ${pct}%（${g.name}）`;
+        rowEl.style.display = 'flex';
+      };
+      fmtRow(breakdown[0], breakRow1, document.getElementById('tt-break-val1'), true);
+      // 2行目は残りのコンボをまとめて1グループとして扱う（3群以上でも常に2行に収める）
+      const restCount = totalCount - breakdown[0].count;
+      const restScoreW = breakdown.slice(1).reduce((s, g) => s + g.avgMadeStrength * g.count, 0);
+      const restGroup = {
+        count: restCount,
+        avgMadeStrength: restCount > 0 ? restScoreW / restCount : 0,
+        name: breakdown.length === 2 ? breakdown[1].name : 'その他',
+        suits: breakdown.length === 2 ? breakdown[1].suits : []
+      };
+      if (restCount > 0) fmtRow(restGroup, breakRow2, document.getElementById('tt-break-val2'), false);
+      else breakRow2.style.display = 'none';
+    } else {
+      breakRow1.style.display = 'none';
+      breakRow2.style.display = 'none';
+    }
   }
   tooltip.style.display = 'block';
   // Position: keep inside window
@@ -5522,6 +5641,7 @@ function resetHeatmapUI() {
     const c = document.getElementById('hc'+i);
     if (c) {
       c.style.backgroundColor='#0d1a2a';
+      c.style.background='';
       delete c.dataset.eq;
       // v3.9.9: ◥(draw potential)バッジが盤面リセット後も残ってしまうバグの修正
       const dot = c.querySelector('.hm-pot-dot');
@@ -5530,6 +5650,7 @@ function resetHeatmapUI() {
       delete c.dataset.potLevel;
       delete c.dataset.draw;
       delete c.dataset.den;
+      delete c.dataset.catBreak;
     }
   }
   document.getElementById('nuts-list').innerHTML =
