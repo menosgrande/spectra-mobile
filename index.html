@@ -39,12 +39,12 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ─── MAIN ─── */
-/* v3.9.13: #mainは3カラム定義だったが実際の子要素は2つ(#mob-pnl-nuts / #mob-pnl-stats)
-   だけで、3カラム目(280px/320px)が誰にも使われず空白のまま右側に残っていた。
-   ヒートマップを含む#mob-pnl-statsにその分の幅を渡すよう2カラムに修正。 */
-#main{display:grid;grid-template-columns:180px 1fr;gap:6px;padding:6px;flex:1;min-height:0;}
-@media(min-width:769px){#main{display:grid !important;grid-template-columns:180px 1fr !important;}}
-@media(min-width:1200px){#main{grid-template-columns:190px 1fr !important;}}
+/* v3.9.14: 2カラムへの変更を撤回。ヒートマップを大きくする目的だったが、
+   実際にはLEFT側(STREET/NUTS/RANGE PROFILE)のレイアウトが崩れる副作用が
+   出たため、元の3カラム構成に戻した。ヒートマップ拡大は別の手段で検討する。 */
+#main{display:grid;grid-template-columns:180px 1fr 280px;gap:6px;padding:6px;flex:1;min-height:0;}
+@media(min-width:769px){#main{display:grid !important;grid-template-columns:180px 1fr 280px !important;}}
+@media(min-width:1200px){#main{grid-template-columns:190px 1fr 320px !important;}}
 
 /* ─── PANEL ─── */
 .pnl{background:#080e1a;border:1px solid rgba(0,180,255,0.15);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow-y:auto;overflow-x:hidden;}
@@ -3153,7 +3153,126 @@ self.onmessage = function (e) {
 
 </div><!-- /root -->
 
-<script src="ui/tactical_insights.js"></script>
+<script>
+/**
+ * SPECTRA — Tactical Insights
+ * v3.9.14: 単体ファイル配布時に ui/tactical_insights.js が404になる問題を修正するため、
+ * 外部ファイル参照からindex.html内へのインライン化に変更（元のファイルはui/に残置）。
+ *
+ * structureFeatures（polarization / drawStructure / coverage / dominance / entropy）
+ * および盤面評価から戦術タグ（TACTICAL INSIGHTS）文言を生成する純粋関数。
+ *
+ * v3.9.4: 攻勢チャンス・キャップ率・コンボドロー将来性などの新要素を取り入れつつ、
+ *         実戦で即座に役立つ5カテゴリ×1タグ（常に5項目）で構成。
+ */
+
+function generateTacticalInsights(sf) {
+  if (!sf) return [];
+  const tags = [];
+  const pol = sf.polarization ?? 0;
+  const drw = sf.drawStructure ?? 0;
+  const cov = sf.coverage ?? 0;
+  const dom = sf.dominance ?? 0;
+  const ent = sf.entropy ?? 0;
+
+  // 1. 【攻勢チャンス・ナッツ優位 (ATTACK & DOMINANCE)】
+  if (dom >= 60 || pol >= 65) {
+    tags.push({
+      tag: '⚡ ATTACK OPTIMAL (攻勢推奨)',
+      color: '#ff3b3b',
+      text: 'ナッツ層の偏重と高二極化。Overbet(75-100% Pot) や強気の3-Barrelで最大の圧力をかける場面'
+    });
+  } else if (dom >= 40) {
+    tags.push({
+      tag: '👑 NUT ADVANTAGE (ナッツ優位)',
+      color: '#a855f7',
+      text: '上位レンジが優勢。標準サイズ(50-66% Pot) のバリューベットで効果的にフォールドエクイティを奪える'
+    });
+  } else {
+    tags.push({
+      tag: '⚖️ EQUAL ACCESS (ナッツ均等)',
+      color: '#29b6f6',
+      text: '両者にナッツの可能性。オーバーアグレッシブを避け、ハンド強弱に応じた厳格なバリュー選択を推奨'
+    });
+  }
+
+  // 2. 【キャップ率・防衛指針 (CAP & RANGE PROTECTION)】
+  if (pol <= 38 || cov >= 58) {
+    tags.push({
+      tag: '🛡️ RANGE CAPPED (キャップ警戒)',
+      color: '#00ff9d',
+      text: '相手レンジのキャップ傾向または中手ヒット多発。Check-BackやDelay C-Betによるレンジ保護が有効'
+    });
+  } else {
+    tags.push({
+      tag: '⚔️ UNCAP RANGE (ノーキャップ)',
+      color: '#ff7c00',
+      text: '両者ともに最強クラスを保持可能。相手のCheck-Raise警戒を高め、ブラフとバリューの比率を厳密に管理'
+    });
+  }
+
+  // 3. 【ドロー将来性・コンボドロー対応 (DRAW POTENTIAL)】
+  if (drw >= 65) {
+    tags.push({
+      tag: '🌊 DYNAMIC & HEAVY DRAW (多重ドロー)',
+      color: '#ffb800',
+      text: 'コンボドローや強力な発展性が豊富。フリーカードを与えないProtection Bet(66%+ Pot) と継続打撃が必須'
+    });
+  } else if (drw >= 38) {
+    tags.push({
+      tag: '🎯 MODERATE DRAW (標準ドロー)',
+      color: '#00d4ff',
+      text: '一般的なフラッシュ・ストレート目あり。ドローオッズを排除する適切なベットサイズで主導権を維持'
+    });
+  } else {
+    tags.push({
+      tag: '🏜️ DRY & STATIC (静的ドライ盤面)',
+      color: '#88aacc',
+      text: '発展性の少ない静的構造。スモールC-Bet(25-33% Pot) による高頻度Range Bet または Check-Back で安定回収'
+    });
+  }
+
+  // 4. 【バリュー・ブラフ効率 (VALUE & BLUFF EFFICIENCY)】
+  if (cov >= 55 && pol < 55) {
+    tags.push({
+      tag: '💎 VALUE DENSE (バリュー効率高)',
+      color: '#00ff9d',
+      text: '相手のコールレンジが広く中手が多い。過剰ブラフを控えて厚くバリューを取るラインの期待値が最大'
+    });
+  } else if (pol >= 50 && drw >= 45) {
+    tags.push({
+      tag: '🎭 SEMI-BLUFF PROFIT (セミブラフ好機)',
+      color: '#ff8c00',
+      text: '強ドローやダブルベリーを活用した Check-Raise / Semi-Bluff のフォールド期待値が非常に高い'
+    });
+  } else {
+    tags.push({
+      tag: '🎯 SHOWDOWN VALUE (ショウダウン維持)',
+      color: '#29b6f6',
+      text: '中堅ハンドは無理にベットで膨らませず、Check/Call ラインで安定してShowdown Valueを回収'
+    });
+  }
+
+  // 5. 【アクション分岐・ポジション指針 (ACTION SPLIT / BALANCE)】
+  if (ent >= 65) {
+    tags.push({
+      tag: '🌀 COMPLEX SPLIT (複雑な混合戦略)',
+      color: '#3b82f6',
+      text: 'ハンド群ごとの期待値が近接。同一ハンドでも Bet / Check を頻度で混ぜるバランス戦略(Split)を採用'
+    });
+  } else {
+    tags.push({
+      tag: '🔄 POSITIONAL ADVANTAGE (ポジション活用)',
+      color: '#00d4ff',
+      text: 'ポジションの優位性を活かし、IP時はアクション締め、OOP時は主導権に応じた適切なチェックレイズを実施'
+    });
+  }
+
+  // 5つのカテゴリすべてが必ず1個ずつタグを返す（各カテゴリにelse節があるため）ので、
+  // 戻り値は常にちょうど5個になる。
+  return tags;
+}
+</script>
 <script>
 /* ═══════════════════════════════════════════════════
    SPECTRA v3.9.1 — PURE JS ENGINE (Python完全追放)
@@ -4325,9 +4444,8 @@ function valueToStars(value100) {
   return Math.max(1, Math.min(5, Math.round(value100 / 20)));
 }
 
-// generateTacticalInsights(sf) は ui/tactical_insights.js に分離済み
-// （このファイルより前に <script src="ui/tactical_insights.js"> で読込まれ、
-//   グローバル関数として利用可能）
+// generateTacticalInsights(sf) は v3.9.14でindex.html内へインライン化済み
+// （元のui/tactical_insights.jsは参考用に残置。単体ファイル配布時の404を回避するため）
 
 function renderDefaultZeroState() {
   // 戦況バッジ (WAITING - X/5 CARDS) ※ この関数はboard.length < 3の間だけ呼ばれる想定
