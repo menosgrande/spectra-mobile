@@ -39,9 +39,12 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ─── MAIN ─── */
-#main{display:grid;grid-template-columns:180px 1fr 280px;gap:6px;padding:6px;flex:1;min-height:0;}
-@media(min-width:769px){#main{display:grid !important;grid-template-columns:180px 1fr 280px !important;}}
-@media(min-width:1200px){#main{grid-template-columns:190px 1fr 320px !important;}}
+/* v3.9.13: #mainは3カラム定義だったが実際の子要素は2つ(#mob-pnl-nuts / #mob-pnl-stats)
+   だけで、3カラム目(280px/320px)が誰にも使われず空白のまま右側に残っていた。
+   ヒートマップを含む#mob-pnl-statsにその分の幅を渡すよう2カラムに修正。 */
+#main{display:grid;grid-template-columns:180px 1fr;gap:6px;padding:6px;flex:1;min-height:0;}
+@media(min-width:769px){#main{display:grid !important;grid-template-columns:180px 1fr !important;}}
+@media(min-width:1200px){#main{grid-template-columns:190px 1fr !important;}}
 
 /* ─── PANEL ─── */
 .pnl{background:#080e1a;border:1px solid rgba(0,180,255,0.15);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow-y:auto;overflow-x:hidden;}
@@ -2936,17 +2939,7 @@ self.onmessage = function (e) {
       <span id="straight-prob-row" style="display:none;">STRAIGHT <b id="straight-prob-val" class="num-font" style="color:#00ff9d;">--</b></span>
     </div>
 
-    <!-- HERO HAND（v3.7.2でコメントアウト。実装は残す。再度使う場合はコメントを外すだけでよい）
-    <div id="hero-section">
-      <div title="自分の手札を選択すると、ヒートマップ上での自分の位置が光ります" style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:1.5px;color:rgba(255,215,0,.45);margin-bottom:3px;cursor:help;">▐ HERO HAND</div>
-      <div class="hero-selects">
-        <select id="hero-r1" onchange="onHeroChanged()"><option value="">-</option></select>
-        <select id="hero-s1" onchange="onHeroChanged()"><option value="">-</option></select>
-        <select id="hero-r2" onchange="onHeroChanged()"><option value="">-</option></select>
-        <select id="hero-s2" onchange="onHeroChanged()"><option value="">-</option></select>
-      </div>
-    </div>
-    -->
+    <!-- v3.9.14: HERO HANDはBOARD INPUTセクションへ移動済み（#hero-section参照） -->
 
     <!-- NUTS TABLE：Heatmapの補完情報 -->
     <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-height:0;overflow-y:auto;">
@@ -2984,6 +2977,21 @@ self.onmessage = function (e) {
     </div>
 
     <div id="board-area"></div>
+
+    <!-- v3.9.14: HERO HAND — ボード入力画面に追加（本来SPECTRAは自分の手札を
+         前提としないツールだが、入力したいというニーズがあったため追加。
+         中身は既存のdormant実装(hero-r1/s1/r2/s2, buildHeroSelects, onHeroChanged,
+         updateHeroCells等)をそのまま再利用し、配置だけLEFTサイドバーから
+         BOARD INPUTセクションへ移動した。 -->
+    <div id="hero-section" style="display:flex;align-items:center;gap:5px;margin:4px 0;padding:5px 6px;background:rgba(255,215,0,.04);border:1px solid rgba(255,215,0,.15);border-radius:3px;">
+      <span title="自分の手札を選択すると、ヒートマップ上での自分の位置が光ります" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.6);cursor:help;flex-shrink:0;">▐ HERO HAND</span>
+      <div class="hero-selects">
+        <select id="hero-r1" onchange="onHeroChanged()"><option value="">-</option></select>
+        <select id="hero-s1" onchange="onHeroChanged()"><option value="">-</option></select>
+        <select id="hero-r2" onchange="onHeroChanged()"><option value="">-</option></select>
+        <select id="hero-s2" onchange="onHeroChanged()"><option value="">-</option></select>
+      </div>
+    </div>
 
     <div id="stab-bar">
       <div id="stab-dot" style="background:rgba(0,255,157,.2);"></div>
@@ -3107,12 +3115,9 @@ self.onmessage = function (e) {
         <div style="width:55px;height:5px;border-radius:2px;background:linear-gradient(90deg, hsl(225,35%,12%), hsl(210,58%,22%), hsl(145,70%,32%), hsl(45,82%,38%), hsl(0,100%,48%));border:1px solid rgba(255,255,255,0.15);"></div>
         <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(200,220,240,.8);">エアー → ナッツ</span>
         <span style="color:rgba(160,200,230,.25);">|</span>
-        <span style="font-family:'Orbitron',monospace;font-size:8px;color:#ff6a1a;font-weight:700;">将来性 ◥ (5段階):</span>
-        <span style="font-size:8.5px;color:#ff2d2d;font-weight:700;">★5(赤:特大)</span>
-        <span style="font-size:8.5px;color:#ff6a1a;font-weight:700;">★4(橙:大)</span>
-        <span style="font-size:8.5px;color:#ff9d40;font-weight:700;">★3(淡橙:中)</span>
-        <span style="font-size:8.5px;color:#ffc478;font-weight:700;">★2(薄黄:小)</span>
-        <span style="font-size:8.5px;color:#c9a878;">★1(ベージュ:微)</span>
+        <span style="font-family:'Orbitron',monospace;font-size:8px;color:#ff6a1a;font-weight:700;">将来性 ◥:</span>
+        <div style="width:55px;height:5px;border-radius:2px;background:linear-gradient(90deg, #c9a878, #ffc478, #ff9d40, #ff6a1a, #ff2d2d);border:1px solid rgba(255,255,255,0.15);"></div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(200,220,240,.8);">微 → 特大</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.05);padding-top:3px;">
         <span style="font-family:'Orbitron',monospace;font-size:8px;color:#00d4ff;font-weight:700;">枠線の意味:</span>
@@ -3175,7 +3180,6 @@ let heroHand       = [];     // ['As','Kd'] 等
 let spectraWorker  = null;
 let workerReady    = false;
 let calcTimer      = null;
-let evalCache      = new Map();
 let lastHeatmapData= [];     // For tooltip access
 let _ttHideTimer = null;     // モバイルツールチップの自動非表示タイマー（連続タップでの積み上がり防止用）
 let lastNutsFeatures = null;   // renderNuts再描画（帯の折りたたみ）用にfeaturesをキャッシュ
@@ -3225,13 +3229,17 @@ function startFallback(reason = 'inline js eval') {
   // （importScriptsが失敗している場合は self.onmessage 自体が設定されないため
   // 応答が一切返らず、CALCULATINGスピナーが永久に残る）、
   // 「見た目上はfallback」なのに実際にはfallbackが有効化されていない状態になっていた。
+  //
+  // v3.9.13: フォールバック計算エンジンを削除したため、ここに来た場合は
+  // 「簡易解析で継続」ではなく「エンジン初期化に失敗」という正直な状態を示す。
   if (spectraWorker) {
     try { spectraWorker.terminate(); } catch (_) {}
     spectraWorker = null;
   }
-  workerReady = true;
+  workerReady = true; // triggerUpdate()を通し、ENGINE ERRORバッジを表示できるようにする
   document.getElementById('hm-spin')?.classList.remove('active');
-  setBrainMsg('FALLBACK ENGINE READY', reason, 100);
+  setBrainMsg('ENGINE FAILED TO START', reason, 100);
+  renderEngineErrorBadge();
   finalizeBrainReady();
 }
 
@@ -3611,223 +3619,9 @@ function calc3DHSL(item) {
   return `hsl(${h},${s}%,${l}%)`;
 }
 
-/* フォールバック: equityのみ使うシンプルカラー */
-function fallbackColor(pct) {
-  if (pct >= 80) return 'hsl(0,95%,46%)';
-  if (pct >= 60) return 'hsl(30,90%,44%)';
-  if (pct >= 40) return 'hsl(45,85%,40%)';
-  if (pct >= 20) return 'hsl(145,75%,32%)';
-  if (pct > 0)   return 'hsl(210,65%,22%)';
-  return '#080f1a';
-}
 
-/* ══════════════════════════════
-   FALLBACK INLINE EVALUATOR
-   (Worker未使用時 or Worker返答前のプレビュー)
-   Simple Monte-Carlo-less rank-based scoring
-══════════════════════════════ */
-function fallbackEval169(board) {
-  const results = [];
 
-  // ─ ボード構造を事前解析 ─
-  const boardRankFreq = {};
-  board.forEach(c => { boardRankFreq[c[0]] = (boardRankFreq[c[0]] || 0) + 1; });
-  const boardTripsRanks  = Object.keys(boardRankFreq).filter(r => boardRankFreq[r] >= 3);
-  const boardPairRanks   = Object.keys(boardRankFreq).filter(r => boardRankFreq[r] === 2);
-  const boardSingleRanks = Object.keys(boardRankFreq).filter(r => boardRankFreq[r] === 1);
-  const boardRanks       = board.map(c => c[0]);
 
-  // スート集計（フラッシュ判定用）
-  const boardSuitFreq = {};
-  board.forEach(c => { boardSuitFreq[c[1]] = (boardSuitFreq[c[1]] || 0) + 1; });
-  const maxSuitCount = Math.max(...Object.values(boardSuitFreq));
-
-  RANKS_LIST.forEach((r1, i) => {
-    RANKS_LIST.forEach((r2, j) => {
-      let label, score;
-      const isPair   = (i === j);
-      const isSuited = (i < j);
-
-      if (isPair)        label = r1 + r2;
-      else if (isSuited) label = r1 + r2 + 's';
-      else               label = r2 + r1 + 'o';
-
-      // ─ ハンド強度を段階的に評価 ─
-      score = evalHandFallback(r1, r2, isPair, isSuited, boardRanks,
-        boardRankFreq, boardTripsRanks, boardPairRanks,
-        boardSingleRanks, maxSuitCount, board);
-
-      // draw classify
-      const drawInfo = classifyDrawInline(r1, r2, isSuited, isPair, board);
-
-      const pct100 = Math.round(score * 100);
-      results.push({
-        hand: label, score, pct: pct100,
-        equity: pct100, potential: drawInfo.potential,
-        activeCombos: isPair ? 6 : isSuited ? 4 : 12,
-        totalCombos:  isPair ? 6 : isSuited ? 4 : 12,
-        drawType: drawInfo.drawType, outs: drawInfo.outs,
-        madeStrength: score,
-        rawScore:     score,
-        handName: score >= 0.90 ? 'STRAIGHT FLUSH'
-                : score >= 0.80 ? 'FOUR OF A KIND'
-                : score >= 0.70 ? 'FULL HOUSE'
-                : score >= 0.58 ? 'FLUSH'
-                : score >= 0.47 ? 'STRAIGHT'
-                : score >= 0.38 ? 'THREE OF A KIND'
-                : score >= 0.26 ? 'TWO PAIR'
-                : score >= 0.10 ? 'ONE PAIR'
-                : 'HIGH CARD',
-        class:    score >= 0.80 ? 'NUTS'
-                : score >= 0.44 ? 'TOP_PAIR_PLUS'
-                : score >= 0.26 ? 'MIDDLE_PAIR'
-                : score >= 0.10 ? 'WEAK_PAIR'
-                : 'AIR'
-      });
-    });
-  });
-  return results;
-}
-
-function evalHandFallback(r1, r2, isPair, isSuited,
-  boardRanks, boardRankFreq, boardTripsRanks, boardPairRanks,
-  boardSingleRanks, maxSuitCount, board) {
-
-  const ri1 = RANK_IDX[r1];
-  const ri2 = RANK_IDX[r2];
-
-  // ── 1. FOUR OF A KIND ──
-  // ポケットペア + ボードトリップス（同ランク）= QUADS
-  if (isPair && boardTripsRanks.includes(r1)) {
-    return 0.83 + (1 - ri1 / 12) * 0.06;
-  }
-  // ボード自体がフォーカード
-  if (Object.values(boardRankFreq).some(f => f >= 4)) {
-    return 0.82;
-  }
-
-  // ── 2. FULL HOUSE ──
-  // ポケットペア + ボードにトリップス（異ランク）= Full house (pair over trips)
-  if (isPair && boardTripsRanks.length >= 1 && !boardTripsRanks.includes(r1)) {
-    return 0.74 + (1 - ri1 / 12) * 0.04;
-  }
-  // ポケットペア + ボードに別のペア = Full house
-  if (isPair && boardPairRanks.length >= 1) {
-    return 0.72 + (1 - ri1 / 12) * 0.04;
-  }
-  // 片手がボードトリップスランクに一致（trips + hole pair = full house）
-  if (!isPair) {
-    const h1OnTrips = boardTripsRanks.includes(r1);
-    const h2OnTrips = boardTripsRanks.includes(r2);
-    if (h1OnTrips || h2OnTrips) {
-      const topRank = h1OnTrips ? r1 : r2;
-      return 0.71 + (1 - RANK_IDX[topRank] / 12) * 0.05;
-    }
-  }
-
-  // ── 3. FLUSH（近似） ──
-  if (isSuited && maxSuitCount >= 3) {
-    return 0.60 + (1 - ri1 / 12) * 0.05;
-  }
-
-  // ── 4. TRIPS（ボードトリップス + 手は関係なし = 全員同スコア）──
-  // ボードにトリップスがあって上記に該当しない（ハンドがトリップスに乗らない）
-  if (boardTripsRanks.length >= 1 && !isPair) {
-    // ハンドがボードペアに乗ればtwo pair with trips
-    if (boardPairRanks.includes(r1) || boardPairRanks.includes(r2)) return 0.42;
-    // 何も乗らない → ボードのtrips をプレイ（全員同じ）
-    // ただし片手がボードシングルに乗れば two pair
-    const hits = [r1,r2].filter(r => boardSingleRanks.includes(r)).length;
-    if (hits >= 1) return 0.40; // trips + pair kicker
-    // 何も乗らない → ボードのtrips をプレイ（全員同じ）+ キッカー補正
-    // 高いカードを持つほどキッカー勝負で有利
-    const kickerBonus = (1 - Math.min(ri1, ri2) / 12) * 0.04;
-    return 0.39 + kickerBonus;
-  }
-
-  // ── 5. THREE OF A KIND（セット）──
-  if (isPair) {
-    const boardHits = boardRanks.filter(r => r === r1).length;
-    if (boardHits >= 1) return 0.42 + (1 - ri1 / 12) * 0.05; // set
-  }
-
-  // ── 6. TWO PAIR ──
-  const r1OnBoard = boardRanks.includes(r1);
-  const r2OnBoard = !isPair && boardRanks.includes(r2);
-  if (!isPair && r1OnBoard && r2OnBoard) {
-    return 0.28 + (1 - Math.min(ri1, ri2) / 12) * 0.05;
-  }
-  if ((r1OnBoard || r2OnBoard) && boardPairRanks.length >= 1) {
-    return 0.27;
-  }
-
-  // ── 7. ONE PAIR ──
-  if (isPair) {
-    const boardMaxRankIdx = Math.min(...boardRanks.map(r => RANK_IDX[r]));
-    const isOver = ri1 < boardMaxRankIdx;
-    return isOver
-      ? 0.18 + (1 - ri1 / 12) * 0.06
-      : 0.10 + (1 - ri1 / 12) * 0.04;
-  }
-  if (r1OnBoard) return 0.14 + (1 - ri1 / 12) * 0.06;
-  if (r2OnBoard) return 0.14 + (1 - ri2 / 12) * 0.05;
-
-  // ── 8. HIGH CARD ──
-  return Math.max(0.03, 0.08 - (ri1 + ri2) * 0.002);
-}
-
-function parseCard(s) {
-  return { rank: s[0], suit: s[1], idx: RANK_IDX[s[0]] };
-}
-
-// 旧関数（不使用だがclassifyDrawInlineの呼び出し互換のため残す）
-function estimatePairScore(r, board) { return 0.3; }
-function estimateSuitedScore(r1, r2, board) { return 0.2; }
-function estimateOffsuitScore(r1, r2, board) { return 0.15; }
-
-function classifyDrawInline(r1, r2, suited, pair, board) {
-  if (!board || board.length < 3) return { drawType: null, potential: 0, outs: 0 };
-  // バグ修正: Worker側と同じ欠陥がこのフォールバック評価エンジンにも
-  // 独立して存在した。リバー(5枚)では次のカードが来ないため、
-  // ドロー・伸びしろの概念自体が存在せず常に0/nullであるべき。
-  if (board.length >= 5) return { drawType: null, potential: 0, outs: 0 };
-  const ri1 = RANK_IDX[r1], ri2 = RANK_IDX[r2];
-  const boardIdxs = board.map(c => RANK_IDX[c[0]]).sort((a,b) => a-b);
-
-  let outs = 0, drawType = null;
-
-  // OESD check: simplistic
-  const allIdxs = [...new Set([ri1, ri2, ...boardIdxs])].sort((a,b) => a-b);
-  for (let k = 0; k < allIdxs.length - 3; k++) {
-    const span = allIdxs[k+3] - allIdxs[k];
-    if (span === 3) { outs = 8; drawType = 'OESD'; break; }
-  }
-  // GSD
-  if (!drawType) {
-    for (let k = 0; k < allIdxs.length - 3; k++) {
-      const span = allIdxs[k+3] - allIdxs[k];
-      if (span === 4) { outs = 4; drawType = 'GSD'; break; }
-    }
-  }
-  // FD/BD-FD: suitedハンドは4コンボ中1コンボ(25%)だけがボードの特定スートと一致。
-  // pairは6コンボ中3コンボ(50%)。
-  const suitedWeight = suited ? 0.25 : (pair ? 0.5 : 0);
-  if (suitedWeight > 0) {
-    const boardSuits = board.map(c => c[1]);
-    const targetSuit = board[0][1]; // simplification
-    const cnt = boardSuits.filter(s => s === targetSuit).length;
-    if (cnt >= 2) {
-      outs = Math.max(outs, Math.round(9 * suitedWeight));
-      drawType = drawType ? 'OESD+FD' : 'FD';
-    } else if (cnt === 1) {
-      outs = Math.max(outs, Math.round(2 * suitedWeight)); // バックドア（目安）
-      drawType = drawType || 'BD-FD';
-    }
-  }
-
-  const potential = Math.min(1, outs / 20);
-  return { drawType, potential, outs };
-}
 
 /* ══════════════════════════════
    RENDER: 3D HEATMAP
@@ -3839,9 +3633,9 @@ function render3DHeatmap(data) {
   data.forEach((item, idx) => {
     const cell = document.getElementById('hc' + idx);
     if (!cell) return;
-    const baseColor = item.potential !== undefined
-      ? calc3DHSL(item)
-      : fallbackColor(getDisplayStrength(item));
+    // v3.9.13: フォールバック分岐を削除（Worker(Blob URL)がほぼ確実に起動するため、
+    // item.potentialが無いデータはもう来ない想定。参考実装はfallback-reference.jsへ）
+    const baseColor = calc3DHSL(item);
 
     // v3.9.10: 案B — 代表役に到達したコンボの割合を対角グラデーションで表現。
     // 例: モノトーンボードのAKsは4コンボ中1コンボしかナットフラッシュにならないため、
@@ -4043,69 +3837,6 @@ function detectDraws(r1, r2, s1, s2, board) {
   return draws;
 }
 
-/* ══════════════════════════════
-   OUTS CARD LIST: specific cards that improve/worsen
-   board: 現在のボード（文字列配列）
-   hand:  ハンド名（例 'AKs'）
-   drawType: 'OESD'|'GSD'|'FD'|'BD-FD'|null
-══════════════════════════════ */
-function getOutsCards(hand, drawType, board) {
-  if (!drawType || !board || board.length < 3) return { up:[], down:[] };
-
-  const RANK_ORDER = 'AKQJT98765432';
-  const usedRanks  = new Set(board.map(c => c[0]));
-  const usedSuits  = board.map(c => c[1]);
-
-  // スートカウント（フラッシュドロー用）
-  const suitCnt = {};
-  usedSuits.forEach(s => suitCnt[s] = (suitCnt[s]||0)+1);
-  const drawSuit = Object.entries(suitCnt).sort((a,b)=>b[1]-a[1])[0]?.[0];
-
-  const upCards  = [];
-  const downCards = [];
-
-  if (drawType.includes('FD') && !drawType.includes('BD')) {
-    // FD: 同スートの残り9枚
-    const suited = hand.endsWith('s');
-    const suit   = suited ? drawSuit : drawSuit; // 代表スート
-    RANK_ORDER.split('').forEach(r => {
-      if (!usedRanks.has(r)) upCards.push(r + suit);
-    });
-    // down: フラッシュをブロックするカード（対戦相手の強い役）は簡易化して省略
-  } else if (drawType === 'OESD') {
-    // OESD: 両端2ランク × 4スート
-    const boardIdxs = board.map(c => RANK_ORDER.indexOf(c[0])).sort((a,b)=>a-b);
-    const hi = boardIdxs[0], lo = boardIdxs[boardIdxs.length-1];
-    const upRanks = [];
-    // 最低ランクの1つ上 & 最高ランクの1つ下
-    if (hi > 0)                     upRanks.push(RANK_ORDER[hi-1]);
-    if (lo < RANK_ORDER.length-1)   upRanks.push(RANK_ORDER[lo+1]);
-    upRanks.forEach(r => {
-      if (!usedRanks.has(r)) upCards.push(r+'(4枚)');
-    });
-  } else if (drawType === 'GSD') {
-    // GSD: 穴のランク × 4スート
-    const boardIdxs = board.map(c => RANK_ORDER.indexOf(c[0])).sort((a,b)=>a-b);
-    for (let k=0; k<boardIdxs.length-1; k++) {
-      if (boardIdxs[k+1] - boardIdxs[k] === 2) {
-        const gapRank = RANK_ORDER[boardIdxs[k]+1];
-        if (!usedRanks.has(gapRank)) upCards.push(gapRank+'(4枚)');
-      }
-    }
-  } else if (drawType === 'BD-FD') {
-    upCards.push(drawSuit+'×2(約8%)');
-  }
-
-  // DOWN: ボードをペアらせるカード（相手がフルハウス/クアッズになる）
-  board.forEach(c => {
-    const r = c[0];
-    if (!downCards.find(d => d[0]===r)) {
-      downCards.push(r+'(3枚)');
-    }
-  });
-
-  return { up: upCards.slice(0,4), down: downCards.slice(0,3) };
-}
 
 /* ══════════════════════════════
    RIVER POLARIZED VIEW
@@ -4213,74 +3944,7 @@ function mergeSuitedOffsuit(items) {
   });
 }
 
-/* ══════════════════════════════
-   具体スート推定：169ハンド表記 → ボードと矛盾しない代表コンボ
-   例: AKo + board[Ah,Kd,Ts] → Ac Ks（ボードのスートを避ける）
-══════════════════════════════ */
-function getRepresentativeCombo(handLabel, board) {
-  if (!handLabel) return null;
-  const SUITS = ['s', 'h', 'd', 'c'];
-  const usedCards = new Set((board || []).map(c => c.toLowerCase()));
 
-  let r1, r2, isPair, isSuited;
-  if (handLabel.length === 2) {
-    // ポケットペア "AA"
-    r1 = r2 = handLabel[0];
-    isPair = true; isSuited = false;
-  } else {
-    r1 = handLabel[0];
-    r2 = handLabel[1];
-    isSuited = handLabel[2] === 's';
-    isPair = false;
-  }
-
-  if (isPair) {
-    // 異なる2スートを選ぶ（ボードで使われていないもの優先）
-    for (let i = 0; i < SUITS.length; i++) {
-      for (let j = i + 1; j < SUITS.length; j++) {
-        const c1 = r1 + SUITS[i], c2 = r1 + SUITS[j];
-        if (!usedCards.has(c1.toLowerCase()) && !usedCards.has(c2.toLowerCase())) {
-          return c1 + c2;
-        }
-      }
-    }
-    return r1 + SUITS[0] + r1 + SUITS[1]; // fallback
-  }
-
-  if (isSuited) {
-    // 同じスートを選ぶ（ボードで使われていないもの優先）
-    for (const s of SUITS) {
-      const c1 = r1 + s, c2 = r2 + s;
-      if (!usedCards.has(c1.toLowerCase()) && !usedCards.has(c2.toLowerCase())) {
-        return c1 + c2;
-      }
-    }
-    return r1 + SUITS[0] + r2 + SUITS[0]; // fallback
-  }
-
-  // オフスート: 異なるスートを選ぶ
-  for (const s1 of SUITS) {
-    for (const s2 of SUITS) {
-      if (s1 === s2) continue;
-      const c1 = r1 + s1, c2 = r2 + s2;
-      if (!usedCards.has(c1.toLowerCase()) && !usedCards.has(c2.toLowerCase())) {
-        return c1 + c2;
-      }
-    }
-  }
-  return r1 + SUITS[0] + r2 + SUITS[1]; // fallback
-}
-
-const SUIT_SYMBOL = { s: '♠', h: '♥', d: '♦', c: '♣' };
-const SUIT_COLOR  = { s: '#cbd5e1', h: '#ff5566', d: '#3b9eff', c: '#34d399' };
-function comboToHtml(combo) {
-  if (!combo || combo.length !== 4) return '';
-  const r1 = combo[0], s1 = combo[1], r2 = combo[2], s2 = combo[3];
-  return `<span style="font-family:'Share Tech Mono',monospace;">`
-    + `${r1}<span style="color:${SUIT_COLOR[s1]}">${SUIT_SYMBOL[s1]}</span>`
-    + `${r2}<span style="color:${SUIT_COLOR[s2]}">${SUIT_SYMBOL[s2]}</span>`
-    + `</span>`;
-}
 
 function renderNuts(data, features) {
   const isRiver = false; // リバーもFLOP/TURNと同じ役一覧を継続表示する（PURE VALUE 3分割は廃止）
@@ -5233,51 +4897,26 @@ function triggerUpdate() {
       }
     });
   } else {
-    // Inline fallback（Worker 未使用時のみ evalCache を使用）
-    // v3.6.2: フォールバック時はrenderBoardIntelligence()系が一切呼ばれないため、
-    // 戦況バッジがrenderDefaultZeroState()時点の「WAITING (X/5 CARDS)」で
-    // 固まり続けるバグがあった。ヒートマップ更新後に必ずrenderFallbackBadge()を
-    // 呼び、正直な状態（Worker専用の戦況判定は利用不可）を表示する。
-    const cacheKey = currentBoard.join(',');
-    if (evalCache.has(cacheKey)) {
-      const cached = evalCache.get(cacheKey);
-      lastHeatmapData = cached;
-      render3DHeatmap(cached);
-      renderNuts(cached);
-      document.getElementById('calc-time').textContent = 'CALC: 0ms (cache)';
-      setStabState('DONE');
-      updateHeroCells();
-      renderFallbackBadge();
-      return;
-    }
-    setTimeout(() => {
-      const t0 = performance.now();
-      const data = fallbackEval169(currentBoard);
-      const ms   = Math.round(performance.now() - t0);
-      evalCache.set(cacheKey, data);
-      lastHeatmapData = data;
-      render3DHeatmap(data);
-      renderNuts(data);
-      document.getElementById('hm-spin').classList.remove('active');
-      document.getElementById('calc-time').textContent = `CALC: ${ms}ms (fallback)`;
-      setStabState('DONE');
-      updateHeroCells();
-      const tex = calcTexture(currentBoard);
-      if (tex) applyTexture(tex);
-      renderFallbackBadge();
-    }, 50);
+    // v3.9.13: フォールバック計算エンジンを削除（参考実装はfallback-reference.jsへ退避）。
+    // Worker起動はBlob URL経由でfile://でもほぼ確実に成功するため、ここに来るのは
+    // 本当にWorker自体が起動できない致命的な状況のみ。中途半端な簡易計算で誤魔化さず、
+    // 正直にエラー状態を表示する。
+    document.getElementById('hm-spin').classList.remove('active');
+    setStabState('ERR');
+    renderEngineErrorBadge();
   }
 }
 
 /* ══════════════════════════════
-   FALLBACK BADGE — Worker未使用時の戦況バッジ表示
-   v3.6.2: フォールバックモードではrenderBoardIntelligence()を
-   呼べない（Worker専用の詳細な戦況判定ロジックがWorker側にしかないため）。
-   バッジを「WAITING」のまま固めず、フォールバック中である旨を明示する。
+   ENGINE ERROR BADGE
+   v3.9.13: フォールバック計算エンジン削除に伴い、Worker起動失敗時の表示を
+   「簡易解析で継続中」から「エンジン初期化に失敗」という正直な表示に変更。
+   Blob URL経由の起動はfile://でもほぼ確実に成功するため、ここに来るのは
+   本当に致命的な状況（非常に古いブラウザ等）のみの想定。
 ══════════════════════════════ */
-function renderFallbackBadge() {
-  const color  = 'rgba(255,180,0,.85)';
-  const shadow = 'rgba(255,180,0,.35)';
+function renderEngineErrorBadge() {
+  const color  = 'rgba(255,59,59,.9)';
+  const shadow = 'rgba(255,59,59,.4)';
 
   const dot   = document.getElementById('sit-dot');
   const label = document.getElementById('sit-label');
@@ -5287,8 +4926,8 @@ function renderFallbackBadge() {
     dot.style.background     = color;
     dot.style.boxShadow      = `0 0 8px ${shadow}`;
     label.style.color        = color;
-    label.textContent        = 'FALLBACK MODE';
-    sub.textContent          = 'Worker未使用 - 簡易解析のみ';
+    label.textContent        = 'ENGINE ERROR';
+    sub.textContent          = 'エンジン初期化に失敗しました';
     badge.style.borderColor  = color;
     badge.style.boxShadow    = `0 0 10px ${shadow}`;
   }
@@ -5301,8 +4940,8 @@ function renderFallbackBadge() {
     tDot.style.background     = color;
     tDot.style.boxShadow      = `0 0 10px ${shadow}`;
     tText.style.color         = color;
-    tText.textContent         = 'FALLBACK MODE (簡易解析)';
-    tSub.textContent          = 'ヒートマップ/NUTSのみ更新中 - 戦況判定はWorker専用機能のため利用不可';
+    tText.textContent         = 'ENGINE ERROR';
+    tSub.textContent          = 'ページを再読み込みするか、別のブラウザでお試しください';
     tBadge.style.borderColor  = color;
     tBadge.style.boxShadow    = `0 0 14px ${shadow}`;
   }
@@ -6498,7 +6137,7 @@ buildBoardArea();
 buildHeatmap();
 rebuildPositionUI();
 renderDefaultZeroState();
-// buildHeroSelects(); // v3.7.2: HERO HANDをコメントアウトしたため無効化（関数自体は残置）
+buildHeroSelects(); // v3.9.14: HERO HAND再有効化（BOARD INPUTセクションへ移動）
 initEngine();
 </script>
 </body>
