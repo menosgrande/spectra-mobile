@@ -4883,16 +4883,21 @@ function nCr(n, r) {
 }
 
 // ボードがそのままフラッシュ（5枚同スート）になる確率(%)。0〜100。
-function computeBoardFlushPct(board) {
+// v3.9.14: heroパラメータ追加。Hero Handが入力されていれば、その2枚も
+// 残りデッキから除外して計算する（以前は手札を追跡していなかったため未対応だった）。
+function computeBoardFlushPct(board, hero) {
+  hero = hero || [];
   if (board.length < 3 || board.length >= 5) return null; // riverは確定済みなので対象外
   const suitCount = {};
   board.forEach(c => { suitCount[c[1]] = (suitCount[c[1]] || 0) + 1; });
   const maxSuit = Object.keys(suitCount).reduce((a,b) => suitCount[a] >= suitCount[b] ? a : b);
   const have    = suitCount[maxSuit];
   if (have !== board.length) return 0; // 現時点で全カードが同スートでなければ5枚には届かない
-  const need          = 5 - board.length;
-  const remainingDeck = 52 - board.length;
-  const suitLeft       = 13 - have; // その色の残り枚数（1スートは13枚。手札は追跡していないため考慮しない）
+  const need           = 5 - board.length;
+  const knownCards     = board.length + hero.length;
+  const remainingDeck  = 52 - knownCards;
+  const heroSuitMatch  = hero.filter(c => c[1] === maxSuit).length;
+  const suitLeft       = 13 - have - heroSuitMatch; // その色の残り枚数（hero手札の分は除外）
   if (suitLeft < need) return 0;
   const favorable = nCr(suitLeft, need);
   const total     = nCr(remainingDeck, need);
@@ -4900,13 +4905,20 @@ function computeBoardFlushPct(board) {
 }
 
 // ボードがそのままストレート（5連続ランク）になる確率(%)。0〜100。
-function computeBoardStraightPct(board) {
+function computeBoardStraightPct(board, hero) {
+  hero = hero || [];
   if (board.length < 3 || board.length >= 5) return null; // riverは確定済みなので対象外
   const nums = board.map(c => RANK_TO_NUM[c[0]]);
   if (new Set(nums).size !== nums.length) return 0; // ペア済みなら5連続にはなり得ない
 
-  const need = 5 - board.length;
-  const remainingDeck = 52 - board.length;
+  const need          = 5 - board.length;
+  const knownCards    = board.length + hero.length;
+  const remainingDeck = 52 - knownCards;
+  const heroRanks     = hero.map(c => c[0]);
+  // ランク数値 → 文字の逆引き（ホイール窓では1=Aとして扱う）
+  const NUM_TO_RANK = { 1:'A' };
+  Object.keys(RANK_TO_NUM).forEach(r => { NUM_TO_RANK[RANK_TO_NUM[r]] = r; });
+
   // 10通りの5連続窓（ホイールA-2-3-4-5を含む）
   const windows = [];
   for (let high = 6; high <= 14; high++) windows.push([high-4,high-3,high-2,high-1,high]);
@@ -4915,14 +4927,18 @@ function computeBoardStraightPct(board) {
   let totalPct = 0;
   windows.forEach(win => {
     const winSet = new Set(win);
-    const boardNums = win.includes(14) || !win.includes(1) ? nums : nums.map(n => n === 14 ? 1 : n);
     // ホイール窓の判定時のみA=1として読み替える
     const effNums = win[0] === 1 ? nums.map(n => n === 14 ? 1 : n) : nums;
     if (!effNums.every(n => winSet.has(n))) return; // この窓にボードの全ランクが収まらない → 対象外
     const missingRanks = win.filter(r => !effNums.includes(r));
     if (missingRanks.length !== need) return; // 理論上は常に一致するはずの安全チェック
-    // 各不足ランクにつき残り4枚（手札は追跡していないため考慮しない）
-    const favorable = Math.pow(4, need);
+    // 各不足ランクにつき残り4枚から、hero手札が持つ分を差し引く
+    let favorable = 1;
+    for (const r of missingRanks) {
+      const rankChar   = NUM_TO_RANK[r];
+      const heroHasIt   = heroRanks.filter(rc => rc === rankChar).length;
+      favorable *= Math.max(0, 4 - heroHasIt);
+    }
     const total = nCr(remainingDeck, need);
     if (total > 0) totalPct += (favorable / total) * 100;
   });
@@ -4935,8 +4951,8 @@ function renderBoardTextureProbs() {
   const sRow    = document.getElementById('straight-prob-row');
   if (!wrap || !fRow || !sRow) return;
 
-  const flushPct    = computeBoardFlushPct(currentBoard);
-  const straightPct = computeBoardStraightPct(currentBoard);
+  const flushPct    = computeBoardFlushPct(currentBoard, heroHand);
+  const straightPct = computeBoardStraightPct(currentBoard, heroHand);
 
   // 確定済み(100%程度)の時は表示しない。flop未到達(null)も非表示。
   const showFlush    = flushPct    !== null && flushPct    < 99.5;
@@ -5363,6 +5379,7 @@ function onHeroChanged() {
   updateDuplicateGuard();
   updateOutsPanel();
   updateBoardCards();
+  renderBoardTextureProbs(); // v3.9.14: hero手札もFLUSH/STRAIGHT確率の計算対象に含めたため再描画
 }
 
 /* ── Street render ── */
