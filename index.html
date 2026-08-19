@@ -398,6 +398,19 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   background:rgba(0,212,255,.15);border-color:rgba(0,212,255,.55);
   color:#00d4ff;box-shadow:0 0 6px rgba(0,212,255,.2);
 }
+/* v3.9.16: TIGHT/NORMAL/LOOSE レンジ幅トグル */
+.range-width-tab{
+  padding:2px 8px;border-radius:3px;
+  border:1px solid rgba(160,200,230,.25);
+  background:rgba(0,20,40,.3);color:rgba(160,200,230,.5);
+  font-family:'Orbitron',monospace;font-size:7px;letter-spacing:.5px;
+  cursor:pointer;transition:all .15s;
+}
+.range-width-tab:hover{background:rgba(0,60,100,.35);color:rgba(200,220,240,.8);}
+.range-width-tab.active{
+  background:rgba(0,255,157,.15);border-color:rgba(0,255,157,.55);
+  color:#00ff9d;box-shadow:0 0 6px rgba(0,255,157,.2);
+}
 .pos-select{
   background:rgba(0,20,40,.4);border:1px solid rgba(160,200,230,.25);
   color:rgba(210,230,250,.9);font-family:'Share Tech Mono',monospace;
@@ -2878,6 +2891,7 @@ self.onmessage = function (e) {
 <!-- MOBILE TABS -->
 <div id="mob-tabs">
   <button class="mob-tab active" id="mtab-board" onclick="mobTab('board')">BOARD</button>
+  <button class="mob-tab" id="mtab-hero" onclick="mobTab('hero')">HERO</button>
   <button class="mob-tab" id="mtab-nuts" onclick="mobTab('nuts')">NUTS</button>
   <button class="mob-tab" id="mtab-stats" onclick="mobTab('stats')">ANALYTICS</button>
 </div>
@@ -2977,22 +2991,6 @@ self.onmessage = function (e) {
     </div>
 
     <div id="board-area"></div>
-
-    <!-- v3.9.14: HERO HAND — ボード入力画面に追加（本来SPECTRAは自分の手札を
-         前提としないツールだが、入力したいというニーズがあったため追加。
-         中身は既存のdormant実装(hero-r1/s1/r2/s2, buildHeroSelects, onHeroChanged,
-         updateHeroCells等)をそのまま再利用し、配置だけLEFTサイドバーから
-         BOARD INPUTセクションへ移動した。 -->
-    <div id="hero-section" style="display:flex;align-items:center;gap:5px;margin:4px 0;padding:5px 6px;background:rgba(255,215,0,.04);border:1px solid rgba(255,215,0,.15);border-radius:3px;">
-      <span title="自分の手札を選択すると、ヒートマップ上での自分の位置が光ります" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.6);cursor:help;flex-shrink:0;">▐ HERO HAND</span>
-      <div class="hero-selects">
-        <select id="hero-r1" onchange="onHeroChanged()"><option value="">-</option></select>
-        <select id="hero-s1" onchange="onHeroChanged()"><option value="">-</option></select>
-        <select id="hero-r2" onchange="onHeroChanged()"><option value="">-</option></select>
-        <select id="hero-s2" onchange="onHeroChanged()"><option value="">-</option></select>
-      </div>
-    </div>
-
     <div id="stab-bar">
       <div id="stab-dot" style="background:rgba(0,255,157,.2);"></div>
       <div id="stab-txt" style="color:rgba(160,200,230,.4);">MANUAL INPUT MODE — SELECT CARDS ABOVE</div>
@@ -3130,6 +3128,10 @@ self.onmessage = function (e) {
         <span style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.5);">TABLE:</span>
         <button class="table-size-tab active" data-size="6MAX" onclick="setTableSize('6MAX')">6-MAX</button>
         <button class="table-size-tab" data-size="9MAX" onclick="setTableSize('9MAX')">9-MAX</button>
+        <span style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,255,157,.5);margin-left:4px;">RANGE:</span>
+        <button class="range-width-tab" data-width="TIGHT" onclick="setRangeWidth('TIGHT')">TIGHT</button>
+        <button class="range-width-tab active" data-width="NORMAL" onclick="setRangeWidth('NORMAL')">NORMAL</button>
+        <button class="range-width-tab" data-width="LOOSE" onclick="setRangeWidth('LOOSE')">LOOSE</button>
       </div>
       <div id="hm-pos-tabs" style="display:flex;align-items:center;gap:3px;margin-bottom:4px;flex-shrink:0;flex-wrap:wrap;">
         <!-- v3.9.9: 中身はrebuildPositionUI()が起動時に必ず生成する（タブ+vs3betチェック）。
@@ -3140,6 +3142,49 @@ self.onmessage = function (e) {
       <div id="hm-spin">CALCULATING...</div>
     </div>
 
+  </div>
+
+  <!-- HERO — v3.9.17: 独立パネル化。スマホではタブで別ページとして表示され、
+       PCでは全カラムを跨ぐ1行として表示される。メイン計算経路(triggerUpdate等)には
+       一切依存しない読み取り専用パネルなので、丸ごと削除しても他に影響しない。 -->
+  <div class="pnl" id="mob-pnl-hero" style="grid-column:1 / -1;">
+    <div id="hero-section" style="display:flex;flex-direction:column;gap:5px;">
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span title="自分の手札を選択すると、ヒートマップ上での自分の位置が光ります" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.6);cursor:help;flex-shrink:0;">▐ HERO HAND</span>
+        <div class="hero-selects">
+          <select id="hero-r1" onchange="onHeroChanged()"><option value="">-</option></select>
+          <select id="hero-s1" onchange="onHeroChanged()"><option value="">-</option></select>
+          <select id="hero-r2" onchange="onHeroChanged()"><option value="">-</option></select>
+          <select id="hero-s2" onchange="onHeroChanged()"><option value="">-</option></select>
+        </div>
+      </div>
+      <!-- v3.9.16: HERO ANALYSIS — Hero Hand専用の詳細パネル。メイン計算経路には
+           一切触れず、既に計算済みのlastHeatmapData(169グリッド)を読み取るだけの
+           独立した表示。Hero Hand機能ごと将来削除してもメイン側は無傷のままにする方針。 -->
+      <div id="hero-analysis" style="display:none;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(220,230,245,.85);border-top:1px solid rgba(255,215,0,.15);padding-top:5px;">
+        <div id="hero-street-label" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.45);margin-bottom:3px;"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px 14px;">
+          <span>役: <b id="hero-handname" style="color:#ffd700;">--</b></span>
+          <span>勝率目安: <b id="hero-strength" style="color:#00d4ff;">--%</b></span>
+          <span>将来性: <b id="hero-potential" style="color:#ff6a1a;">--%</b></span>
+        </div>
+        <div id="hero-draw-row" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:3px;">
+          <span>フラッシュ化: <b id="hero-flush-pct" style="color:#3b9eff;">--%</b></span>
+          <span>ストレート化: <b id="hero-straight-pct" style="color:#34d399;">--%</b></span>
+        </div>
+        <div style="margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,215,0,.1);">
+          <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.5);margin-bottom:3px;">今の状況（目安・4択の割合）</div>
+          <div id="hero-dec-bars" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+        </div>
+        <div style="margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,215,0,.1);">
+          <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.5);margin-bottom:3px;">3ベットを受けた場合（目安・3択の割合）</div>
+          <div id="hero-3b-bars" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+        </div>
+        <div style="font-size:7px;color:rgba(200,220,240,.4);margin-top:5px;">
+          ※ ソルバー解ではなく、既存エンジンのヒューリスティック採点による目安表示です
+        </div>
+      </div>
+    </div>
   </div>
 
 </div><!-- /main -->
@@ -3359,7 +3404,7 @@ function startFallback(reason = 'inline js eval') {
   document.getElementById('hm-spin')?.classList.remove('active');
   setBrainMsg('ENGINE FAILED TO START', reason, 100);
   renderEngineErrorBadge();
-  finalizeBrainReady();
+  finalizeBrainReady(true);
 }
 
 function onWorkerMessage(e) {
@@ -3420,6 +3465,7 @@ function onWorkerMessage(e) {
         `CALC: ${calcTime||0}ms${cached?' (cache)':''}`;
       setStabState('DONE');
       updateHeroCells();
+      renderHeroAnalysis(); // v3.9.16: 盤面更新のたびにHero分析も再描画（読み取り専用・一方向）
       break;
 
     // ── Legacy handlers (backward compat, kept for safety) ──
@@ -3443,11 +3489,23 @@ function onWorkerMessage(e) {
   }
 }
 
-function finalizeBrainReady() {
-  document.getElementById('brain-badge').textContent = 'BRAIN:READY';
-  document.getElementById('brain-badge').style.color = '#00ff9d';
-  document.getElementById('brain-badge').style.borderColor = 'rgba(0,255,157,.4)';
-  setTimeout(() => document.getElementById('brain-overlay').classList.add('hidden'), 600);
+function finalizeBrainReady(isError) {
+  const badge = document.getElementById('brain-badge');
+  if (isError) {
+    badge.textContent = 'BRAIN:ERROR';
+    badge.style.color = '#ff3b3b';
+    badge.style.borderColor = 'rgba(255,59,59,.5)';
+    // v3.9.18: 失敗時はオーバーレイを隠さずエラー内容を表示し続ける。
+    // 以前は成功/失敗どちらでも600ms後に強制的に隠していたため、DevToolsを
+    // 開かないと実際のエラー理由（setBrainMsgのsubに入っている）が見えなかった。
+    const sub = document.getElementById('brain-sub');
+    if (sub) sub.innerHTML += '<br><br>この画面をスクリーンショットして教えてください。';
+  } else {
+    badge.textContent = 'BRAIN:READY';
+    badge.style.color = '#00ff9d';
+    badge.style.borderColor = 'rgba(0,255,157,.4)';
+    setTimeout(() => document.getElementById('brain-overlay').classList.add('hidden'), 600);
+  }
   updateConfigFeedback();
   buildRadarGrid(); // Structure Radar グリッド初期構築
   if (currentBoard.length >= 3) triggerUpdate();
@@ -3537,11 +3595,26 @@ const POSITION_3BET_RANGE_PCT = {
   '9MAX': { UTG: 0.044, UTG1: 0.054, UTG2: 0.059, LJ: 0.066, HJ: 0.070, CO: 0.100, BTN: 0.134, SB: 0.099, BB: 0.14 }
 };
 
+// v3.9.16: TIGHT/NORMAL/LOOSE — レンジ幅そのものを拡縮する倍率。ユーザーの
+// 想定する相手のプレイスタイルに応じてヒートマップの範囲表示を調整する。
+const RANGE_WIDTH_MULT = { TIGHT: 0.7, NORMAL: 1.0, LOOSE: 1.4 };
+let currentRangeWidth = 'NORMAL';
+
 function isInVillainRange(hand, villainPos, vs3bet) {
   const sizeKey = (typeof currentTableSize !== 'undefined' && POSITION_RANGE_PCT[currentTableSize]) ? currentTableSize : '6MAX';
   const table = (vs3bet ? POSITION_3BET_RANGE_PCT : POSITION_RANGE_PCT)[sizeKey];
-  const widthPct = table[villainPos] ?? 0.25;
+  const baseWidthPct = table[villainPos] ?? 0.25;
+  const widthPct = Math.min(1, baseWidthPct * (RANGE_WIDTH_MULT[currentRangeWidth] ?? 1.0));
   return CHEN_PERCENTILE[hand] <= widthPct;
+}
+
+function setRangeWidth(mode) {
+  if (!RANGE_WIDTH_MULT[mode] || mode === currentRangeWidth) return;
+  currentRangeWidth = mode;
+  document.querySelectorAll('.range-width-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.width === mode);
+  });
+  renderVillainOverlay();
 }
 
 // 'OFF' = フィルターなし（HERO VIEW相当）。UTG〜BB = そのポジションのレンジ幅で暗くする。
@@ -4882,34 +4955,46 @@ function nCr(n, r) {
   return num / den;
 }
 
-// ボードがそのままフラッシュ（5枚同スート）になる確率(%)。0〜100。
-// v3.9.15: hero対応を撤回。Hero Handはメイン挙動から完全に切り離す方針のため、
-// このメインパネルの表示は常にボードのみ（169レンジ全体視点）で計算する。
-// hero手札を使う計算は、将来的にHero Hand専用セクション側で別途行う。
+// v3.9.16: 「盤面自体が完成する確率」から「レンジ側の統計」へ定義変更。
+// 意図: ボードに同スートが3枚(モノトーン)出ていれば、ランダムな169レンジの
+// ハンドがそのスートを2枚とも持っている（＝今すでにフラッシュ完成）確率。
+// ボードに4枚出ていれば、1枚持っているだけで完成するのでその確率。
+// 「盤面が化ける確率」ではなく「今のレンジがどれだけこの色に関与しているか」を見る。
 function computeBoardFlushPct(board) {
   if (board.length < 3 || board.length >= 5) return null; // riverは確定済みなので対象外
   const suitCount = {};
   board.forEach(c => { suitCount[c[1]] = (suitCount[c[1]] || 0) + 1; });
   const maxSuit = Object.keys(suitCount).reduce((a,b) => suitCount[a] >= suitCount[b] ? a : b);
   const have    = suitCount[maxSuit];
-  if (have !== board.length) return 0; // 現時点で全カードが同スートでなければ5枚には届かない
-  const need          = 5 - board.length;
-  const remainingDeck = 52 - board.length;
-  const suitLeft       = 13 - have; // その色の残り枚数（1スートは13枚）
+  const need    = 5 - have; // ハンド側がこのスートを何枚持てば完成するか
+  if (need <= 0 || need > 2) return 0; // 2枚ハンドでは完成させようがない/既に無関係
+  const remainingDeck = 52 - board.length; // ハンドはここから引かれる
+  const suitLeft       = 13 - have;
   if (suitLeft < need) return 0;
-  const favorable = nCr(suitLeft, need);
-  const total     = nCr(remainingDeck, need);
-  return total > 0 ? (favorable / total) * 100 : 0;
+  const total = nCr(remainingDeck, 2);
+  if (total <= 0) return 0;
+  let favorable;
+  if (need === 2) {
+    favorable = nCr(suitLeft, 2); // 2枚ともそのスート
+  } else {
+    // need===1: 少なくとも1枚そのスートを持っていればよい（もう1枚は何でもよい）
+    const otherLeft = remainingDeck - suitLeft;
+    favorable = total - nCr(otherLeft, 2); // 全体 - どちらもそのスートでない場合
+  }
+  return (favorable / total) * 100;
 }
 
-// ボードがそのままストレート（5連続ランク）になる確率(%)。0〜100。
+// 同様に「レンジ側の統計」へ定義変更したストレート版。
+// ボードの5連続窓に足りないランクを、ハンド側が持っている確率。
 function computeBoardStraightPct(board) {
   if (board.length < 3 || board.length >= 5) return null; // riverは確定済みなので対象外
   const nums = board.map(c => RANK_TO_NUM[c[0]]);
   if (new Set(nums).size !== nums.length) return 0; // ペア済みなら5連続にはなり得ない
 
-  const need          = 5 - board.length;
   const remainingDeck = 52 - board.length;
+  const total = nCr(remainingDeck, 2);
+  if (total <= 0) return 0;
+
   // 10通りの5連続窓（ホイールA-2-3-4-5を含む）
   const windows = [];
   for (let high = 6; high <= 14; high++) windows.push([high-4,high-3,high-2,high-1,high]);
@@ -4918,15 +5003,20 @@ function computeBoardStraightPct(board) {
   let totalPct = 0;
   windows.forEach(win => {
     const winSet = new Set(win);
-    // ホイール窓の判定時のみA=1として読み替える
     const effNums = win[0] === 1 ? nums.map(n => n === 14 ? 1 : n) : nums;
     if (!effNums.every(n => winSet.has(n))) return; // この窓にボードの全ランクが収まらない → 対象外
     const missingRanks = win.filter(r => !effNums.includes(r));
-    if (missingRanks.length !== need) return; // 理論上は常に一致するはずの安全チェック
-    // 各不足ランクにつき残り4枚
-    const favorable = Math.pow(4, need);
-    const total = nCr(remainingDeck, need);
-    if (total > 0) totalPct += (favorable / total) * 100;
+    if (missingRanks.length < 1 || missingRanks.length > 2) return; // 2枚ハンドで埋められる範囲のみ
+
+    let favorable;
+    if (missingRanks.length === 2) {
+      favorable = 4 * 4; // 不足ランク2つ、それぞれ1枚ずつ持つ
+    } else {
+      // 不足ランク1つ：少なくとも1枚持っていればよい
+      const otherLeft = remainingDeck - 4;
+      favorable = total - nCr(otherLeft, 2);
+    }
+    if (favorable > 0) totalPct += (favorable / total) * 100;
   });
   return Math.min(100, totalPct);
 }
@@ -4950,6 +5040,7 @@ function renderBoardTextureProbs() {
 
   if (showFlush)    document.getElementById('flush-prob-val').textContent    = flushPct.toFixed(1) + '%';
   if (showStraight) document.getElementById('straight-prob-val').textContent = straightPct.toFixed(1) + '%';
+
 }
 
 function calcTexture(board) {
@@ -5337,6 +5428,7 @@ function onInputChanged() {
     // ヒートマップに残り続けるバグの修正。clearBoard()と同様にリセットする。
     resetHeatmapUI();
     renderDefaultZeroState();
+    renderHeroAnalysis(); // v3.9.16
   }
 
   if (currentBoard.length >= 3) {
@@ -5365,6 +5457,182 @@ function onHeroChanged() {
   updateDuplicateGuard();
   updateOutsPanel();
   updateBoardCards();
+  renderHeroAnalysis(); // v3.9.16: 独立表示。メインのtriggerUpdate等は一切呼ばない
+}
+
+/* ══════════════════════════════
+   HERO ANALYSIS（v3.9.16）
+   Hero Hand専用の分離パネル。lastHeatmapData（メインエンジンが既に計算した
+   169グリッド結果）を読み取るだけで、メイン計算経路（triggerUpdate等）は
+   一切呼び出さない・変更しない。Hero Hand機能を丸ごと削除する場合は、
+   このブロックと#hero-analysisのHTML、onHeroChanged内の1行を消すだけでよい。
+══════════════════════════════ */
+function heroHandToLabel(hand) {
+  if (!hand || hand.length !== 2) return null;
+  const [c1, c2] = hand;
+  const r1 = c1[0], r2 = c2[0], s1 = c1[1], s2 = c2[1];
+  if (r1 === r2) return r1 + r2;
+  const i1 = RANK_IDX[r1], i2 = RANK_IDX[r2];
+  const hi = i1 <= i2 ? r1 : r2;
+  const lo = i1 <= i2 ? r2 : r1;
+  return hi + lo + (s1 === s2 ? 's' : 'o');
+}
+
+// hero手札2枚を含めた「今の手札がフラッシュ/ストレートを構成する確率」。
+// メインパネルのcomputeBoardFlushPct/StraightPctとは別軸（あちらはレンジ統計、
+// こちらはhero固有の残りカードでの完成率）で、意図的に重複実装している。
+function computeHeroFlushPct(board, hero) {
+  if (!hero || hero.length !== 2 || board.length < 3 || board.length >= 5) return null;
+  const suitCount = {};
+  [...board, ...hero].forEach(c => { suitCount[c[1]] = (suitCount[c[1]] || 0) + 1; });
+  const maxSuit = Object.keys(suitCount).reduce((a,b) => suitCount[a] >= suitCount[b] ? a : b);
+  const have = suitCount[maxSuit];
+  if (have >= 5) return 100; // 既に完成
+  const need = 5 - have;
+  const knownCards = board.length + hero.length;
+  const remainingDeck = 52 - knownCards;
+  const suitLeft = 13 - have;
+  if (suitLeft < need) return 0;
+  const streetsLeft = 5 - board.length;
+  if (need > streetsLeft) return 0;
+  const favorable = nCr(suitLeft, need);
+  const total = nCr(remainingDeck, streetsLeft);
+  // 残り街数ぶんのカードのうち、必要な枚数がちょうど揃う組み合わせ
+  const combosForRest = nCr(remainingDeck - need, streetsLeft - need);
+  return total > 0 ? Math.min(100, (favorable * combosForRest / total) * 100) : 0;
+}
+
+function computeHeroStraightPct(board, hero) {
+  if (!hero || hero.length !== 2 || board.length < 3 || board.length >= 5) return null;
+  const allCards = [...board, ...hero];
+  const nums = [...new Set(allCards.map(c => RANK_TO_NUM[c[0]]))];
+  const streetsLeft = 5 - board.length;
+  const knownCards = board.length + hero.length;
+  const remainingDeck = 52 - knownCards;
+
+  const windows = [];
+  for (let high = 6; high <= 14; high++) windows.push([high-4,high-3,high-2,high-1,high]);
+  windows.push([1,2,3,4,5]);
+
+  let best = 0;
+  windows.forEach(win => {
+    const winSet = new Set(win);
+    const effNums = win[0] === 1 ? nums.map(n => n === 14 ? 1 : n) : nums;
+    if (!effNums.every(n => winSet.has(n))) return;
+    const missing = win.filter(r => !effNums.includes(r));
+    if (missing.length === 0) { best = 100; return; }
+    if (missing.length > streetsLeft) return;
+    const NUM_TO_RANK = { 1:'A' };
+    Object.keys(RANK_TO_NUM).forEach(r => { NUM_TO_RANK[RANK_TO_NUM[r]] = r; });
+    let favorable = 1;
+    missing.forEach(r => { favorable *= 4; }); // 各不足ランク4枚（既出分は簡略化のため考慮せず）
+    const total = nCr(remainingDeck, streetsLeft);
+    const combosForRest = nCr(remainingDeck - missing.length, streetsLeft - missing.length);
+    const pct = total > 0 ? Math.min(100, (favorable * combosForRest / total) * 100) : 0;
+    if (pct > best) best = pct;
+  });
+  return best;
+}
+
+// v3.9.17: 単一の「示唆」ラベルから、4択(FOLD/CALL/RAISE x2/RAISE x3+)の
+// 判定マトリクスに拡張。しきい値は既存のmadeStrength(0-1)+potential(0-1)を
+// 元にしたヒューリスティックで、ソルバー解ではない旨は明示している。
+// v3.9.19: 単一の「これが正解」ではなく、combined値からのガウス的距離で
+// 4択(または3択)それぞれの割合を出す。常に合計100%になる「頻度」表示。
+function heroDecisionDistribution(combined, centers, spread) {
+  spread = spread || 0.22;
+  const weights = {};
+  let sum = 0;
+  Object.entries(centers).forEach(([k, c]) => {
+    const w = Math.exp(-((combined - c) ** 2) / (2 * spread * spread));
+    weights[k] = w; sum += w;
+  });
+  const pct = {};
+  Object.entries(weights).forEach(([k, w]) => { pct[k] = sum > 0 ? (w / sum) * 100 : 0; });
+  return pct;
+}
+
+const HERO_CUR_CENTERS = { fold: 0.0, call: 0.28, raise2: 0.52, raise3: 0.80 };
+const HERO_3B_CENTERS  = { fold: 0.0, call: 0.35, raise: 0.80 };
+
+function heroCurrentDecisionPct(combined) {
+  return heroDecisionDistribution(combined, HERO_CUR_CENTERS);
+}
+function heroVs3betDecisionPct(label, heroPos, combined) {
+  const continues = isInVillainRange(label, heroPos, true);
+  if (!continues) return { fold: 92, call: 6, raise: 2 }; // レンジ外はFOLDに強く寄せる
+  return heroDecisionDistribution(combined, HERO_3B_CENTERS, 0.28);
+}
+
+// 1行分の「ラベル + 横バー + %」を描画するヘルパー
+function renderDecisionBar(container, label, pct, color) {
+  const row = document.createElement('span');
+  row.style.cssText = `color:${color};font-weight:700;`;
+  row.textContent = `${label} ${pct.toFixed(0)}%`;
+  container.appendChild(row);
+}
+
+function renderHeroAnalysis() {
+  const panel = document.getElementById('hero-analysis');
+  if (!panel) return;
+
+  const label = heroHandToLabel(heroHand);
+  if (!label) { panel.style.display = 'none'; return; }
+
+  let strength01, potential01, handNameText, isPreflop;
+  const streetLabel = document.getElementById('hero-street-label');
+  const drawRow = document.getElementById('hero-draw-row');
+
+  if (currentBoard.length < 3) {
+    // v3.9.19: プリフロップでもChen percentileベースの相対的な強さを出す。
+    // madeStrength/potentialはボード前提の概念なので、ボードが無い間は
+    // 「169レンジの中でどの順位にいるか」を代わりの目安として使う。
+    isPreflop = true;
+    strength01  = (typeof CHEN_PERCENTILE !== 'undefined' && CHEN_PERCENTILE[label] !== undefined)
+      ? (1 - CHEN_PERCENTILE[label]) : 0;
+    potential01 = 0;
+    handNameText = '--';
+    streetLabel.textContent = '▸ プリフロップ（Chen式ベースの相対的な強さ・目安）';
+    drawRow.style.display = 'none';
+  } else {
+    if (!lastHeatmapData || !lastHeatmapData.length) { panel.style.display = 'none'; return; }
+    const cell = lastHeatmapData.find(item => item.hand === label);
+    if (!cell) { panel.style.display = 'none'; return; }
+    isPreflop = false;
+    strength01  = cell.madeStrength ?? 0;
+    potential01 = cell.potential ?? 0;
+    handNameText = cell.handName || '--';
+    streetLabel.textContent = '▸ ' + detectStreet(currentBoard);
+    drawRow.style.display = 'flex';
+
+    const flushPct    = computeHeroFlushPct(currentBoard, heroHand);
+    const straightPct = computeHeroStraightPct(currentBoard, heroHand);
+    document.getElementById('hero-flush-pct').textContent    = flushPct    !== null ? flushPct.toFixed(1) + '%'    : '--';
+    document.getElementById('hero-straight-pct').textContent = straightPct !== null ? straightPct.toFixed(1) + '%' : '--';
+  }
+
+  panel.style.display = 'block';
+  document.getElementById('hero-handname').textContent  = isPreflop ? 'プリフロップ' : handNameText;
+  document.getElementById('hero-strength').textContent  = (strength01 * 100).toFixed(1) + '%';
+  document.getElementById('hero-potential').textContent = (potential01 * 100).toFixed(0) + '%';
+
+  const combined = strength01 + potential01 * 0.3;
+
+  const curPct = heroCurrentDecisionPct(combined);
+  const curWrap = document.getElementById('hero-dec-bars');
+  curWrap.innerHTML = '';
+  renderDecisionBar(curWrap, 'FOLD',      curPct.fold,   '#88aacc');
+  renderDecisionBar(curWrap, 'CALL',      curPct.call,   '#ffb800');
+  renderDecisionBar(curWrap, 'RAISE x2',  curPct.raise2, '#ff8c00');
+  renderDecisionBar(curWrap, 'RAISE x3+', curPct.raise3, '#ff3b3b');
+
+  const heroPos = document.getElementById('hero-pos-select')?.value || 'BTN';
+  const v3Pct = heroVs3betDecisionPct(label, heroPos, combined);
+  const v3Wrap = document.getElementById('hero-3b-bars');
+  v3Wrap.innerHTML = '';
+  renderDecisionBar(v3Wrap, 'FOLD',       v3Pct.fold,  '#88aacc');
+  renderDecisionBar(v3Wrap, 'CALL',       v3Pct.call,  '#ffb800');
+  renderDecisionBar(v3Wrap, '4BET/RAISE', v3Pct.raise, '#ff3b3b');
 }
 
 /* ── Street render ── */
@@ -5395,6 +5663,7 @@ function clearBoard() {
   updateBoardCards();
   resetHeatmapUI();
   renderDefaultZeroState();
+  renderHeroAnalysis(); // v3.9.16: board=[]になるため自動的に非表示になる
   resetClearAllBtn();
   setStabState('MANUAL');
   updateDuplicateGuard();
@@ -5484,6 +5753,7 @@ function setBrainMsg(msg, sub, prog) {
 ══════════════════════════════ */
 const MOB_TAB_MAP = {
   board: 'center-pnl',
+  hero:  'mob-pnl-hero',
   nuts:  'mob-pnl-nuts',
   stats: 'mob-pnl-stats'
 };
