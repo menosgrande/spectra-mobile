@@ -440,66 +440,13 @@ ui/    … メインスレッド側（index.htmlが<script src="...">で読み�
 5. **✅ ◥部の色合い（完了）**
    2色（シアン/ゴールド）ではなく、potential強度に応じた5段階配色に変更（`getDrawPotentialLevelColor()`）: ★1灰(微)→★2緑(小)→★3青(中)→★4橙(大)→★5金(特大・複合強力ドロー)。ヒートマップ凡例にも5段階の色見本を追加。
 
-6. **✅ Workerバンドルのビルドスクリプト化（完了）**
+6. **未着手: Workerバンドルのビルドスクリプト化**
    v3.9.5でWorkerを`file://`でも起動できるようBlob URL方式に変更した際、`core/*.js` 9ファイル + `spectra-worker.js`を連結したコピーを`index.html`内の`<script type="text/plain" id="spectra-worker-src">`に埋め込む方式にした。
-   結合処理をスクリプト化し、`core/*.js`編集後に再生成する運用に移行済み。
+   現状はこのコピーを手動で再生成しており、`core/*.js`側を編集してもこの埋め込みコピーに反映し忘れるとWorkerの動作だけ古いまま、というズレが発生しうる。連結処理を行う小さなビルドスクリプト（Node/Python）を用意し、`core/*.js`編集後に実行する運用にするか、ビルド時に自動生成する仕組みにするかを検討。
 
 7. **未着手: フォールバック評価エンジン（`fallbackEval169`一式）の整理**
    上記のBlob URL化により`file://`でもWorkerがほぼ確実に起動するようになったため、メインスレッド側の代替評価ロジック（`classifyHandCategory` `chenScore` `fallbackEval169` `evalHandFallback` `classifyDrawInline`等、「切り出し候補」セクションに列挙済みの一群）は実質発動しなくなったと見られる。
    Worker側ロジックとは別に保守されている二重実装であり、v3.6.2の「フォールバック時に戦況バッジが固まる」バグの原因もここだった。①使われなくなったなら削除する、②保険として残すなら「Worker側ロジックを変更したらこちらも追随させる」運用ルールを明文化する、のどちらかの判断が必要。
 
-8. **✅ NUTSパネル以外のフォントサイズ底上げ（完了）**
-   上記「主要定数」欄に既出の通り、NUTSパネルはv3.6.2で文字サイズを底上げ済みだったが、HERO HAND / STRUCTURE RADAR / HERO OUTS / BOARD INTELLIGENCE / 3D HEATMAP等、他パネルも含めて底上げ済みに更新。
-
-9. **✅ v3.9.8: 6-max / 9-max 対応（完了）**
-   `POSITION_PROFILE`（`core/position.js`とindex.htmlのフォールバック側コピー両方）に9-max専用ポジション`UTG1`(UTG+1) / `UTG2`(UTG+2) / `LJ`(Lojack)を追加（既存のUTG〜HJ間の値をヒューリスティックに内挿）。`POSITION_RANGE_PCT` / `POSITION_3BET_RANGE_PCT`も同様に拡張。
-   `TABLE_POSITIONS`定数（`{'6MAX':[...], '9MAX':[...]}`）を新設し、`setTableSize('6MAX'|'9MAX')` → `rebuildPositionUI()`で、ヒートマップVILLAIN VIEWタブ（`#hm-pos-tabs`）とHERO/VILLAINポジション選択の両方を動的に出し分ける。HERO側はBBを含まない（オープンレンジ想定）、VILLAIN側はBBを含む、という既存の非対称設計を維持。
-
-10. **✅ v3.9.8: HERO/VILLAINポジション選択UIの復活（完了・重要な発見）**
-    9-max対応の実装中に判明: `hero-pos-select` / `villain-pos-select`（および`situation-select` / `archetype-select`）は`display:none`の「非表示Worker用DOM」内にあり、これらを変更する可視UIがどこにも存在しなかった（README v3.9.1の「ポジション自体の選択は引き続きhero-pos-select/villain-pos-selectのドロップダウンで行う」という記述と実装が乖離していた）。実質、常にHERO=BTN・VILLAIN=BB固定で動いていたことになる。
-    `hero-pos-select` / `villain-pos-select`とTABLE(6-MAX/9-MAX)トグルを`#pos-config-row`として可視化・スタイル適用。`situation-select` / `archetype-select`は今回のスコープ外のため、当面`display:none`のまま据え置き（将来UIを設けるまで保留）。
-
-11. **✅ v3.9.9: TABLE切替・タブ関連の一連のバグ修正（完了）**
-    - TABLE(6-MAX/9-MAX)を切り替えても、選択中のタブが新旧両サイズに存在する場合（UTG等）`renderVillainOverlay()`が再実行されず、幅の数値は変わっているのに表示に反映されないバグを修正（`setTableSize()`末尾で無条件に再描画するよう修正）。
-    - `rebuildPositionUI()`が`#hm-pos-tabs`を`innerHTML`総入れ替えする際、元の静的HTMLにあった「vs 3bet」チェックボックスを巻き添えで消していたバグを修正（チェック状態を保持したままタブと一緒に再生成するよう変更。静的HTML側は二重管理を避けるため空にした）。
-    - 選択中のポジションタブをもう一度クリックするとOFFに戻るトグル動作を追加。
-    - STREET BOX（`#street-box`）が過大に場所を取っていたため縮小（`#street-name`26px→14px、padding 8px→4px）。
-    - 「戻る」操作等でboard<3に戻った際、直前の計算結果（◥バッジ含む）がヒートマップに残り続けるバグを修正（`resetHeatmapUI()`が`.hm-pot-dot`を一切リセットしていなかった／`onInputChanged()`のboard<3分岐でそもそも`resetHeatmapUI()`が呼ばれていなかった、の2つが重なっていた）。
-
-12. **✅ v3.9.9: FLUSH/STRAIGHT盤面完成確率の表示（完了）**
-    盤面自体が5枚同スート（フラッシュ）・5連続ランク（ストレート）に化る確率を、STREET BOXとHAND DISTRIBUTIONの間に追加（`computeBoardFlushPct()` / `computeBoardStraightPct()`、組み合わせ数から正しく計算。手札は追跡していないため考慮せず）。確定済み(100%目安)の時は非表示。フォールバック実装の`suitLeft = 4-have`という単純ミス（1スートは13枚が正しい）を自己テストで発見し修正。
-
-13. **✅ v3.9.10〜11: ヒートマップのコンボ内訳ツールチップ（完了・複数回の反復あり）**
-    `eval169()`の各コンボ評価(`evals`)を役カテゴリでグルーピングした`categoryBreakdown`（役名・件数・平均madeStrength・関与スート`comboSuits`）を新設。モノトーンボードのAKs等、「1つの169セルでもコンボによって役が割れる」実態を可視化する目的。
-    表示形式は複数回の要望で反復進化: ①役名+件数の列挙 → ②「同スート/異スート」テキスト表記 → ③現行版＝**最大2行**（トップグループ＋その他まとめ）で、それぞれ実際の勝率%を表示し、トップグループはボードと一致する具体的なスート記号（♠♥♦♣、スート色付き）で表記（例: `♠(1/4): 66%（フラッシュ）` / `他(3/4): 8%（ハイカード）`）。オフスート等コンボ数が多いハンドでも常に2行に収まる設計。
-
-14. **✅ v3.9.10: 案B — 到達コンボ率の対角グラデーション表示（完了）**
-    外部レビュー提案の「三角塗り」案を採用。`topClassCombos / totalCombos`（代表役に到達したコンボの割合）が1未満のセルは、`linear-gradient(135deg, dimColor, baseColor)`で対角に二色塗りする（`dimHSL()`でベース色から彩度・明度を落とした色を動的生成）。発動閾値は当初<0.999だったが、端数レベルの微妙な割れでも発動して視覚ノイズになっていたため<0.9に緩和。
-
-15. **✅ v3.9.10: ◥バッジ（Draw Potential）の重み付けバグ修正（完了・実害のあるバグ）**
-    `classifyPotential()` / `classifyDraw()`（Worker側・フォールバック側とも）が、スーテッドハンドを「4コンボ全部がそのスートを持つ」かのように重み1.0で扱っていたが、実際にはAKs等の4コンボ（各スート1つずつ）のうち特定の1スートと一致するのは1コンボ(25%)だけ。ペア（例: AA）は`hand[2]`が存在しないため判定に一切引っかからず、フラッシュ/バックドア系potentialが常に0固定になっていたバグも合わせて発見・修正。現在: suited=25%、pair=50%（6コンボ中3コンボ一致）、offsuit=0%の重み付け。あわせてバックドアフラッシュ（ボードに同スート1枚）への数値的なpotential加算が以前は一切なかった点も追加。
-
-16. **✅ v3.9.12: 枠線カテゴリの削減（完了）**
-    `cat-suited-bw` / `cat-offsuit-bw`（ブロードウェイ系の枠線）を廃止。「ハイカードを含む」という情報はハンドのラベル表記（AKo等）自体で既にわかるため、枠で二重に強調する価値が薄いと判断。枠線は`cat-pair`(シアン)/`cat-connector`(グリーン)/`cat-other`(枠なし)の3分類に整理。凡例・ツールチップの`getBorderCategoryJP/Color`も追随。
-
-17. **✅ v3.9.12: デッドコンボ専用のツールチップ表示（完了）**
-    盤面カードと被って0通りしか成立しないコンボ（`density===0`）は、ツールチップに「盤面と被っていて成立しません」とだけ表示し、強さ/将来性/分類/内訳の行は（意味を持たないため）非表示にするよう変更。
-
-18. **✅ v3.9.12: カラーマッピングの区分的ガンマ + boardHazard強化 + 三角塗り閾値調整（完了）**
-    外部レビューで指摘された「フラッシュ/ストレート帯がガンマ補正で色相バンド内に潰れて見分けづらい」問題への対応。`remapMadeStrength()`を単一ガンマ0.6のフラット変換から、breakpoint(0.45)で接続する区分的カーブに変更（低域はlowGamma 0.55で従来通り強く持ち上げてドライボードのナッツ対策を維持、高域はhighGamma 0.85で線形寄りにしてフラッシュ/ストレート帯の分離を確保）。実測でストレート帯・フラッシュ帯とも表示上のスプレッドが0.065前後→0.070まで回復。あわせて`boardHazard`のペナルティ係数を0.03→0.10に引き上げ（モノトーンボードでオフスートが十分暗くなるように）。三角塗りの発動閾値も上記14の通り0.9に調整。
-
-19. **未着手: フォールバック評価エンジンの整理（項目7参照、依然未着手）**
-    上記11〜18の一連の修正はWorker側(`core/*.js`)とフォールバック側(index.html内コピー)の両方に都度反映してきたが、二重管理のコストは増え続けている。file://問題がBlob URL化で解消した今、フォールバックが実際に発動する場面はほぼ無いと見られるため、削除するか運用ルールを明文化するかの判断は依然保留中。
-
-20. **未着手: 案C（カテゴリ境界のドット表示）**
-    「ストレート/フラッシュのラインを跨いだ瞬間に色がドンと変わる」問題（案Bの三角塗りとは別の問題）への対応。次のイテレーションで検討することにして保留。
-
-21. **未着手: dimHSLの明度乗数の動的化**
-    弱いハンド帯（Blue/Navy系、l=12〜22%）はdimHSLの`lightMul 0.55`をかけるとほぼ真っ黒（7〜12%）に潰れる。明るい方とのコントラスト自体は保たれるため実害は小さいが、暗い方の中での強弱の差は見えなくなる。`lightMul`を`base`の明度に応じて動的に決める（例: `max(0.55, 1 - baseLightness/50)`）と改善する見込み。優先度低のため保留。
-
-22. **未着手: `tests/`（`engine.test.js`, `crossval.js`）の動作確認**
-    上記11〜18の一連のロジック変更（◥重み付け、ガンマ、boardHazard等）に対するテストの実行・更新はまだ行っていない。次にcore側ロジックを大きく変える前に一度確認しておく価値がある。
-
-23. **✅ v3.9.13: requestId照合の実装（完了）**
-    README記載の既知課題（「高速連続入力時、古い盤面のWorker応答が新しい盤面の結果を上書きするstale response競合が起きうる」）に対応。
-    Worker側(`spectra-worker.js`)は元々`requestId`を受け取って全レスポンス（`BOARD_INTELLIGENCE`/`EVAL_169`/`TEXTURE`/`ENGINE_ERROR`）にそのまま付け返す設計だったため変更不要。UI側に`currentRequestId`のグローバル状態を追加し、`triggerUpdate()`の`BOARD_INTELLIGENCE`送信時にインクリメントして付与、`onWorkerMessage()`冒頭で`INIT_OK`以外は`requestId !== currentRequestId`なら即returnして無視するようにした。
+8. **未着手: NUTSパネル以外のフォントサイズ底上げ**
+   上記「主要定数」欄に既出の通り、NUTSパネルはv3.6.2で文字サイズを底上げ済みだが、他パネル（HERO HAND / POSITION MATRIX / STRUCTURE RADAR / HERO OUTS / BOARD INTELLIGENCE / 3D HEATMAP等）は未対応のまま。
