@@ -6,6 +6,29 @@
 <title>SPECTRA v3.9.1 — Board Intelligence OS</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@600;700;800&family=JetBrains+Mono:wght@600;700;800&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 <style>
+/* v3.9.18: タイポスケールをCSS変数化。
+   「読む文字」系クラスは役割名(--fs-section等)で管理し、モバイル/将来の
+   大画面HUD等ブレークポイントごとに:root側の値だけ差し替えれば全体に反映される。
+   カード隅・ヒートマップ169セル・ピッカーグリッド等の密集/装飾用途は
+   従来通り個別pxのままにして、意図せぬ巻き込み拡大を避けている。 */
+:root{
+  --fs-section:9px;      /* .sec セクション見出し */
+  --fs-subhead:10px;     /* .sit-sub */
+  --fs-streetcnt:9px;    /* #street-cnt */
+  --fs-draw:9px;         /* .n-draw */
+  --fs-outsarrow:10px;   /* .outs-arrow */
+  --fs-outs:9px;         /* .outs-type, .outs-pct */
+  --fs-camlbl:9.5px;     /* .cam-lbl */
+  --fs-slothdr:8.5px;    /* .slot-hdr-lbl */
+  --fs-metriclbl:9px;    /* .metric-lbl */
+  --fs-wetsub:9px;       /* .wet-sub */
+  --fs-rangename:8px;    /* .range-name */
+  --fs-hmlegend:8px;     /* #hm-legend */
+  --fs-mobtab:8.5px;     /* .mob-tab */
+  --fs-pickerbtn:9px;    /* .picker-slot-btn */
+  --fs-heroselect:13px;  /* .hero-selects select */
+  --fs-helpq:8.5px;      /* .help-q */
+}
 /* 数字専用フォントクラス（0の中に中点が入る高視認性Roboto Mono使用） */
 .num-font, .num-val {
   font-family: 'Roboto Mono', 'JetBrains Mono', Consolas, monospace !important;
@@ -49,7 +72,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 /* ─── PANEL ─── */
 .pnl{background:#080e1a;border:1px solid rgba(0,180,255,0.15);border-radius:3px;display:flex;flex-direction:column;gap:5px;padding:7px;position:relative;overflow-y:auto;overflow-x:hidden;}
 .pnl::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.4),transparent);}
-.sec{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2.5px;color:rgba(0,212,255,.75);text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid rgba(0,180,255,.12);flex-shrink:0;}
+.sec{font-family:'Orbitron',monospace;font-size:var(--fs-section);letter-spacing:2.5px;color:rgba(0,212,255,.75);text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid rgba(0,180,255,.12);flex-shrink:0;}
 
 /* ─── SITUATION BADGE ─── */
 #sit-badge{
@@ -59,12 +82,12 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 }
 .sit-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
 .sit-label{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:2px;}
-.sit-sub{font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(160,200,230,.65);margin-left:auto;}
+.sit-sub{font-family:'Share Tech Mono',monospace;font-size:var(--fs-subhead);color:rgba(160,200,230,.65);margin-left:auto;}
 
 /* ─── LEFT: STREET + NUTS ─── */
 #street-box{background:rgba(0,180,255,.06);border:1px solid rgba(0,255,157,.2);border-radius:2px;padding:4px;text-align:center;flex-shrink:0;}
 #street-name{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;color:#00ff9d;text-shadow:0 0 10px rgba(0,255,157,.6);letter-spacing:1.5px;}
-#street-cnt{font-family:'JetBrains Mono','Share Tech Mono',monospace;font-variant-numeric:tabular-nums;font-size:9px;font-weight:700;color:rgba(160,200,230,.7);margin-top:1px;}
+#street-cnt{font-family:'JetBrains Mono','Share Tech Mono',monospace;font-variant-numeric:tabular-nums;font-size:var(--fs-streetcnt);font-weight:700;color:rgba(160,200,230,.7);margin-top:1px;}
 
 #nuts-list{display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;}
 .nuts-row{display:flex;align-items:center;gap:5px;padding:4px;border-bottom:1px solid rgba(255,255,255,.05);border-radius:2px;transition:background .2s;}
@@ -73,7 +96,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .n-eq{font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px;font-weight:800;color:#00f0ff;background:rgba(0,200,255,.12);border:1px solid rgba(0,200,255,.35);border-radius:2px;padding:2px 5px;min-width:48px;text-align:center;}
 .n-hand{font-size:16px;font-weight:700;flex:1;}
 .n-type{font-size:9.5px;color:rgba(160,200,230,.6);text-align:right;line-height:1.3;}
-.n-draw{font-family:'Share Tech Mono',monospace;font-size:9px;margin-top:1px;}
+.n-draw{font-family:'Share Tech Mono',monospace;font-size:var(--fs-draw);margin-top:1px;}
 
 /* ─── NUTS SUB-ROW: outs cards ─── */
 .nuts-subrow{
@@ -89,7 +112,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;
   font-size:9px;color:#ff3b3b;
 }
-.outs-arrow{font-size:10px;font-weight:900;}
+.outs-arrow{font-size:var(--fs-outsarrow);font-weight:900;}
 .outs-card-tag{
   display:inline-flex;align-items:center;gap:1px;
   background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.25);
@@ -141,16 +164,21 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .hero-selects{display:flex;gap:4px;margin-top:4px;}
 .hero-selects select{
   flex:1;background:#0c1828;border:1px solid rgba(255,215,0,.3);border-radius:3px;
-  font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;
+  font-family:'Rajdhani',sans-serif;font-size:var(--fs-heroselect);font-weight:700;
   padding:3px 1px;cursor:pointer;outline:none;text-align:center;
   color:#ffd700;transition:all .2s;
 }
 .hero-selects select:focus{border-color:rgba(255,215,0,.8);box-shadow:0 0 10px rgba(255,215,0,.25);}
+/* v3.9.18: かぶっていて選べない選択肢を暗く表示（スート色のinline styleより優先させるためimportant） */
+.hero-selects select option:disabled{
+  color:rgba(140,150,165,.35) !important;
+  background:#05080d !important;
+}
 
 /* ─── CENTER ─── */
 #center-pnl{padding:5px;gap:4px;display:flex;flex-direction:column;}
 .cam-hdr{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
-.cam-lbl{font-family:'Orbitron',monospace;font-size:9.5px;letter-spacing:2px;color:rgba(0,212,255,.85);}
+.cam-lbl{font-family:'Orbitron',monospace;font-size:var(--fs-camlbl);letter-spacing:2px;color:rgba(0,212,255,.85);}
 .cam-lbl span{color:#00d4ff;}
 
 /* v3.7.2: 各セクション見出しの隣に置く「？」ヘルプバッジ。 */
@@ -159,7 +187,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   width:12px;height:12px;border-radius:50%;
   border:1px solid rgba(0,180,255,.45);
   color:rgba(0,180,255,.85);
-  font-size:8.5px;font-family:'Share Tech Mono',monospace;font-weight:700;
+  font-size:var(--fs-helpq);font-family:'Share Tech Mono',monospace;font-weight:700;
   margin-left:4px;cursor:help;vertical-align:middle;line-height:1;
   flex-shrink:0;
 }
@@ -167,7 +195,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 /* ─── BOARD CARDS ─── */
 #board-area{display:flex;flex-direction:column;justify-content:flex-start;padding:4px 2px;flex:0 0 auto;}
 .board-slot{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:0;}
-.slot-hdr-lbl{font-family:'Orbitron',monospace;font-size:8.5px;letter-spacing:1px;color:rgba(0,180,255,.65);user-select:none;}
+.slot-hdr-lbl{font-family:'Orbitron',monospace;font-size:var(--fs-slothdr);letter-spacing:1px;color:rgba(0,180,255,.65);user-select:none;}
 
 /* ─── CARD DISPLAY ─── */
 .board-card{
@@ -248,7 +276,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 }
 
 .picker-slots{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scroll-behavior:smooth;}
-.picker-slot-btn{flex:1;min-width:55px;padding:6px 2px;border:1px solid rgba(0,180,255,.25);border-radius:4px;background:rgba(0,20,40,.6);color:rgba(200,230,255,.7);font-family:'Orbitron',monospace;font-size:9px;text-align:center;cursor:pointer;transition:all .2s;user-select:none;}
+.picker-slot-btn{flex:1;min-width:55px;padding:6px 2px;border:1px solid rgba(0,180,255,.25);border-radius:4px;background:rgba(0,20,40,.6);color:rgba(200,230,255,.7);font-family:'Orbitron',monospace;font-size:var(--fs-pickerbtn);text-align:center;cursor:pointer;transition:all .2s;user-select:none;}
 .picker-slot-btn:hover{border-color:rgba(0,212,255,.6);color:#fff;}
 .picker-slot-btn.active{border-color:#00d4ff;background:rgba(0,212,255,.22);color:#ffffff;box-shadow:0 0 10px rgba(0,212,255,.45);}
 .picker-slot-btn .slot-card-val{font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:bold;margin-top:2px;}
@@ -288,29 +316,29 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 /* ─── RIGHT: ANALYTICS + HEATMAP ─── */
 .wet-big{font-family:'Orbitron',monospace;font-size:22px;font-weight:700;color:#ff3b3b;text-shadow:0 0 14px rgba(255,59,59,.5);}
-.wet-sub{font-size:9px;color:#ff3b3b;letter-spacing:2px;margin-top:-2px;}
+.wet-sub{font-size:var(--fs-wetsub);color:#ff3b3b;letter-spacing:2px;margin-top:-2px;}
 .metric{margin-bottom:6px;}
-.metric-lbl{font-size:9px;letter-spacing:1.5px;color:rgba(160,200,230,.45);margin-bottom:2px;}
+.metric-lbl{font-size:var(--fs-metriclbl);letter-spacing:1.5px;color:rgba(160,200,230,.45);margin-bottom:2px;}
 .bar-wrap{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
 .bar-fill{height:100%;border-radius:2px;transition:width .7s ease;}
 .metric-val{font-family:'Share Tech Mono',monospace;font-size:11px;margin-top:2px;}
 .range-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:3px;}
-.range-name{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1.5px;margin-bottom:3px;}
+.range-name{font-family:'Orbitron',monospace;font-size:var(--fs-rangename);letter-spacing:1.5px;margin-bottom:3px;}
 .range-val{font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:700;margin-top:2px;}
 
 /* ─── OUTS PANEL ─── */
 #outs-panel{background:rgba(0,0,0,.3);border:1px solid rgba(0,180,255,.12);border-radius:3px;padding:6px;flex-shrink:0;}
 .outs-row{display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);}
 .outs-row:last-child{border:none;}
-.outs-type{font-family:'Share Tech Mono',monospace;font-size:9px;color:#00d4ff;min-width:48px;}
+.outs-type{font-family:'Share Tech Mono',monospace;font-size:var(--fs-outs);color:#00d4ff;min-width:48px;}
 .outs-num{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;min-width:24px;text-align:right;}
-.outs-pct{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(160,200,230,.5);}
+.outs-pct{font-family:'Share Tech Mono',monospace;font-size:var(--fs-outs);color:rgba(160,200,230,.5);}
 .outs-bar{flex:1;height:3px;background:rgba(255,255,255,.06);border-radius:1px;overflow:hidden;margin:0 4px;}
 .outs-bar-fill{height:100%;border-radius:1px;}
 
 /* ─── 3D HEATMAP ─── */
 #hm-wrap{flex:1;display:flex;flex-direction:column;min-height:0;gap:2px;position:relative;}
-#hm-legend{display:flex;align-items:center;gap:6px;font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.4);flex-shrink:0;}
+#hm-legend{display:flex;align-items:center;gap:6px;font-family:'Share Tech Mono',monospace;font-size:var(--fs-hmlegend);color:rgba(160,200,230,.4);flex-shrink:0;}
 .legend-grad{width:80px;height:5px;border-radius:2px;background:linear-gradient(90deg,hsl(0,100%,50%),hsl(60,100%,50%),hsl(180,100%,40%));flex-shrink:0;}
 #hm-grid{
   display:grid;grid-template-columns:16px repeat(13,1fr);
@@ -449,7 +477,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 /* ─── MOBILE TABS ─── */
 #mob-tabs{display:none;flex-shrink:0;flex-direction:row;background:#040a14;border-bottom:1px solid rgba(0,180,255,.2);}
-.mob-tab{flex:1;font-family:'Orbitron',monospace;font-size:8.5px;letter-spacing:1px;padding:7px 4px;border:none;background:transparent;color:rgba(160,200,230,.35);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+.mob-tab{flex:1;font-family:'Orbitron',monospace;font-size:var(--fs-mobtab);letter-spacing:1px;padding:7px 4px;border:none;background:transparent;color:rgba(160,200,230,.35);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
 .mob-tab.active{color:#00d4ff;border-bottom-color:#00d4ff;background:rgba(0,212,255,.05);}
 
 /* ─── TABLET & MOBILE RESPONSIVE ─── */
@@ -487,25 +515,30 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   .hm-c-len3{font-size:7.5px !important;}
   #ftr{display:none;}
 
-  /* v3.9.17: iPhoneで全体の文字が小さすぎる問題の修正。
-     デスクトップ想定の7〜9.5px級の本文フォントを可読サイズまで底上げ。
-     カード内の装飾的な数字(corner-rank等)やclamp()済みのものは対象外。 */
-  .sec{font-size:11px !important;}
-  .sit-sub{font-size:12px !important;}
-  #street-cnt{font-size:11px !important;}
-  .n-draw{font-size:11px !important;}
-  .outs-arrow{font-size:12px !important;}
-  .outs-type,.outs-pct{font-size:11px !important;}
-  .cam-lbl{font-size:11.5px !important;}
-  .slot-hdr-lbl{font-size:10.5px !important;}
-  .metric-lbl{font-size:11px !important;}
-  .wet-sub{font-size:11px !important;}
-  .range-name{font-size:10px !important;}
-  #hm-legend{font-size:10px !important;}
-  .mob-tab{font-size:10px !important;}
-  .picker-slot-btn{font-size:11px !important;}
-  .hero-selects select{font-size:16px !important;padding:5px 1px !important;}
-  .help-q{width:14px !important;height:14px !important;font-size:10px !important;}
+  /* v3.9.18: iPhoneで全体の文字が小さすぎる問題の修正。
+     「読む文字」系の役割変数(--fs-*)をこの1ブロックだけ書き換えれば
+     全画面に反映される（各クラス側は触らない）。カード隅・ヒートマップ
+     169セル・ピッカーグリッド等の密集/装飾用フォントは対象外のまま。 */
+  :root{
+    --fs-section:11px;
+    --fs-subhead:12px;
+    --fs-streetcnt:11px;
+    --fs-draw:11px;
+    --fs-outsarrow:12px;
+    --fs-outs:11px;
+    --fs-camlbl:11.5px;
+    --fs-slothdr:10.5px;
+    --fs-metriclbl:11px;
+    --fs-wetsub:11px;
+    --fs-rangename:10px;
+    --fs-hmlegend:10px;
+    --fs-mobtab:10px;
+    --fs-pickerbtn:11px;
+    --fs-heroselect:16px;
+    --fs-helpq:10px;
+  }
+  .hero-selects select{padding:5px 1px !important;}
+  .help-q{width:14px !important;height:14px !important;}
 }
 </style>
 </head>
