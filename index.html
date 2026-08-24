@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
 <title>SPECTRA v3.9.1 — Board Intelligence OS</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@600;700;800&family=JetBrains+Mono:wght@600;700;800&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -486,6 +486,26 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   .hm-c{font-size:9px;}
   .hm-c-len3{font-size:7.5px !important;}
   #ftr{display:none;}
+
+  /* v3.9.17: iPhoneで全体の文字が小さすぎる問題の修正。
+     デスクトップ想定の7〜9.5px級の本文フォントを可読サイズまで底上げ。
+     カード内の装飾的な数字(corner-rank等)やclamp()済みのものは対象外。 */
+  .sec{font-size:11px !important;}
+  .sit-sub{font-size:12px !important;}
+  #street-cnt{font-size:11px !important;}
+  .n-draw{font-size:11px !important;}
+  .outs-arrow{font-size:12px !important;}
+  .outs-type,.outs-pct{font-size:11px !important;}
+  .cam-lbl{font-size:11.5px !important;}
+  .slot-hdr-lbl{font-size:10.5px !important;}
+  .metric-lbl{font-size:11px !important;}
+  .wet-sub{font-size:11px !important;}
+  .range-name{font-size:10px !important;}
+  #hm-legend{font-size:10px !important;}
+  .mob-tab{font-size:10px !important;}
+  .picker-slot-btn{font-size:11px !important;}
+  .hero-selects select{font-size:16px !important;padding:5px 1px !important;}
+  .help-q{width:14px !important;height:14px !important;font-size:10px !important;}
 }
 </style>
 </head>
@@ -5397,6 +5417,45 @@ function updateDuplicateGuard() {
       opt.disabled = s.value && selected.has(card) && card !== myVal;
     });
   }
+
+  updateHeroDuplicateGuard(selected);
+}
+
+/* ── Hero 1枚目/2枚目のかぶり防止（+ ボードとのかぶりも防止） ──
+   updateDuplicateGuard()はheroHandをボード側selectのdisabled判定に
+   使っているだけで、hero-r1/s1 と hero-r2/s2 同士の相互チェックが
+   存在しなかったため、同じカードを1枚目・2枚目両方に選べてしまっていた。 */
+function updateHeroDuplicateGuard(boardSelected) {
+  const boardSet = boardSelected || (() => {
+    const s = new Set();
+    for (let i=0; i<5; i++) {
+      const r = document.getElementById('rsel-'+i)?.value;
+      const su = document.getElementById('ssel-'+i)?.value;
+      if (r && su) s.add(r+su);
+    }
+    return s;
+  })();
+
+  const pairs = [['hero-r1','hero-s1','hero-r2','hero-s2'], ['hero-r2','hero-s2','hero-r1','hero-s1']];
+  pairs.forEach(([rId, sId, otherRId, otherSId]) => {
+    const r = document.getElementById(rId);
+    const s = document.getElementById(sId);
+    if (!r || !s) return;
+    const otherR = document.getElementById(otherRId)?.value;
+    const otherS = document.getElementById(otherSId)?.value;
+    const otherVal = (otherR && otherS) ? otherR+otherS : '';
+    const myVal = (r.value && s.value) ? r.value+s.value : '';
+    Array.from(s.options).forEach(opt => {
+      if (!opt.value) return;
+      const card = r.value + opt.value;
+      opt.disabled = (card === otherVal || boardSet.has(card)) && card !== myVal;
+    });
+    Array.from(r.options).forEach(opt => {
+      if (!opt.value) return;
+      const card = opt.value + s.value;
+      opt.disabled = !!s.value && (card === otherVal || boardSet.has(card)) && card !== myVal;
+    });
+  });
 }
 
 function readInputBoard() {
@@ -5455,6 +5514,7 @@ function onHeroChanged() {
 
   updateHeroCells();
   updateDuplicateGuard();
+  updateHeroDuplicateGuard();
   updateOutsPanel();
   updateBoardCards();
   renderHeroAnalysis(); // v3.9.16: 独立表示。メインのtriggerUpdate等は一切呼ばない
