@@ -4107,11 +4107,12 @@ function detectDraws(r1, r2, s1, s2, board) {
 
 /* ══════════════════════════════
    RIVER POLARIZED VIEW
-   
+
    正しい定義:
-   PURE VALUE   : Two pair以上でベットしてコールを求める手 (rawScore >= 0.26)
-   BLUFF CATCH  : One pair強め。コールはできるが自分からベットしない (0.10 <= score < 0.26)
+   PURE VALUE   : Three of a kind以上でベットしてコールを求める手 (rawScore >= 0.38)
+   BLUFF CATCH  : One pair〜Two pair。コールはできるが自分からベットしない (0.10 <= score < 0.38)
    BLUFF / FOLD : Weak pair・High card。ベットはブラフ、コールされたら負ける (score < 0.10)
+   ※ 他AIレビューで冒頭コメントが実装(0.38=Trips+)と食い違っていると指摘され統一済み
 ══════════════════════════════ */
 function renderRiverPolar(data) {
   const sorted = [...data].sort((a, b) => getDisplayStrength(b) - getDisplayStrength(a));
@@ -5072,7 +5073,11 @@ function computeBoardFlushPct(board) {
 function computeBoardStraightPct(board) {
   if (board.length < 3 || board.length >= 5) return null; // riverは確定済みなので対象外
   const nums = board.map(c => RANK_TO_NUM[c[0]]);
-  if (new Set(nums).size !== nums.length) return 0; // ペア済みなら5連続にはなり得ない
+  // v3.9.25: 他AIレビューで指摘された確定バグ。「ボードにペアがあれば5連続には
+  // なり得ない」という早期returnがあったが誤り。例えばターンで5-6-7-7のような
+  // ペアボードでも、ユニークランク{5,6,7}に対してハンドが4,8を持てば
+  // 4-5-6-7-8のストレートが成立する。窓判定は下でSet経由の重複除去済み
+  // 比較を行っているので、この早期returnは単に削除すればよい。
 
   const remainingDeck = 52 - board.length;
   const total = nCr(remainingDeck, 2);
@@ -5089,33 +5094,39 @@ function computeBoardStraightPct(board) {
   //   よくあるボードでも0%と誤表示されていた。
   // ②複数の窓（例: 7-8-9ボードの両面待ち系）の確率を単純合算しており、
   //   同じ2枚ハンドが複数の窓を同時に満たすケースを二重計上して過大評価していた。
-  // 修正: 窓判定は「欠けているランクだけ」を見る方式にし、「あと1ランクで
-  // 完成する窓」は複数窓ぶんまとめてから確率化する（重複なし）。
-  const singleOutRanks = new Set();
-  const multiRankWindows = [];
+  // v3.9.25: ②はさらに他AIレビュー経由で「1ランク不足の窓」と「2ランク不足の窓」を
+  // 別々に扱いmaxを取るだけの実装だと、逆に和集合を過小評価するケースが
+  // ブルートフォース検証で確認された。窓すべてに対する包除原理で統一的に計算する。
+  const qualifying = [];
   windows.forEach(win => {
     const effNums = win[0] === 1 ? nums.map(n => n === 14 ? 1 : n) : nums;
     const numSet = new Set(effNums);
     const missing = win.filter(r => !numSet.has(r));
     if (missing.length < 1 || missing.length > 2) return; // 2枚ハンドで埋められる範囲のみ
-    if (missing.length === 1) singleOutRanks.add(missing[0]);
-    else multiRankWindows.push(missing);
+    qualifying.push(missing);
   });
+  if (qualifying.length === 0) return 0;
 
-  let bestPct = 0;
-  if (singleOutRanks.size > 0) {
-    // 「あと1ランクで完成」する窓をまとめて評価（両面待ち等はランクの和集合で合算）
-    const poolSize = 4 * singleOutRanks.size;
-    const otherLeft = remainingDeck - poolSize;
-    const favorable = total - nCr(otherLeft, 2); // 少なくとも1枚は該当ランク
-    bestPct = Math.max(bestPct, (favorable / total) * 100);
+  const n = qualifying.length;
+  let unionProb = 0;
+  for (let mask = 1; mask < (1 << n); mask++) {
+    const ranks = new Set();
+    let bits = 0;
+    for (let i = 0; i < n; i++) {
+      if (mask & (1 << i)) { qualifying[i].forEach(r => ranks.add(r)); bits++; }
+    }
+    const k = ranks.size;
+    if (k > 2) continue; // 2枚ハンドでは3ランク以上は届かない
+    let coverSum = 0;
+    for (let j = 0; j <= k; j++) {
+      const sign = (j % 2 === 0) ? 1 : -1;
+      coverSum += sign * nCr(k, j) * nCr(remainingDeck - 4 * j, 2);
+    }
+    const coverProb = coverSum / total;
+    const sign = (bits % 2 === 1) ? 1 : -1;
+    unionProb += sign * coverProb;
   }
-  multiRankWindows.forEach(missing => {
-    const favorable = 4 * 4; // 不足ランク2つ、それぞれ1枚ずつ持つ
-    const pct = (favorable / total) * 100;
-    if (pct > bestPct) bestPct = pct;
-  });
-  return Math.min(100, bestPct);
+  return Math.max(0, Math.min(100, unionProb * 100));
 }
 
 function renderBoardTextureProbs() {
@@ -5700,8 +5711,7 @@ function computeHeroStraightPct(board, hero) {
   // オープンエンドやガットショットが軒並り0%と誤表示される欠陥だった。
   // 正しくは「窓の5ランクのうち何が欠けているか」だけを見ればよい
   // （窓に関係ないカードの有無は無関係）。
-  const singleOutRanks = new Set(); // 「あと1ランクで完成」する窓を集約＝実際の「アウツ」
-  const multiRankWindows = []; // 2ランク以上欠けている窓（バックドア）
+  const qualifying = []; // 完成に必要な「欠けているランク」の配列(窓ごと)
   let alreadyMade = false;
   windows.forEach(win => {
     const effNums = win[0] === 1 ? nums.map(n => n === 14 ? 1 : n) : nums;
@@ -5709,36 +5719,43 @@ function computeHeroStraightPct(board, hero) {
     const missing = win.filter(r => !numSet.has(r));
     if (missing.length === 0) { alreadyMade = true; return; }
     if (missing.length > streetsLeft) return;
-    if (missing.length === 1) singleOutRanks.add(missing[0]);
-    else multiRankWindows.push(missing);
+    qualifying.push(missing);
   });
   if (alreadyMade) return 100;
+  if (qualifying.length === 0) return 0;
 
-  let best = 0;
-
-  // ① 「あと1枚」で完成する窓をまとめて評価（オープンエンド＝2窓合算で8アウツ、
-  //    ガットショット＝1窓4アウツ、ダブルガットショットも同様に合算）。
-  //    これがプレイヤーが直感的にイメージする「アウツで確率を出す」計算に対応。
-  if (singleOutRanks.size > 0) {
-    const poolSize = 4 * singleOutRanks.size;
-    const pLess = nCr(remainingDeck - poolSize, streetsLeft);
-    const pct = Math.max(0, Math.min(100, (1 - pLess / total) * 100));
-    if (pct > best) best = pct;
-  }
-
-  // ② 2ランク以上欠けている窓（バックドア）は、①の対象になっていない
-  //    場合の補助的な目安として、窓ごとに包除原理で個別評価し最大値を採用。
-  multiRankWindows.forEach(missing => {
-    const m = missing.length;
-    let sumIncExc = 0;
-    for (let j = 0; j <= m; j++) {
-      const sign = (j % 2 === 0) ? 1 : -1;
-      sumIncExc += sign * nCr(m, j) * nCr(remainingDeck - 4 * j, streetsLeft);
+  // v3.9.25: 他AIのレビューで指摘・検算（ブルートフォースで再現）された二重の
+  // 過小評価バグを修正。以前は「あと1ランクで完成する窓」はまとめて合算する一方、
+  // 「2ランク以上欠けている窓（バックドア）」同士は単純にmax（最大値）を取るだけ
+  // だった。本来は複数の窓が同時に生きている場合、和集合（union）を取るべきで、
+  // max では二重に数えていない代わりに他方の当たりパターンを無視してしまい、
+  // 確率が過小に出ていた（実例: board=A,K,Q / hero=5,4 で 本来2.96%のところ1.48%
+  // と表示されるケースをブルートフォース検証で確認）。
+  // 正しくは、生きている窓すべてに対する包除原理（inclusion-exclusion）で
+  // 「いずれかの窓が完成する」確率の和集合を計算する。窓の数は実戦上ごく少数
+  // （streetsLeft=2で条件を満たすのは多くて数個）なので、2^n の全部分集合を
+  // 素直に回しても計算量は問題にならない。
+  const n = qualifying.length;
+  let unionProb = 0;
+  for (let mask = 1; mask < (1 << n); mask++) {
+    const ranks = new Set();
+    let bits = 0;
+    for (let i = 0; i < n; i++) {
+      if (mask & (1 << i)) { qualifying[i].forEach(r => ranks.add(r)); bits++; }
     }
-    const pct = Math.max(0, Math.min(100, (sumIncExc / total) * 100));
-    if (pct > best) best = pct;
-  });
-  return best;
+    const k = ranks.size;
+    if (k > streetsLeft) continue; // このランク数はstreetsLeft枚では届かない→寄与ゼロ
+    // 「k個の異なるランク(各4枚,重複なし)すべてから最低1枚ずつ引く」確率
+    let coverSum = 0;
+    for (let j = 0; j <= k; j++) {
+      const sign = (j % 2 === 0) ? 1 : -1;
+      coverSum += sign * nCr(k, j) * nCr(remainingDeck - 4 * j, streetsLeft);
+    }
+    const coverProb = coverSum / total;
+    const sign = (bits % 2 === 1) ? 1 : -1; // 包除原理: 奇数個の交差は+、偶数個は-
+    unionProb += sign * coverProb;
+  }
+  return Math.max(0, Math.min(100, unionProb * 100));
 }
 
 // v3.9.17: 単一の「示唆」ラベルから、4択(FOLD/CALL/RAISE x2/RAISE x3+)の
@@ -5765,8 +5782,12 @@ const HERO_3B_CENTERS  = { fold: 0.0, call: 0.35, raise: 0.80 };
 function heroCurrentDecisionPct(combined) {
   return heroDecisionDistribution(combined, HERO_CUR_CENTERS);
 }
-function heroVs3betDecisionPct(label, heroPos, combined) {
-  const continues = isInVillainRange(label, heroPos, true);
+function heroVs3betDecisionPct(label, villainPos, combined) {
+  // v3.9.25: バグ修正。ここは「相手(villain)の3betレンジに対してヒーローが
+  // 継続できるか」を見るべき箇所なのに、villainPosの位置にheroPosを渡していた
+  // （isInVillainRangeは villainPos を受け取ってPOSITION_3BET_RANGE_PCT[sizeKey][villainPos]
+  // を参照する関数のため、自分のポジションでレンジ幅を引いてしまっていた）。
+  const continues = isInVillainRange(label, villainPos, true);
   if (!continues) return { fold: 92, call: 6, raise: 2 }; // レンジ外はFOLDに強く寄せる
   return heroDecisionDistribution(combined, HERO_3B_CENTERS, 0.28);
 }
@@ -5845,8 +5866,8 @@ function renderHeroAnalysis() {
   renderDecisionBar(curWrap, 'RAISE x2',  curPct.raise2, '#ff8c00');
   renderDecisionBar(curWrap, 'RAISE x3+', curPct.raise3, '#ff3b3b');
 
-  const heroPos = document.getElementById('hero-pos-select')?.value || 'BTN';
-  const v3Pct = heroVs3betDecisionPct(label, heroPos, combined);
+  const villainPos = document.getElementById('villain-pos-select')?.value || 'BB';
+  const v3Pct = heroVs3betDecisionPct(label, villainPos, combined);
   const v3Wrap = document.getElementById('hero-3b-bars');
   v3Wrap.innerHTML = '';
   renderDecisionBar(v3Wrap, 'FOLD',       v3Pct.fold,  '#88aacc');

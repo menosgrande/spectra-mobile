@@ -243,7 +243,7 @@ NUTS Table          3D Heatmap           Board Texture
 - **QUADS_BOARDのコネクティビティ** は強制的に`DISCONNECTED`扱い（v3.6 diff）
 - **GTO/Solver系の計算は一切しない**（設計方針）
 - **topClassCombos（v3.7〜）** は「169ハンド表記の中で最高カテゴリに到達したコンボ」のみを数える設計上、残りのコンボが別カテゴリ（例: 一部はストレート、一部はフラッシュ）でも表からは見えなくなる。NUTSテーブルを見た際「このハンドはこの盤面でほぼ全部○○寄りなんだ」という誤解を招きうる（バグではなく169セル＝1行という構造上の制約）
-- **Worker応答の`requestId`照合は未実装**。`spectra-worker.js`は`requestId`を受け取る設計だが、UI側（index.html）は送信も受信照合もしていないため、理論上は「盤面を素早く連続変更した際に、古い盤面の応答が新しい盤面より後に返り、新しい盤面の結果を古い結果で上書きする」というstale response競合が起きうる。今のところ実際に問題が顕在化した報告はないが、対策（requestId送信＋照合、または不要になった計算のキャンセル）は未着手
+- **Worker応答の`requestId`照合は実装済み**（v3.9.13〜）。`index.html`側は`currentRequestId`をインクリメントして送信し、受信時に一致しないstale responseは破棄している（他AIレビューで本READMEの旧記述「未実装」との乖離を指摘され修正）
 - **Worker障害時のfallbackキャッシュキーがcontext非対応**。`evalCache`（Worker内）はboard+heroPos+villainPos+archetype+profileをキーにしているが、fallback側（index.html内の簡易評価エンジン）のキャッシュキーはボードのみで、ポジション/archetype変更が反映されない可能性がある。Worker正常時は影響しない（fallback発動時のみ）
 
 ---
