@@ -189,7 +189,18 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   color:rgba(0,180,255,.85);
   font-size:var(--fs-helpq);font-family:'Share Tech Mono',monospace;font-weight:700;
   margin-left:4px;cursor:help;vertical-align:middle;line-height:1;
-  flex-shrink:0;
+  flex-shrink:0;position:relative;
+}
+/* v3.9.24: title属性のネイティブツールチップはiOS Safari等のタップ操作では
+   基本的に表示されない（ホバー前提の仕組みのため）。モバイルが主戦場のため、
+   タップで開閉する自前のポップアップに置き換える（JS側でhelp-q-popupを生成）。 */
+.help-q-popup{
+  position:fixed;z-index:9999;max-width:min(280px,80vw);
+  background:#0a0e18;border:1px solid rgba(0,180,255,.5);border-radius:6px;
+  padding:8px 10px;font-family:'Noto Sans JP','Share Tech Mono',monospace;
+  font-size:11px;line-height:1.5;color:rgba(220,235,250,.92);
+  box-shadow:0 4px 20px rgba(0,0,0,.6);
+  pointer-events:none;
 }
 
 /* ─── BOARD CARDS ─── */
@@ -3002,8 +3013,10 @@ self.onmessage = function (e) {
     <!-- v3.9.9: 盤面自体がフラッシュ/ストレートに化ける確率（残りの流れで完成する確率）。
          確定済み(100%)の時は表示しない -->
     <div id="board-texture-probs" style="display:none;align-items:center;justify-content:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(200,220,240,.7);margin:3px 0;">
+      <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:.5px;color:rgba(255,215,0,.4);">盤面の危険度<span style="color:rgba(255,100,100,.55);">[今すでに完成の割合]</span></span>
       <span id="flush-prob-row" style="display:none;">FLUSH <b id="flush-prob-val" class="num-font" style="color:#00d4ff;">--</b></span>
       <span id="straight-prob-row" style="display:none;">STRAIGHT <b id="straight-prob-val" class="num-font" style="color:#00ff9d;">--</b></span>
+      <span class="help-q" title="これは今のボード(3〜4枚)だけを見て、ランダムな相手の2枚が『今すでに』フラッシュ/ストレートを完成させている割合です（今後化けるかどうかの可能性の話ではありません）。このボードがどれくらい危険か、の指標です。ヒーロー自身の手札の伸びしろ（今後化ける可能性）とは別物なので注意してください">?</span>
     </div>
 
     <!-- v3.9.14: HERO HANDはBOARD INPUTセクションへ移動済み（#hero-section参照） -->
@@ -3078,6 +3091,9 @@ self.onmessage = function (e) {
           border-radius:2px;
           border-left:2px solid rgba(0,180,255,.3);
         ">ボードを入力してください</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.4);margin-top:2px;">
+          ※ このバッジはポジション同士のレンジ全体を比べた有利不利です。ヒーローの手札(2枚)個別の強さ・ドロー率とは別の指標なので、下の「あなたの手札限定」欄と数値が噛み合わなく見えることがあります
+        </div>
       </div>
     <!-- 2-COLUMN GRID: PROFILE & RATING -->
     <!-- STACKED LAYOUT: PROFILE & RATING (画面の圧迫による文字切れ・読みにくさを解消するため1列縦積みに変更) -->
@@ -3221,9 +3237,15 @@ self.onmessage = function (e) {
           <span>勝率目安: <b id="hero-strength" style="color:#00d4ff;">--%</b></span>
           <span>将来性: <b id="hero-potential" style="color:#ff6a1a;">--%</b></span>
         </div>
-        <div id="hero-draw-row" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:3px;">
+        <div id="hero-draw-row" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:3px;align-items:center;">
+          <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:.5px;color:rgba(255,215,0,.4);">あなたの手札限定<span style="color:rgba(100,200,255,.6);">[今後化ける可能性]</span><span class="help-q" title="ここはヒーローの2枚のホールカードだけを見た、今後のカード(ターン/リバー)でフラッシュ/ストレートに化ける「可能性」です（まだ確定していません）。画面上部の「ATTACK WINDOW」等の戦況バッジは、この手札個別の強さではなく、選択中のポジション同士のレンジ全体を比べた有利不利なので、意味が違います。手札が弱くてもレンジ全体では有利、ということは普通にあります">?</span></span>
           <span>フラッシュ化: <b id="hero-flush-pct" style="color:#3b9eff;">--%</b></span>
           <span>ストレート化: <b id="hero-straight-pct" style="color:#34d399;">--%</b></span>
+        </div>
+        <div id="range-draw-row" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:3px;align-items:center;">
+          <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:.5px;color:rgba(255,215,0,.4);">169ハンド平均<span style="color:rgba(100,200,255,.6);">[今後化ける可能性]</span><span class="help-q" title="ボードでブロックされていない169ハンドの全コンボ（スーテッド4通り・オフスート12通りをそれぞれ個別に計算）について、同じ計算式で今後のカードでフラッシュ/ストレートに化ける「可能性」を出し、単純平均した値です（まだ確定していません）。「今の自分の手札がレンジの中でどれくらい特殊か（強いか弱いか）」の目安として、上の「あなたの手札限定」と比べてください">?</span></span>
+          <span>フラッシュ化: <b id="range-flush-pct" style="color:#3b9eff;">--%</b></span>
+          <span>ストレート化: <b id="range-straight-pct" style="color:#34d399;">--%</b></span>
         </div>
         <div style="margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,215,0,.1);">
           <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.5);margin-bottom:3px;">今の状況（目安・4択の割合）</div>
@@ -3234,7 +3256,7 @@ self.onmessage = function (e) {
           <div id="hero-3b-bars" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
         </div>
         <div style="font-size:7px;color:rgba(200,220,240,.4);margin-top:5px;">
-          ※ ソルバー解ではなく、既存エンジンのヒューリスティック採点による目安表示です
+          ※ この判定はプロ向け解析ソフト（ソルバー）が計算した「数学的に完全に正しい最適解」ではなく、SPECTRA独自の簡易ロジックによる大まかな目安です。参考程度にご利用ください。
         </div>
       </div>
     </div>
@@ -3726,7 +3748,7 @@ function rebuildPositionUI() {
     html += `<label style="margin-left:6px;display:flex;align-items:center;gap:3px;cursor:pointer;
                font-family:'Share Tech Mono',monospace;font-size:7px;color:rgba(200,220,240,.6);">
           <input type="checkbox" id="hm-vs3bet" onchange="renderVillainOverlay()" style="cursor:pointer;"${wasChecked?' checked':''}>
-          vs 3bet<span class="help-q" title="選択中のポジションが3ベットに直面した際のコンティニューレンジ（かなり絞られたレンジ）の目安に切り替えます。Chen Formulaによるヒューリスティックな推定で、GTOソルバーの解ではありません">?</span>
+          vs 3bet<span class="help-q" title="選択中のポジションが3ベットを受けた時に絞り込まれるレンジの目安に切り替えます。有名な簡易採点方式（Chen Formula）による大まかな推定で、プロ向け解析ソフト（ソルバー）が出す数学的な最適解ではありません">?</span>
         </label>`;
     tabsWrap.innerHTML = html;
     // 切り替え前に選んでいたポジションが新しいテーブルサイズに存在しなければOFFへ戻す
@@ -4492,6 +4514,14 @@ const TACTIC_SHORT = {
 };
 
 function applySituationBadge(model) {
+  // 実際に選択中のポジションを埋め込む（「誰に対して」が分かるように）
+  const heroPos    = document.getElementById('hero-pos-select')?.value    || 'BTN';
+  const villainPos = document.getElementById('villain-pos-select')?.value || 'BB';
+  const subText = (model.sub || '')
+    .replace('相手より', `相手(${villainPos})より`)
+    .replace('相手が有利', `相手(${villainPos})が有利`);
+  const shortText = (TACTIC_SHORT[model.text] || '');
+
   // LEFT パネルの SIT BADGE（小）
   const dot   = document.getElementById('sit-dot');
   const label = document.getElementById('sit-label');
@@ -4502,7 +4532,7 @@ function applySituationBadge(model) {
   dot.style.boxShadow     = `0 0 8px ${model.shadow}`;
   label.style.color       = model.color;
   label.textContent       = model.text;
-  sub.textContent         = TACTIC_SHORT[model.text] || '';
+  sub.textContent         = shortText;
   badge.style.borderColor = model.color;
   badge.style.boxShadow   = `0 0 10px ${model.shadow}`;
 
@@ -4516,7 +4546,7 @@ function applySituationBadge(model) {
   tDot.style.boxShadow     = `0 0 10px ${model.shadow}`;
   tText.style.color        = model.color;
   tText.textContent        = model.text;
-  tSub.textContent         = model.sub || '';
+  tSub.textContent         = subText;
   tBadge.style.borderColor = model.color;
   tBadge.style.boxShadow   = `0 0 14px ${model.shadow}`;
 }
@@ -5053,25 +5083,39 @@ function computeBoardStraightPct(board) {
   for (let high = 6; high <= 14; high++) windows.push([high-4,high-3,high-2,high-1,high]);
   windows.push([1,2,3,4,5]); // ホイール（Aは1として扱う）
 
-  let totalPct = 0;
+  // v3.9.23: computeHeroStraightPctと全く同じ2つのバグがここにもあった。
+  // ①「窓に関係ないボードカード(例:K)を1枚でも持っていると、その窓ごと判定を
+  //   丸ごと捨てる」バグ（effNums.every(...)チェック）→ 7-8-K のような
+  //   よくあるボードでも0%と誤表示されていた。
+  // ②複数の窓（例: 7-8-9ボードの両面待ち系）の確率を単純合算しており、
+  //   同じ2枚ハンドが複数の窓を同時に満たすケースを二重計上して過大評価していた。
+  // 修正: 窓判定は「欠けているランクだけ」を見る方式にし、「あと1ランクで
+  // 完成する窓」は複数窓ぶんまとめてから確率化する（重複なし）。
+  const singleOutRanks = new Set();
+  const multiRankWindows = [];
   windows.forEach(win => {
-    const winSet = new Set(win);
     const effNums = win[0] === 1 ? nums.map(n => n === 14 ? 1 : n) : nums;
-    if (!effNums.every(n => winSet.has(n))) return; // この窓にボードの全ランクが収まらない → 対象外
-    const missingRanks = win.filter(r => !effNums.includes(r));
-    if (missingRanks.length < 1 || missingRanks.length > 2) return; // 2枚ハンドで埋められる範囲のみ
-
-    let favorable;
-    if (missingRanks.length === 2) {
-      favorable = 4 * 4; // 不足ランク2つ、それぞれ1枚ずつ持つ
-    } else {
-      // 不足ランク1つ：少なくとも1枚持っていればよい
-      const otherLeft = remainingDeck - 4;
-      favorable = total - nCr(otherLeft, 2);
-    }
-    if (favorable > 0) totalPct += (favorable / total) * 100;
+    const numSet = new Set(effNums);
+    const missing = win.filter(r => !numSet.has(r));
+    if (missing.length < 1 || missing.length > 2) return; // 2枚ハンドで埋められる範囲のみ
+    if (missing.length === 1) singleOutRanks.add(missing[0]);
+    else multiRankWindows.push(missing);
   });
-  return Math.min(100, totalPct);
+
+  let bestPct = 0;
+  if (singleOutRanks.size > 0) {
+    // 「あと1ランクで完成」する窓をまとめて評価（両面待ち等はランクの和集合で合算）
+    const poolSize = 4 * singleOutRanks.size;
+    const otherLeft = remainingDeck - poolSize;
+    const favorable = total - nCr(otherLeft, 2); // 少なくとも1枚は該当ランク
+    bestPct = Math.max(bestPct, (favorable / total) * 100);
+  }
+  multiRankWindows.forEach(missing => {
+    const favorable = 4 * 4; // 不足ランク2つ、それぞれ1枚ずつ持つ
+    const pct = (favorable / total) * 100;
+    if (pct > bestPct) bestPct = pct;
+  });
+  return Math.min(100, bestPct);
 }
 
 function renderBoardTextureProbs() {
@@ -5574,6 +5618,38 @@ function heroHandToLabel(hand) {
 // hero手札2枚を含めた「今の手札がフラッシュ/ストレートを構成する確率」。
 // メインパネルのcomputeBoardFlushPct/StraightPctとは別軸（あちらはレンジ統計、
 // こちらはhero固有の残りカードでの完成率）で、意図的に重複実装している。
+// v3.9.22: 「ヒーローの手札2枚だけでは意味がない」との指摘を受けて追加。
+// 169ハンド全体（プリフロップの全スタート役、ボードでブロックされたコンボは除外）
+// それぞれについて、上のcomputeHeroFlushPct/computeHeroStraightPct（修正済みの正しい式）
+// を実際のコンボ単位（スーテッド4通り・オフスート12通りをそれぞれ個別に）で計算し、
+// ライブコンボ数で加重平均した「レンジ全体では何%がフラッシュ/ストレートに化るか」を返す。
+function computeRangeDrawPct(board, heroHand) {
+  if (!board || board.length < 3 || board.length >= 5) return null;
+  const deadSet = new Set([...board, ...(heroHand || [])]);
+  let flushSum = 0, straightSum = 0, n = 0;
+  for (let i = 0; i < 13; i++) {
+    for (let j = 0; j < 13; j++) {
+      const r1 = RANKS[i], r2 = RANKS[j];
+      const combos = [];
+      if (i === j) {
+        for (let s1 = 0; s1 < 4; s1++) for (let s2 = s1 + 1; s2 < 4; s2++) combos.push([r1+SUITS[s1], r1+SUITS[s2]]);
+      } else if (i < j) {
+        for (let s = 0; s < 4; s++) combos.push([r1+SUITS[s], r2+SUITS[s]]);
+      } else {
+        for (let s1 = 0; s1 < 4; s1++) for (let s2 = 0; s2 < 4; s2++) { if (s1 === s2) continue; combos.push([r2+SUITS[s1], r1+SUITS[s2]]); }
+      }
+      combos.forEach(([c1, c2]) => {
+        if (deadSet.has(c1) || deadSet.has(c2)) return; // ボード/ヒーローの手札とかぶるコンボは除外
+        const fp = computeHeroFlushPct(board, [c1, c2]);
+        const sp = computeHeroStraightPct(board, [c1, c2]);
+        if (fp === null) return;
+        flushSum += fp; straightSum += sp; n++;
+      });
+    }
+  }
+  return n > 0 ? { flushPct: flushSum / n, straightPct: straightSum / n, liveCombos: n } : null;
+}
+
 function computeHeroFlushPct(board, hero) {
   if (!hero || hero.length !== 2 || board.length < 3 || board.length >= 5) return null;
   const suitCount = {};
@@ -5588,11 +5664,20 @@ function computeHeroFlushPct(board, hero) {
   if (suitLeft < need) return 0;
   const streetsLeft = 5 - board.length;
   if (need > streetsLeft) return 0;
-  const favorable = nCr(suitLeft, need);
+  // v3.9.20: 旧実装は「残り街数ぶんのカードを引く」組み合わせを
+  // (ちょうどneed枚が完成札)×(残りは何でもよいプール)で数えており、
+  // streetsLeft > need（例: フロップで1枚待ち＝残り2street）のとき
+  // 「2枚とも完成札」のケースを2重に数えてしまい確率が過大になっていた
+  // （例: 4フラッシュドローが本来約35%のところ38.3%と表示）。
+  // 正しくは「streetsLeft枚のうちneed枚以上が該当スート」＝超幾何分布の
+  // 余事象（need未満しか引かない確率）を1から引く形で計算する。
   const total = nCr(remainingDeck, streetsLeft);
-  // 残り街数ぶんのカードのうち、必要な枚数がちょうど揃う組み合わせ
-  const combosForRest = nCr(remainingDeck - need, streetsLeft - need);
-  return total > 0 ? Math.min(100, (favorable * combosForRest / total) * 100) : 0;
+  if (total <= 0) return 0;
+  let pLess = 0;
+  for (let k = 0; k < need; k++) {
+    pLess += nCr(suitLeft, k) * nCr(remainingDeck - suitLeft, streetsLeft - k);
+  }
+  return Math.max(0, Math.min(100, (1 - pLess / total) * 100));
 }
 
 function computeHeroStraightPct(board, hero) {
@@ -5602,26 +5687,55 @@ function computeHeroStraightPct(board, hero) {
   const streetsLeft = 5 - board.length;
   const knownCards = board.length + hero.length;
   const remainingDeck = 52 - knownCards;
+  const total = nCr(remainingDeck, streetsLeft);
+  if (total <= 0) return 0;
 
   const windows = [];
   for (let high = 6; high <= 14; high++) windows.push([high-4,high-3,high-2,high-1,high]);
   windows.push([1,2,3,4,5]);
 
-  let best = 0;
+  // v3.9.21: 「窓の外側に無関係なカードを1枚でも持っていると、その窓の判定
+  // 自体を丸ごと捨てる」という重大なバグがあった（effNums.every(...)チェック）。
+  // 実戦のボード/ハンドはほぼ必ずどの窓にも収まらないカードを含むため、
+  // オープンエンドやガットショットが軒並り0%と誤表示される欠陥だった。
+  // 正しくは「窓の5ランクのうち何が欠けているか」だけを見ればよい
+  // （窓に関係ないカードの有無は無関係）。
+  const singleOutRanks = new Set(); // 「あと1ランクで完成」する窓を集約＝実際の「アウツ」
+  const multiRankWindows = []; // 2ランク以上欠けている窓（バックドア）
+  let alreadyMade = false;
   windows.forEach(win => {
-    const winSet = new Set(win);
     const effNums = win[0] === 1 ? nums.map(n => n === 14 ? 1 : n) : nums;
-    if (!effNums.every(n => winSet.has(n))) return;
-    const missing = win.filter(r => !effNums.includes(r));
-    if (missing.length === 0) { best = 100; return; }
+    const numSet = new Set(effNums);
+    const missing = win.filter(r => !numSet.has(r));
+    if (missing.length === 0) { alreadyMade = true; return; }
     if (missing.length > streetsLeft) return;
-    const NUM_TO_RANK = { 1:'A' };
-    Object.keys(RANK_TO_NUM).forEach(r => { NUM_TO_RANK[RANK_TO_NUM[r]] = r; });
-    let favorable = 1;
-    missing.forEach(r => { favorable *= 4; }); // 各不足ランク4枚（既出分は簡略化のため考慮せず）
-    const total = nCr(remainingDeck, streetsLeft);
-    const combosForRest = nCr(remainingDeck - missing.length, streetsLeft - missing.length);
-    const pct = total > 0 ? Math.min(100, (favorable * combosForRest / total) * 100) : 0;
+    if (missing.length === 1) singleOutRanks.add(missing[0]);
+    else multiRankWindows.push(missing);
+  });
+  if (alreadyMade) return 100;
+
+  let best = 0;
+
+  // ① 「あと1枚」で完成する窓をまとめて評価（オープンエンド＝2窓合算で8アウツ、
+  //    ガットショット＝1窓4アウツ、ダブルガットショットも同様に合算）。
+  //    これがプレイヤーが直感的にイメージする「アウツで確率を出す」計算に対応。
+  if (singleOutRanks.size > 0) {
+    const poolSize = 4 * singleOutRanks.size;
+    const pLess = nCr(remainingDeck - poolSize, streetsLeft);
+    const pct = Math.max(0, Math.min(100, (1 - pLess / total) * 100));
+    if (pct > best) best = pct;
+  }
+
+  // ② 2ランク以上欠けている窓（バックドア）は、①の対象になっていない
+  //    場合の補助的な目安として、窓ごとに包除原理で個別評価し最大値を採用。
+  multiRankWindows.forEach(missing => {
+    const m = missing.length;
+    let sumIncExc = 0;
+    for (let j = 0; j <= m; j++) {
+      const sign = (j % 2 === 0) ? 1 : -1;
+      sumIncExc += sign * nCr(m, j) * nCr(remainingDeck - 4 * j, streetsLeft);
+    }
+    const pct = Math.max(0, Math.min(100, (sumIncExc / total) * 100));
     if (pct > best) best = pct;
   });
   return best;
@@ -5700,8 +5814,20 @@ function renderHeroAnalysis() {
 
     const flushPct    = computeHeroFlushPct(currentBoard, heroHand);
     const straightPct = computeHeroStraightPct(currentBoard, heroHand);
-    document.getElementById('hero-flush-pct').textContent    = flushPct    !== null ? flushPct.toFixed(1) + '%'    : '--';
+    // v3.9.19: 3枚しか揃っていない「バックドア（2枚連続で当てる必要あり）」の場合、
+    // 4枚揃った通常のドロー（あと1枚）と混同しないよう明示する。
+    const allC = [...currentBoard, ...heroHand];
+    const suitTally = {};
+    allC.forEach(c => { suitTally[c[1]] = (suitTally[c[1]] || 0) + 1; });
+    const maxSuitHave = Math.max(0, ...Object.values(suitTally));
+    const isBackdoorFlush = maxSuitHave === 3 && currentBoard.length === 3;
+    const flushLabel = flushPct !== null ? flushPct.toFixed(1) + '%' + (isBackdoorFlush ? '(バックドア)' : '') : '--';
+    document.getElementById('hero-flush-pct').textContent    = flushLabel;
     document.getElementById('hero-straight-pct').textContent = straightPct !== null ? straightPct.toFixed(1) + '%' : '--';
+
+    const rangeDraw = computeRangeDrawPct(currentBoard, heroHand);
+    document.getElementById('range-flush-pct').textContent    = rangeDraw ? rangeDraw.flushPct.toFixed(1) + '%' : '--';
+    document.getElementById('range-straight-pct').textContent = rangeDraw ? rangeDraw.straightPct.toFixed(1) + '%' : '--';
   }
 
   panel.style.display = 'block';
@@ -6622,6 +6748,43 @@ rebuildPositionUI();
 renderDefaultZeroState();
 buildHeroSelects(); // v3.9.14: HERO HAND再有効化（BOARD INPUTセクションへ移動）
 initEngine();
+
+// v3.9.24: 「？」ヘルプバッジをタップで開閉するポップアップ方式にする。
+// title属性のネイティブツールチップはモバイルのタップでは出ないことが多いため、
+// 実際に機能する自前実装に置き換える（イベント委譲なので後から追加されたhelp-qにも効く）。
+(function initHelpQPopup() {
+  let openPopup = null, openTarget = null;
+  function closePopup() {
+    if (openPopup) { openPopup.remove(); openPopup = null; openTarget = null; }
+  }
+  document.addEventListener('click', (e) => {
+    const q = e.target.closest && e.target.closest('.help-q');
+    if (q) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (openTarget === q) { closePopup(); return; }
+      closePopup();
+      const text = q.getAttribute('title') || q.getAttribute('data-tip') || '';
+      if (!text) return;
+      const rect = q.getBoundingClientRect();
+      const popup = document.createElement('div');
+      popup.className = 'help-q-popup';
+      popup.textContent = text;
+      document.body.appendChild(popup);
+      // 画面外にはみ出さないよう位置調整
+      const pw = popup.offsetWidth, ph = popup.offsetHeight;
+      let left = Math.min(Math.max(8, rect.left - pw / 2 + rect.width / 2), window.innerWidth - pw - 8);
+      let top = rect.bottom + 6;
+      if (top + ph > window.innerHeight - 8) top = rect.top - ph - 6;
+      popup.style.left = left + 'px';
+      popup.style.top = top + 'px';
+      openPopup = popup;
+      openTarget = q;
+      return;
+    }
+    if (openPopup && !e.target.closest('.help-q-popup')) closePopup();
+  }, true);
+})();
 </script>
 </body>
 </html>
