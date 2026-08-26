@@ -3243,7 +3243,7 @@ self.onmessage = function (e) {
           <span>ストレート化: <b id="hero-straight-pct" style="color:#34d399;">--%</b></span>
         </div>
         <div id="range-draw-row" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:3px;align-items:center;">
-          <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:.5px;color:rgba(255,215,0,.4);">169ハンド平均<span style="color:rgba(100,200,255,.6);">[今後化ける可能性]</span><span class="help-q" title="ボードでブロックされていない169ハンドの全コンボ（スーテッド4通り・オフスート12通りをそれぞれ個別に計算）について、同じ計算式で今後のカードでフラッシュ/ストレートに化ける「可能性」を出し、単純平均した値です（まだ確定していません）。「今の自分の手札がレンジの中でどれくらい特殊か（強いか弱いか）」の目安として、上の「あなたの手札限定」と比べてください">?</span></span>
+          <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:.5px;color:rgba(255,215,0,.4);">全1326コンボ平均<span style="color:rgba(100,200,255,.6);">[今後化ける可能性]</span><span class="help-q" title="ボード/ヒーローとかぶらない全ての具体的ホールカード2枚組（最大1326通り）それぞれについて、同じ計算式で今後のカードでフラッシュ/ストレートに化ける「可能性」を出し、コンボ単位で平均した値です（まだ確定していません）。169のハンド区分を均等に扱う平均ではなく、コンボ数の多いオフスート等が重めに効く「実際のレンジの構成に近い」平均です。「今の自分の手札がレンジの中でどれくらい特殊か（強いか弱いか）」の目安として、上の「あなたの手札限定」と比べてください">?</span></span>
           <span>フラッシュ化: <b id="range-flush-pct" style="color:#3b9eff;">--%</b></span>
           <span>ストレート化: <b id="range-straight-pct" style="color:#34d399;">--%</b></span>
         </div>
@@ -4464,25 +4464,25 @@ const TACTIC_BADGE_MAP = [
   {
     match: (s, d) => s === 'ATTACK' && d === 'RANGE_ADV_HERO',
     text:  '⚡ ATTACK WINDOW',
-    sub:   '🟥 積極的に攻めていい局面　相手より強いレンジ',
+    sub:   '🟥 攻勢に傾きやすい構造　相手よりレンジが強い',
     color: '#ff4a4a', shadow: 'rgba(255,74,74,.45)'
   },
   {
     match: (s, d) => s === 'ATTACK',
     text:  '▲ SLIGHT EDGE',
-    sub:   '🟧 やや有利　選択的に攻めると効果的',
+    sub:   '🟧 やや有利な傾向　選択的な攻めを検討しやすい',
     color: '#ffb300', shadow: 'rgba(255,179,0,.35)'
   },
   {
     match: (s, d) => s === 'CAUTION',
     text:  '⚠ CAUTION',
-    sub:   '🟦 慎重に　ドロー豊富で危険なボード',
+    sub:   '🟦 警戒傾向　ドロー豊富で危険度の高いボード',
     color: '#29b6f6', shadow: 'rgba(41,182,246,.35)'
   },
   {
     match: (s, d) => s === 'DEFEND' || d === 'RANGE_ADV_VILLAIN',
     text:  '🛡 DEFEND',
-    sub:   '🟪 相手が有利　無理に攻めず粘り強く守る',
+    sub:   '🟪 相手が有利な傾向　守備的な対応を検討しやすい',
     color: '#ab47bc', shadow: 'rgba(171,71,188,.35)'
   },
   {
@@ -4505,11 +4505,14 @@ function deriveSituationBadge(features) {
   return TACTIC_BADGE_MAP.find(b => b.match(s, d)) || TACTIC_BADGE_NEUTRAL;
 }
 
+// v3.9.27: 他AIレビューで指摘。断定的な行動指示（「積極的に攻める」「守り重視」等）から、
+// 盤面構造から導いた「傾向」を示す表現に統一（ATTACK WINDOW/DEFEND等のカテゴリー名自体は
+// 識別ラベルとして維持し、その下に添える短文だけを傾向寄りの表現に変更）。
 const TACTIC_SHORT = {
-  '⚡ ATTACK WINDOW': '積極的に攻める',
+  '⚡ ATTACK WINDOW': '攻勢に傾きやすい',
   '▲ SLIGHT EDGE':   'やや有利',
-  '⚠ CAUTION':       '慎重に',
-  '🛡 DEFEND':        '守り重視',
+  '⚠ CAUTION':       '警戒傾向',
+  '🛡 DEFEND':        '守備に傾きやすい',
   '↕ POLARIZED':     'ナッツか空気か',
   '— NEUTRAL':       '互角',
 };
@@ -4567,9 +4570,9 @@ function hudLevel(val) {
 }
 
 const HUD_DEFS = [
-  { key: 'attack', label: '攻勢チャンス', icon: '⚡', explain: '積極的に攻める（ベット/レイズする）ことがどれだけ有効な盤面か' },
-  { key: 'value',  label: 'バリュー密度', icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
-  { key: 'bluff',  label: 'ブラフ有効度', icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
+  { key: 'attack', label: '攻勢傾向', icon: '⚡', explain: '積極的な攻め（ベット/レイズ）を検討しやすい盤面か' },
+  { key: 'value',  label: 'バリュー構造', icon: '💎', explain: '強いハンドで大きく賭ける展開を検討しやすい盤面か' },
+  { key: 'bluff',  label: 'ブラフ余地', icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）の余地がある盤面か' },
   { key: 'capped', label: 'キャップ率',  icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
 ];
 
@@ -4628,8 +4631,8 @@ function renderDefaultZeroState() {
   const profileHud   = document.getElementById('range-profile-hud');
   if (profileHud) {
     const defaultDefs = [
-      { label: 'バリュー密度', icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
-      { label: 'ブラフ有効度', icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
+      { label: 'バリュー構造', icon: '💎', explain: '強いハンドで大きく賭ける展開を検討しやすい盤面か' },
+      { label: 'ブラフ余地', icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）の余地がある盤面か' },
       { label: 'キャップ率',  icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
     ];
     profileHud.innerHTML = defaultDefs.map(def => `
@@ -4763,8 +4766,8 @@ function renderConclusion(data) {
   // ─ RANGE PROFILE（VALUE / BLUFF / CAPPED）─
   const s = data.hudSignals || {};
   const profileDefs = [
-    { key: 'value',  label: 'バリュー密度', icon: '💎', explain: '強いハンドで大きく賭けて利益を取りやすい盤面か' },
-    { key: 'bluff',  label: 'ブラフ有効度', icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）が通りやすい盤面か' },
+    { key: 'value',  label: 'バリュー構造', icon: '💎', explain: '強いハンドで大きく賭ける展開を検討しやすい盤面か' },
+    { key: 'bluff',  label: 'ブラフ余地', icon: '🎭', explain: 'ブラフ（弱いハンドで強く見せる賭け）の余地がある盤面か' },
     { key: 'capped', label: 'キャップ率',  icon: '🔒', explain: '相手のレンジに最強クラスのハンドがどれだけ含まれにくいか（弱含みか）' },
   ];
   const profileHtml = profileDefs.map(def => {
@@ -5634,8 +5637,15 @@ function heroHandToLabel(hand) {
 // それぞれについて、上のcomputeHeroFlushPct/computeHeroStraightPct（修正済みの正しい式）
 // を実際のコンボ単位（スーテッド4通り・オフスート12通りをそれぞれ個別に）で計算し、
 // ライブコンボ数で加重平均した「レンジ全体では何%がフラッシュ/ストレートに化るか」を返す。
+// v3.9.26: 他AIレビューでの指摘。board/heroHandが変わっていないのに
+// onHeroChanged()（サフィックス選択の中間状態など）やボード再描画のたびに
+// 1326コンボ全走査が毎回再実行されていたため、直前の(board,hero)キーと
+// 結果を1件だけ覚えておき、同じ入力なら再計算をスキップする。
+let _rangeDrawCache = { key: null, result: null };
 function computeRangeDrawPct(board, heroHand) {
   if (!board || board.length < 3 || board.length >= 5) return null;
+  const cacheKey = board.slice().sort().join(',') + '|' + (heroHand || []).slice().sort().join(',');
+  if (_rangeDrawCache.key === cacheKey) return _rangeDrawCache.result;
   const deadSet = new Set([...board, ...(heroHand || [])]);
   let flushSum = 0, straightSum = 0, n = 0;
   for (let i = 0; i < 13; i++) {
@@ -5658,7 +5668,9 @@ function computeRangeDrawPct(board, heroHand) {
       });
     }
   }
-  return n > 0 ? { flushPct: flushSum / n, straightPct: straightSum / n, liveCombos: n } : null;
+  const result = n > 0 ? { flushPct: flushSum / n, straightPct: straightSum / n, liveCombos: n } : null;
+  _rangeDrawCache = { key: cacheKey, result };
+  return result;
 }
 
 function computeHeroFlushPct(board, hero) {
@@ -5788,7 +5800,12 @@ function heroVs3betDecisionPct(label, villainPos, combined) {
   // （isInVillainRangeは villainPos を受け取ってPOSITION_3BET_RANGE_PCT[sizeKey][villainPos]
   // を参照する関数のため、自分のポジションでレンジ幅を引いてしまっていた）。
   const continues = isInVillainRange(label, villainPos, true);
-  if (!continues) return { fold: 92, call: 6, raise: 2 }; // レンジ外はFOLDに強く寄せる
+  // v3.9.27: 他AIレビューで指摘。レンジ外の場合に固定値「FOLD 92% / CALL 6% / RAISE 2%」を
+  // 返していたが、この数字はeffective stack・pot size・sizing・postflop realization等を
+  // 一切考慮していない未検算のプレースホルダーであり、あたかも計算された戦略頻度のように
+  // 見えてしまう問題があった。実際に導出できるのは「推定3betレンジに含まれるか否か」という
+  // 二値の分類結果のみなので、疑似的な頻度分布ではなくその分類結果自体を返す。
+  if (!continues) return { outsideRange: true };
   return heroDecisionDistribution(combined, HERO_3B_CENTERS, 0.28);
 }
 
@@ -5870,9 +5887,17 @@ function renderHeroAnalysis() {
   const v3Pct = heroVs3betDecisionPct(label, villainPos, combined);
   const v3Wrap = document.getElementById('hero-3b-bars');
   v3Wrap.innerHTML = '';
-  renderDecisionBar(v3Wrap, 'FOLD',       v3Pct.fold,  '#88aacc');
-  renderDecisionBar(v3Wrap, 'CALL',       v3Pct.call,  '#ffb800');
-  renderDecisionBar(v3Wrap, '4BET/RAISE', v3Pct.raise, '#ff3b3b');
+  if (v3Pct.outsideRange) {
+    // v3.9.27: レンジ外は疑似頻度(92/6/2%)ではなく分類結果のみを表示
+    const span = document.createElement('span');
+    span.style.cssText = 'color:#88aacc;font-weight:700;';
+    span.textContent = '推定3BETレンジ外';
+    v3Wrap.appendChild(span);
+  } else {
+    renderDecisionBar(v3Wrap, 'FOLD',       v3Pct.fold,  '#88aacc');
+    renderDecisionBar(v3Wrap, 'CALL',       v3Pct.call,  '#ffb800');
+    renderDecisionBar(v3Wrap, '4BET/RAISE', v3Pct.raise, '#ff3b3b');
+  }
 }
 
 /* ── Street render ── */
@@ -6667,14 +6692,6 @@ function buildBoardArea() {
 const BG_CLS = { s: 'bg-s', h: 'bg-h', d: 'bg-d', c: 'bg-c' };
 
 function updateBoardCards() {
-  // Detect draws for glow effects if hero hand set
-  let boardDrawType = null;
-  if (heroHand && heroHand.length >= 2 && currentBoard.length >= 3) {
-    const r1 = heroHand[0][0], r2 = heroHand[1][0], s1 = heroHand[0][1], s2 = heroHand[1][1];
-    const draws = detectDraws(r1, r2, s1, s2, currentBoard);
-    if (draws.length) boardDrawType = draws[0].type;
-  }
-
   const SLOT_NAMES = ['FLOP 1', 'FLOP 2', 'FLOP 3', 'TURN', 'RIVER'];
 
   for (let i = 0; i < 5; i++) {
@@ -6690,24 +6707,9 @@ function updateBoardCards() {
       const bgCls = BG_CLS[suit] || '';
       const sym = SUIT_SYM[suit] || '';
 
-      // Determine glow class
-      let glowCls = '';
-      if (boardDrawType) {
-        if (boardDrawType.includes('FD')) glowCls = 'glow-fd';
-        else if (boardDrawType.includes('OESD')) glowCls = 'glow-oesd';
-        else if (boardDrawType.includes('GSD')) glowCls = 'glow-gsd';
-        else glowCls = 'glow-bd';
-      }
-
-      // Check if hero card
-      let heroCls = '';
-      if (heroHand && heroHand.length >= 2) {
-        if (heroHand[0] === rVal + sVal || heroHand[1] === rVal + sVal) heroCls = 'hero-card';
-      }
-
       let activeBorder = isActiveTarget ? 'style="border-color:#00d4ff;box-shadow:0 0 14px rgba(0,212,255,.6);"' : '';
 
-      card.className = `board-card active ${glowCls} ${heroCls}`;
+      card.className = `board-card active`;
       if (isActiveTarget) card.style.border = '2px solid #00d4ff';
       else card.style.border = '';
 
@@ -6735,6 +6737,49 @@ function updateBoardCards() {
 
   renderPickerSlots();
   renderInlinePickerGrid();
+  applyHeroCardOverlay(); // v3.9.26: Hero固有の装飾はここで完全分離（下記関数を参照）
+}
+
+// v3.9.26: 他AIレビュー指摘への対応。以前はupdateBoardCards()自体がheroHandを参照して
+// board-cardのglow/hero-cardクラスを直接組み立てており、「Board描画がHero状態に依存する」
+// というデータ結合が生じていた（計算結果自体は変えないが、設計方針「HeroはBoard等の共有
+// 関数から完全分離」からは外れていた）。updateBoardCards()本体からheroHand参照を除去し、
+// 装飾だけをこの専用関数に切り出した。Hero Handを丸ごと削除する場合は、この関数の呼び出し
+// 1行（updateBoardCards()末尾）とこの関数自体を消すだけでよい。
+function applyHeroCardOverlay() {
+  if (typeof heroHand === 'undefined') return;
+
+  let boardDrawType = null;
+  if (heroHand && heroHand.length >= 2 && currentBoard.length >= 3) {
+    const r1 = heroHand[0][0], r2 = heroHand[1][0], s1 = heroHand[0][1], s2 = heroHand[1][1];
+    const draws = detectDraws(r1, r2, s1, s2, currentBoard);
+    if (draws.length) boardDrawType = draws[0].type;
+  }
+
+  for (let i = 0; i < 5; i++) {
+    const rVal = document.getElementById('rsel-' + i)?.value || '';
+    const sVal = document.getElementById('ssel-' + i)?.value || '';
+    const card = document.getElementById('bcard-' + i);
+    if (!card || !rVal || !sVal) continue; // 空きスロットには何も付けない
+
+    let glowCls = '';
+    if (boardDrawType) {
+      if (boardDrawType.includes('FD')) glowCls = 'glow-fd';
+      else if (boardDrawType.includes('OESD')) glowCls = 'glow-oesd';
+      else if (boardDrawType.includes('GSD')) glowCls = 'glow-gsd';
+      else glowCls = 'glow-bd';
+    }
+
+    let heroCls = '';
+    if (heroHand && heroHand.length >= 2) {
+      if (heroHand[0] === rVal + sVal || heroHand[1] === rVal + sVal) heroCls = 'hero-card';
+    }
+
+    // updateBoardCards()が付与したベースクラス(board-card active)は残し、Hero用クラスだけ追加
+    card.classList.remove('glow-fd', 'glow-oesd', 'glow-gsd', 'glow-bd', 'hero-card');
+    if (glowCls) card.classList.add(glowCls);
+    if (heroCls) card.classList.add(heroCls);
+  }
 }
 
 function loadPresetBoard(cards) {

@@ -245,6 +245,8 @@ NUTS Table          3D Heatmap           Board Texture
 - **topClassCombos（v3.7〜）** は「169ハンド表記の中で最高カテゴリに到達したコンボ」のみを数える設計上、残りのコンボが別カテゴリ（例: 一部はストレート、一部はフラッシュ）でも表からは見えなくなる。NUTSテーブルを見た際「このハンドはこの盤面でほぼ全部○○寄りなんだ」という誤解を招きうる（バグではなく169セル＝1行という構造上の制約）
 - **Worker応答の`requestId`照合は実装済み**（v3.9.13〜）。`index.html`側は`currentRequestId`をインクリメントして送信し、受信時に一致しないstale responseは破棄している（他AIレビューで本READMEの旧記述「未実装」との乖離を指摘され修正）
 - **Worker障害時のfallbackキャッシュキーがcontext非対応**。`evalCache`（Worker内）はboard+heroPos+villainPos+archetype+profileをキーにしているが、fallback側（index.html内の簡易評価エンジン）のキャッシュキーはボードのみで、ポジション/archetype変更が反映されない可能性がある。Worker正常時は影響しない（fallback発動時のみ）
+- **v3.9.26: 他AIレビューで指摘・検証済み。** `computeRangeDrawPct()`のUI表示ラベルが「169ハンド平均」となっていたが、実装は169カテゴリの均等平均ではなく、ボード/ヒーローとかぶらない具体的コンボ（最大1326通り）単位の加重平均だった（計算式は妥当、ラベルが不正確だった）→ラベルとツールチップを「全1326コンボ平均」に修正、計算自体は変更なし。あわせて`computeRangeDrawPct()`に直前1回分の(board,heroHand)キー付きキャッシュを追加し、Hero選択の中間状態や盤面再描画のたびに1326コンボ全走査が毎回走っていた無駄な再計算を削減。それ以外の指摘（Hero→`updateBoardCards()`のdraw glow参照、`heroVs3betDecisionPct()`のFOLD92%固定値、ATTACK WINDOW等の断定的表現）は設計判断が絡むため未対応・要相談として保留
+- **v3.9.27: 上記の保留分もユーザー確認の上で対応済み。** ①`updateBoardCards()`本体からheroHand参照を完全に除去し、Hero固有の装飾（draw glow・hero-cardクラス）を`applyHeroCardOverlay()`として分離（Hero Hand削除時はこの関数と呼び出し1行を消すだけでよい構造に）。②`heroVs3betDecisionPct()`のレンジ外フォールバックだった固定値「FOLD 92% / CALL 6% / RAISE 2%」（根拠のない疑似戦略頻度）を廃止し、`{outsideRange:true}`という分類結果のみを返す形に変更。UI側も3本のバーではなく「推定3BETレンジ外」という単一表示に変更。③ATTACK WINDOW/DEFEND等のバッジ・カテゴリー名自体は識別ラベルとして維持しつつ、その下に添える短文（TACTIC_SHORT・sub文言）と、STRUCTURE RADARの「攻勢チャンス→攻勢傾向」「バリュー密度→バリュー構造」「ブラフ有効度→ブラフ余地」を含む説明文を、断定的な行動指示（〜すべき/〜が有効）から傾向を示す表現（〜を検討しやすい等）に統一。TACTICAL INSIGHTS（generateTacticalInsights、Overbet等の具体的サイジング文言を含む別機能）は今回のスコープ外として未着手
 
 ---
 
