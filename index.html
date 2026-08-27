@@ -1502,8 +1502,21 @@ function classifyPotential(hand, board) {
   }
 
   if (!hasMadeStraight) {
+    // v3.9.31: 他AIレビューで指摘・検証済みのCriticalバグ修正。
+    // 以前はallRanks（ホールカード+ボードの合成ランク集合）の中から
+    // span===3(OESD)/span===4(GSD)の4連続窓を探すだけで、その窓が
+    // 「ボードのランクだけで完結している」かどうかをチェックしていなかった。
+    // 例: ターンJ-T-9-8（4連続ボード）でHeroがA-K（ランク的に無関係）を持っていても、
+    // allRanks=[6,7,8,9,11,12]の中の[6,7,8,9]窓がOESD判定され、全169ハンドが
+    // 一律でOESD扱いになっていた（ボードがストレートに化ける確率は
+    // computeBoardStraightPctの仕事であり、ここはHero固有のドロー判定であるべき）。
+    // → 窓の4ランクのうち少なくとも1つがホールカード由来(ri1/ri2)であることを必須にした。
     for (let k = 0; k <= allRanks.length - 4; k++) {
-      const span = allRanks[k + 3] - allRanks[k];
+      const w0 = allRanks[k], w1 = allRanks[k + 1], w2 = allRanks[k + 2], w3 = allRanks[k + 3];
+      const holeInWindow = w0 === ri1 || w1 === ri1 || w2 === ri1 || w3 === ri1
+        || (ri2 !== null && (w0 === ri2 || w1 === ri2 || w2 === ri2 || w3 === ri2));
+      if (!holeInWindow) continue;
+      const span = w3 - w0;
       if (span === 3) { hasOESD = true; break; }
       if (span === 4) hasGSD = true;
     }
@@ -1548,16 +1561,24 @@ function classifyDraw(hand, board) {
   }
 
   if (!hasMadeStraight) {
+    // v3.9.31: classifyPotentialと同じCriticalバグ修正。ホールカードが窓に
+    // 参加していないボードオンリーの4連続窓をOESD/GSDとして誤検出しないようにする。
     // OESD: 4 cards spanning exactly 3 ranks (e.g. 5678)
     for (let k = 0; k <= allRanks.length - 4; k++) {
-      if (allRanks[k + 3] - allRanks[k] === 3) {
+      const w0 = allRanks[k], w1 = allRanks[k + 1], w2 = allRanks[k + 2], w3 = allRanks[k + 3];
+      const holeInWindow = w0 === ri1 || w1 === ri1 || w2 === ri1 || w3 === ri1
+        || w0 === ri2 || w1 === ri2 || w2 === ri2 || w3 === ri2;
+      if (holeInWindow && w3 - w0 === 3) {
         return 'OESD';
       }
     }
 
     // GSD: 4 cards spanning exactly 4 ranks with one gap (e.g. 5679)
     for (let k = 0; k <= allRanks.length - 4; k++) {
-      if (allRanks[k + 3] - allRanks[k] === 4) {
+      const w0 = allRanks[k], w1 = allRanks[k + 1], w2 = allRanks[k + 2], w3 = allRanks[k + 3];
+      const holeInWindow = w0 === ri1 || w1 === ri1 || w2 === ri1 || w3 === ri1
+        || w0 === ri2 || w1 === ri2 || w2 === ri2 || w3 === ri2;
+      if (holeInWindow && w3 - w0 === 4) {
         return 'GSD';
       }
     }
@@ -1639,7 +1660,9 @@ function eval169(board, hero) {
             const c2 = r1 + SUITS[s2];
             if (!deadSet.has(c1) && !deadSet.has(c2)) {
               activeCombos++;
-              evals.push(evaluate7([c1, c2, ...board]));
+              const e = evaluate7([c1, c2, ...board]);
+              e.comboSuits = [SUITS[s1], SUITS[s2]]; // v3.9.31: オフスートも追跡（Hero厳密照合用）
+              evals.push(e);
             }
           }
         }
@@ -1692,7 +1715,8 @@ function eval169(board, hero) {
       });
       const categoryBreakdown = Object.values(categoryGroups)
         .sort((a, b) => b.score - a.score)
-        .slice(0, 3)
+        .slice(0, 12) // v3.9.31: 3→12に拡大。Hero厳密照合(renderHeroAnalysis)がスート単位で
+        // 正しいグループを引けるよう、実質的に全カテゴリ(最大12コンボ=最大12カテゴリ)を保持する。
         .map(g => ({
           name:  g.name,
           count: g.count,
@@ -5766,6 +5790,31 @@ function renderHeroAnalysis() {
     strength01  = cell.madeStrength ?? 0;
     potential01 = cell.potential ?? 0;
     handNameText = cell.handName || '--';
+
+    // v3.9.31: 他AIレビューで指摘・検証済みのCriticalバグ修正。
+    // cell（169セル）のmadeStrength/handNameは「そのラベルの中で最もスコアが高い
+    // “代表コンボ”」の値であり、Heroが実際に持っている特定のスート組み合わせと
+    // 一致するとは限らない。例：モノトーンボードでHeroがA♠K♠（フラッシュ完成スート
+    // 以外）を持っていても、ラベル"AKs"の代表コンボが「♥＝フラッシュ完成」なら、
+    // Heroパネルは実際はハイカードのHeroの手を「役: FLUSH」として表示してしまっていた。
+    // → cell.categoryBreakdown（v3.9.31でtop3→全カテゴリに拡大済み）から、
+    //   Heroの実際のスートを含むグループを探し、見つかればそちらを使う。
+    //   スーテッドハンドは1コンボ=1スートなので、グループのsuits集合にHeroの
+    //   スートが含まれていれば必ずそのコンボ由来であり曖昧さがない。
+    //   一方ペア（2スート/コンボ）は複数の異なるスート組み合わせが同一カテゴリに
+    //   併合されるとsuits集合が和集合になり、部分一致チェックでは偽陽性
+    //   （実際には存在しない組み合わせを誤って一致とみなす）が起こり得るため、
+    //   確実性を優先してペアはこの照合の対象外とし、従来の代表コンボ表示のまま残す。
+    const isHeroSuited = heroHand.length === 2 && heroHand[0][0] !== heroHand[1][0] && heroHand[0][1] === heroHand[1][1];
+    if (isHeroSuited && cell.categoryBreakdown && cell.categoryBreakdown.length) {
+      const heroSuit = heroHand[0][1];
+      const match = cell.categoryBreakdown.find(g => (g.suits || []).includes(heroSuit));
+      if (match) {
+        strength01   = match.avgMadeStrength;
+        handNameText = match.name;
+      }
+    }
+
     streetLabel.textContent = '▸ ' + detectStreet(currentBoard);
     drawRow.style.display = 'flex';
 
