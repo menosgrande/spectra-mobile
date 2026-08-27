@@ -46,7 +46,7 @@
 html,body{width:100%;height:100%;overflow:hidden;background:#04080f;color:#c8dff0;font-family:'Rajdhani',sans-serif;}
 body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:9999;}
 /* Slim scrollbar for panels */
-.pnl::-webkit-scrollbar,#nuts-list::-webkit-scrollbar,#river-polar::-webkit-scrollbar{width:3px;}
+.pnl::-webkit-scrollbar,#nuts-list::-webkit-scrollbar{width:3px;}
 .pnl::-webkit-scrollbar-track{background:transparent;}
 .pnl::-webkit-scrollbar-thumb{background:rgba(0,180,255,0.25);border-radius:2px;}
 .pnl::-webkit-scrollbar-thumb:hover{background:rgba(0,180,255,0.5);}
@@ -124,35 +124,6 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
   font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1px;
   color:rgba(160,200,230,.5);margin-left:2px;
 }
-
-/* ─── RIVER POLARIZED VIEW ─── */
-#river-polar{display:none;flex-direction:column;gap:4px;flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;}
-.polar-section{border-radius:3px;padding:5px 6px;flex-shrink:0;}
-.polar-title{
-  font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;
-  font-weight:700;margin-bottom:4px;
-}
-.polar-hands{
-  display:flex;flex-wrap:wrap;gap:3px;
-}
-.polar-hand{
-  font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:700;
-  padding:2px 5px;border-radius:2px;cursor:default;
-  transition:opacity .2s;
-}
-.polar-cutoff-line{
-  width:100%;height:2px;border-radius:1px;margin:3px 0;
-  background:repeating-linear-gradient(90deg,rgba(255,255,255,.3),rgba(255,255,255,.3) 4px,transparent 4px,transparent 8px);
-}
-.polar-section.pure-value{background:rgba(0,40,20,.4);border:1px solid rgba(0,255,157,.2);}
-.polar-section.pure-value .polar-title{color:#00ff9d;}
-.polar-section.pure-value .polar-hand{background:rgba(0,255,157,.12);color:#00ff9d;border:1px solid rgba(0,255,157,.25);}
-.polar-section.check-catch{background:rgba(0,20,50,.4);border:1px solid rgba(0,180,255,.2);}
-.polar-section.check-catch .polar-title{color:#00d4ff;}
-.polar-section.check-catch .polar-hand{background:rgba(0,180,255,.1);color:#60c0ff;border:1px solid rgba(0,180,255,.2);}
-.polar-section.bluff-fold{background:rgba(50,0,0,.4);border:1px solid rgba(255,59,59,.2);}
-.polar-section.bluff-fold .polar-title{color:#ff6060;}
-.polar-section.bluff-fold .polar-hand{background:rgba(255,59,59,.1);color:#ff8080;border:1px solid rgba(255,59,59,.2);}
 
 /* ─── KICKER CUTOFF LINE in heatmap ─── */
 .hm-c.cutoff-above{outline:2px solid rgba(0,255,157,.5);outline-offset:-1px;z-index:2;}
@@ -3023,27 +2994,11 @@ self.onmessage = function (e) {
 
     <!-- NUTS TABLE：Heatmapの補完情報 -->
     <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-height:0;overflow-y:auto;">
-      <div id="nuts-sec-label" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.4);">HAND DISTRIBUTION<span class="help-q" title="現在の盤面で、どの役がどれくらいの確率で成立しているかの一覧です">?</span></div>
+      <div id="nuts-sec-label" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(0,180,255,.4);">HAND DISTRIBUTION<span class="help-q" title="ここでの帯（ROYAL FLUSH等の名称）はSPECTRA独自のstrengthスコアによる分類（SPECTRA Strength Band）です。実際のポーカー役判定(evaluate7)とは別軸で、%は生存コンボ内の構成比です">?</span></div>
 
       <!-- フロップ/ターン: TOP MADE + TOP DRAWS + BOARD PROFILE -->
       <div id="nuts-list">
         <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.25);padding:8px 4px;line-height:1.8;text-align:center;">ボードを<br>3枚以上入力</div>
-      </div>
-
-      <!-- リバー: ポラライズド3分割 -->
-      <div id="river-polar">
-        <div class="polar-section pure-value" id="polar-value">
-          <div class="polar-title">⬆ PURE VALUE</div>
-          <div class="polar-hands" id="polar-value-hands"></div>
-        </div>
-        <div class="polar-section check-catch" id="polar-catch">
-          <div class="polar-title">↔ BLUFF CATCH</div>
-          <div class="polar-hands" id="polar-catch-hands"></div>
-        </div>
-        <div class="polar-section bluff-fold" id="polar-bluff">
-          <div class="polar-title">⬇ BLUFF / FOLD</div>
-          <div class="polar-hands" id="polar-bluff-hands"></div>
-        </div>
       </div>
 
     </div>
@@ -3233,7 +3188,7 @@ self.onmessage = function (e) {
       <div id="hero-analysis" style="display:none;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(220,230,245,.85);border-top:1px solid rgba(255,215,0,.15);padding-top:5px;">
         <div id="hero-street-label" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.45);margin-bottom:3px;"></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px 14px;">
-          <span>役: <b id="hero-handname" style="color:#ffd700;">--</b></span>
+          <span>役<span class="help-q" title="ここは連続値スコアからの逆算ではなく、実際のポーカー役判定(evaluate7)の結果そのものです">?</span>: <b id="hero-handname" style="color:#ffd700;">--</b></span>
           <span>勝率目安: <b id="hero-strength" style="color:#00d4ff;">--%</b></span>
           <span>将来性: <b id="hero-potential" style="color:#ff6a1a;">--%</b></span>
         </div>
@@ -3248,11 +3203,11 @@ self.onmessage = function (e) {
           <span>ストレート化: <b id="range-straight-pct" style="color:#34d399;">--%</b></span>
         </div>
         <div style="margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,215,0,.1);">
-          <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.5);margin-bottom:3px;">今の状況（目安・4択の割合）</div>
+          <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.5);margin-bottom:3px;">相対的な判断傾向（GTO頻度ではありません・4択の目安）<span class="help-q" title="ハンドの強さと今後の伸びしろの2値だけから作った相対スコアです。pot/stack/SPR/ポジション/アクション履歴/相手レンジ等は一切考慮していないため、実際の混合戦略頻度（GTO頻度）ではありません。数値同士の大小関係の参考程度に見てください">?</span></div>
           <div id="hero-dec-bars" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
         </div>
         <div style="margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,215,0,.1);">
-          <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.5);margin-bottom:3px;">3ベットを受けた場合（目安・3択の割合）</div>
+          <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.5);margin-bottom:3px;">3ベットを受けた場合の相対的な判断傾向（GTO頻度ではありません・3択の目安）</div>
           <div id="hero-3b-bars" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
         </div>
         <div style="font-size:7px;color:rgba(200,220,240,.4);margin-top:5px;">
@@ -3295,39 +3250,50 @@ function generateTacticalInsights(sf) {
   const dom = sf.dominance ?? 0;
   const ent = sf.entropy ?? 0;
 
-  // 1. 【攻勢チャンス・ナッツ優位 (ATTACK & DOMINANCE)】
+  // v3.9.28: 他AIレビューで指摘・ユーザー確認済み。この関数はsf(構造特徴量)しか
+  // 受け取っておらず、pot/stack/SPR/ポジション/アクション履歴/相手レンジ等を一切見ていない。
+  // にもかかわらず「Overbet 75-100% Pot」「Protection Bet 66%+ Pot必須」「期待値が最大」
+  // 「フォールド期待値が非常に高い」のような、具体的なベットサイズ・断定的な戦略推奨・
+  // 未計算のEV/FEへの言及が15分岐のほぼ全てに残っていた。これはSPECTRAの「意思決定エンジン
+  // ではない」という設計方針と衝突するため、全分岐を「盤面構造の説明」に統一し、
+  // ベットサイズ数値・「実施/必須/推奨」等の行動指示・EV/FEの断定を削除した。
+  // タグ名も一部変更: ATTACK OPTIMAL→ATTACK POTENTIAL、SEMI-BLUFF PROFIT→SEMI-BLUFF
+  // POTENTIAL、POSITIONAL ADVANTAGE→POSITIONAL CONTEXT（この関数はポジション情報を
+  // 受け取っていないため「活用」「実施」まで言えない）。
+
+  // 1. 【攻勢傾向・ナッツ優位 (ATTACK & DOMINANCE)】
   if (dom >= 60 || pol >= 65) {
     tags.push({
-      tag: '⚡ ATTACK OPTIMAL (攻勢推奨)',
+      tag: '⚡ ATTACK POTENTIAL (攻勢傾向)',
       color: '#ff3b3b',
-      text: 'ナッツ層の偏重と高二極化。Overbet(75-100% Pot) や強気の3-Barrelで最大の圧力をかける場面'
+      text: 'ナッツ層の偏重と高い二極化。レンジ間の強弱差が大きく、攻勢寄りの構造を示す'
     });
   } else if (dom >= 40) {
     tags.push({
       tag: '👑 NUT ADVANTAGE (ナッツ優位)',
       color: '#a855f7',
-      text: '上位レンジが優勢。標準サイズ(50-66% Pot) のバリューベットで効果的にフォールドエクイティを奪える'
+      text: '上位レンジが優勢。強いハンドを活用しやすい構造'
     });
   } else {
     tags.push({
       tag: '⚖️ EQUAL ACCESS (ナッツ均等)',
       color: '#29b6f6',
-      text: '両者にナッツの可能性。オーバーアグレッシブを避け、ハンド強弱に応じた厳格なバリュー選択を推奨'
+      text: '両者にナッツの可能性があり、特定側へのナッツ優位が小さい構造'
     });
   }
 
-  // 2. 【キャップ率・防衛指針 (CAP & RANGE PROTECTION)】
+  // 2. 【キャップ率・レンジ構造 (CAP & RANGE PROTECTION)】
   if (pol <= 38 || cov >= 58) {
     tags.push({
       tag: '🛡️ RANGE CAPPED (キャップ警戒)',
       color: '#00ff9d',
-      text: '相手レンジのキャップ傾向または中手ヒット多発。Check-BackやDelay C-Betによるレンジ保護が有効'
+      text: '相手レンジのキャップ傾向または中手ヒット多発。中間強度のハンドが広く存在し、レンジが比較的分散した構造'
     });
   } else {
     tags.push({
       tag: '⚔️ UNCAP RANGE (ノーキャップ)',
       color: '#ff7c00',
-      text: '両者ともに最強クラスを保持可能。相手のCheck-Raise警戒を高め、ブラフとバリューの比率を厳密に管理'
+      text: '両者が強いハンドを保持し得るため、レンジ間のナッツ差が小さい構造'
     });
   }
 
@@ -3336,55 +3302,55 @@ function generateTacticalInsights(sf) {
     tags.push({
       tag: '🌊 DYNAMIC & HEAVY DRAW (多重ドロー)',
       color: '#ffb800',
-      text: 'コンボドローや強力な発展性が豊富。フリーカードを与えないProtection Bet(66%+ Pot) と継続打撃が必須'
+      text: 'コンボドローや強力な発展性が多く、将来的な役変化が大きいダイナミックな構造'
     });
   } else if (drw >= 38) {
     tags.push({
       tag: '🎯 MODERATE DRAW (標準ドロー)',
       color: '#00d4ff',
-      text: '一般的なフラッシュ・ストレート目あり。ドローオッズを排除する適切なベットサイズで主導権を維持'
+      text: 'フラッシュ・ストレート系の発展性があり、将来のカードによる局面変化が比較的大きい構造'
     });
   } else {
     tags.push({
       tag: '🏜️ DRY & STATIC (静的ドライ盤面)',
       color: '#88aacc',
-      text: '発展性の少ない静的構造。スモールC-Bet(25-33% Pot) による高頻度Range Bet または Check-Back で安定回収'
+      text: '発展性の少ない静的な構造。将来カードによるレンジ関係の変化が比較的小さい'
     });
   }
 
-  // 4. 【バリュー・ブラフ効率 (VALUE & BLUFF EFFICIENCY)】
+  // 4. 【バリュー・ブラフ構造 (VALUE & BLUFF STRUCTURE)】
   if (cov >= 55 && pol < 55) {
     tags.push({
-      tag: '💎 VALUE DENSE (バリュー効率高)',
+      tag: '💎 VALUE DENSE (バリュー構造厚め)',
       color: '#00ff9d',
-      text: '相手のコールレンジが広く中手が多い。過剰ブラフを控えて厚くバリューを取るラインの期待値が最大'
+      text: '相手のコールレンジが広く中手が多い。中間強度のハンドが広く分布し、バリュー側の構造が比較的厚い'
     });
   } else if (pol >= 50 && drw >= 45) {
     tags.push({
-      tag: '🎭 SEMI-BLUFF PROFIT (セミブラフ好機)',
+      tag: '🎭 SEMI-BLUFF POTENTIAL (セミブラフ余地)',
       color: '#ff8c00',
-      text: '強ドローやダブルベリーを活用した Check-Raise / Semi-Bluff のフォールド期待値が非常に高い'
+      text: '強ドローやダブルベリーが存在し、セミブラフの候補になり得る構造'
     });
   } else {
     tags.push({
       tag: '🎯 SHOWDOWN VALUE (ショウダウン維持)',
       color: '#29b6f6',
-      text: '中堅ハンドは無理にベットで膨らませず、Check/Call ラインで安定してShowdown Valueを回収'
+      text: '中間強度のハンドが多く、ショーダウンまで残るレンジが比較的厚い構造'
     });
   }
 
-  // 5. 【アクション分岐・ポジション指針 (ACTION SPLIT / BALANCE)】
+  // 5. 【アクション分岐・複雑度 (STRUCTURE COMPLEXITY)】
   if (ent >= 65) {
     tags.push({
-      tag: '🌀 COMPLEX SPLIT (複雑な混合戦略)',
+      tag: '🌀 COMPLEX SPLIT (複雑な混合構造)',
       color: '#3b82f6',
-      text: 'ハンド群ごとの期待値が近接。同一ハンドでも Bet / Check を頻度で混ぜるバランス戦略(Split)を採用'
+      text: 'ハンド群の強さが分散し、単一の戦略パターンに集約しにくい複雑な構造'
     });
   } else {
     tags.push({
-      tag: '🔄 POSITIONAL ADVANTAGE (ポジション活用)',
+      tag: '🔄 POSITIONAL CONTEXT (ポジション依存)',
       color: '#00d4ff',
-      text: 'ポジションの優位性を活かし、IP時はアクション締め、OOP時は主導権に応じた適切なチェックレイズを実施'
+      text: 'ポジションによって戦略的な選択肢が変わりやすく、同じ盤面でもアクション構造が異なり得る'
     });
   }
 
@@ -3543,24 +3509,11 @@ function onWorkerMessage(e) {
       renderHeroAnalysis(); // v3.9.16: 盤面更新のたびにHero分析も再描画（読み取り専用・一方向）
       break;
 
-    // ── Legacy handlers (backward compat, kept for safety) ──
-    case 'EVAL_169':
-      if (data && data.length) {
-        lastHeatmapData = data;
-        render3DHeatmap(data);
-        renderNuts(data);
-      }
-      document.getElementById('hm-spin').classList.remove('active');
-      document.getElementById('calc-time').textContent = `CALC: ${calcTime||0}ms${cached?' (cache)':''}`;
-      setStabState('DONE');
-      updateHeroCells();
-      break;
-    case 'TEXTURE':
-      if (data) applyTexture(data);
-      break;
-    case 'NUTS':
-      if (data && data.length) renderNuts(data);
-      break;
+    // v3.9.29: 他AIレビューで指摘。EVAL_169/TEXTURE/NUTSのlegacy handlerを削除。
+    // index.html側がWorkerへpostMessageする種別はINITとBOARD_INTELLIGENCEのみ
+    // （grep -n postMessageで確認済み）で、Workerがこれらの種別を返すことは
+    // ない到達不能コードだったため撤去。Worker側(spectra-worker.js)の
+    // EVAL_169/TEXTURE APIそのものは影響を受けない（未使用のまま温存）。
   }
 }
 
@@ -4106,43 +4059,6 @@ function detectDraws(r1, r2, s1, s2, board) {
 
 
 /* ══════════════════════════════
-   RIVER POLARIZED VIEW
-
-   正しい定義:
-   PURE VALUE   : Three of a kind以上でベットしてコールを求める手 (rawScore >= 0.38)
-   BLUFF CATCH  : One pair〜Two pair。コールはできるが自分からベットしない (0.10 <= score < 0.38)
-   BLUFF / FOLD : Weak pair・High card。ベットはブラフ、コールされたら負ける (score < 0.10)
-   ※ 他AIレビューで冒頭コメントが実装(0.38=Trips+)と食い違っていると指摘され統一済み
-══════════════════════════════ */
-function renderRiverPolar(data) {
-  const sorted = [...data].sort((a, b) => getDisplayStrength(b) - getDisplayStrength(a));
-
-  // 絶対閾値（strength.js の分類に準拠）
-  // PURE VALUE   : Three of a kind以上 — 自分からベットして価値を取れる手 (rawScore >= 0.38)
-  // BLUFF CATCH  : One pair / Two pair — コールはできるが自分からベットしない (0.10 <= score < 0.38)
-  // BLUFF / FOLD : High card / 弱いペア — ベットはブラフ目的のみ (score < 0.10)
-  const valueHands = sorted.filter(h => getDisplayStrength(h) >= 38);
-  const catchHands = sorted.filter(h => getDisplayStrength(h) >= 10 && getDisplayStrength(h) < 38);
-  const bluffHands = sorted.filter(h => getDisplayStrength(h) < 10);
-
-  function handsHtml(list, limit = 12) {
-    return list.slice(0, limit).map(item =>
-      `<div class="polar-hand" title="${getDisplayStrength(item).toFixed(1)}%">${item.hand}</div>`
-    ).join('') + (list.length > limit
-      ? `<div class="polar-hand" style="opacity:.4">+${list.length - limit}</div>`
-      : '');
-  }
-
-  document.getElementById('polar-value').querySelector('.polar-title').textContent = '⬆ PURE VALUE (trips+)';
-  document.getElementById('polar-catch').querySelector('.polar-title').textContent = '↔ BLUFF CATCH (pair)';
-  document.getElementById('polar-bluff').querySelector('.polar-title').textContent = '⬇ BLUFF / FOLD (air)';
-
-  document.getElementById('polar-value-hands').innerHTML = handsHtml(valueHands);
-  document.getElementById('polar-catch-hands').innerHTML = handsHtml(catchHands);
-  document.getElementById('polar-bluff-hands').innerHTML = handsHtml(bluffHands);
-}
-
-/* ══════════════════════════════
    RENDER NUTS — street-aware
 ══════════════════════════════ */
 // 初心者向け: 専門用語の簡単な説明（title属性のツールチップとして使用）
@@ -4215,22 +4131,16 @@ function mergeSuitedOffsuit(items) {
 
 
 function renderNuts(data, features) {
-  const isRiver = false; // リバーもFLOP/TURNと同じ役一覧を継続表示する（PURE VALUE 3分割は廃止）
+  // v3.9.30: 他AIレビュー指摘・依存関係確認済みでdead code一式を撤去。
+  // isRiver=false → renderRiverPolar() → #river-polar (HTML/CSS) → polar-* CSS全般を
+  // 全検索し、index.html内でこれらを参照する経路が他に存在しないことを確認した上で
+  // まとめて削除（River Polar Viewはv3.6.1で既に機能として廃止済みだったが、コード自体は
+  // 未削除のまま残っていた）。
   const nutsEl  = document.getElementById('nuts-list');
-  const polarEl = document.getElementById('river-polar');
   const secLbl  = document.getElementById('nuts-sec-label');
 
-  if (isRiver) {
-    nutsEl.style.display  = 'none';
-    polarEl.style.display = 'flex';
-    if (secLbl) secLbl.innerHTML = 'RIVER — POLARIZED VIEW <span style="font-size:6.5px;opacity:.6">[VALUE / CATCH / BLUFF]</span>';
-    renderRiverPolar(data);
-    return;
-  }
-
-  polarEl.style.display = 'none';
   nutsEl.style.display  = 'flex';
-  if (secLbl) secLbl.innerHTML = 'HAND DISTRIBUTION <span style="font-size:6.5px;opacity:.6">[COMBO %]</span><span class="help-q" title="現在の盤面で、どの役がどれくらいの確率で成立しているかの一覧です。%はそのボードで生存しているコンボ数ベース">?</span>';
+  if (secLbl) secLbl.innerHTML = 'HAND DISTRIBUTION <span style="font-size:6.5px;opacity:.6">[SPECTRA STRENGTH BAND・生存コンボ内の構成比]</span><span class="help-q" title="ここでの帯（ROYAL FLUSH等の名称）は、実際のポーカー役判定(evaluate7)そのものではなく、SPECTRA独自の連続値strengthスコアを役名相当の帯に区分した分類（SPECTRA Strength Band）です。多くの場合は実際の役と一致するよう調整していますが、境界値付近では厳密なevaluate7の役判定と完全に同一である保証はありません。%は1326通り全コンボに対してではなく、現在の盤面でブロックされずに生存しているコンボだけを分母とした構成比です">?</span>';
 
   lastNutsFeatures = features; // 帯の折りたたみ切替時の再描画用にキャッシュ
 
@@ -4252,7 +4162,15 @@ function renderNuts(data, features) {
   // 同様にストレート/フラッシュが「確定」しているボードの判定
   const boardFlushComplete = features?.flushPressure === 'FOUR_FLUSH' || features?.flushPressure === 'FIVE_FLUSH';
 
-  // ── 役バンド定義 ──
+  // ── 役バンド定義（SPECTRA Strength Band） ──
+  // v3.9.29: 他AIレビューで指摘・ユーザー確認済み。ここでの名称（ROYAL FLUSH等）は
+  // evaluate7()の実際の役判定結果(categoryName)を直接使っているのではなく、
+  // computeMadeStrength()が返す連続値strengthスコアを閾値で区分した「SPECTRA独自の
+  // 強度分類（Strength Band）」。computeMadeStrength()側でboardAdjustmentがカテゴリ
+  // 境界を跨がないようclampされているため通常は実際の役と一致するが、二つの分類ロジック
+  // が独立して存在すること自体は将来の閾値変更時にズレうるリスクとして残る。UI上は
+  // help-qツールチップでこの旨を明示済み。数学的に厳密な役判定が必要な箇所（Hero分析の
+  // 「役:」表示等）は引き続きevaluate7()のcategoryNameをそのまま使う。
   // Royal FlushをSFから分離（madeStrength ≥ 0.99）
   const HAND_BANDS = [
     { name:'ROYAL FLUSH',    min:0.955, color:'#ffffff', textColor:'#ffffff',              confirmed: false },
@@ -4682,7 +4600,7 @@ function renderDefaultZeroState() {
       </div>
       <div style="line-height:1.4;display:flex;align-items:center;gap:6px;">
         <span style="font-family:'Orbitron',monospace;font-size:7.5px;font-weight:700;color:#00d4ff;padding:2px 6px;border:1px solid rgba(0,212,255,.4);border-radius:3px;background:rgba(0,212,255,.12);white-space:nowrap;flex-shrink:0;">💡 BOARD READ GUIDE</span>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(210,235,255,.85);">ボードカード選択で C-Bet / Check-Back / Check-Raise 等のGTO指針を自動解析</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(210,235,255,.85);">ボードカード選択で盤面構造とレンジ傾向を自動解析</span>
       </div>`;
   }
 }
@@ -4733,7 +4651,8 @@ function renderStructureRadar(sf, street) {
   const insights = generateTacticalInsights(sf);
   if (insightsEl) {
     if (insights.length) {
-      insightsEl.innerHTML = `<div style="font-family:'Orbitron',monospace;font-size:8px;font-weight:700;color:#00d4ff;letter-spacing:1px;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid rgba(0,212,255,.2);display:flex;align-items:center;gap:6px;">⚡ TACTICAL INSIGHTS<span style="font-family:'Share Tech Mono',monospace;font-size:7px;font-weight:400;color:rgba(160,200,230,.5);letter-spacing:0;">(BTN vs BB想定)</span></div>`
+      insightsEl.innerHTML = `<div style="font-family:'Orbitron',monospace;font-size:8px;font-weight:700;color:#00d4ff;letter-spacing:1px;margin-bottom:2px;padding-bottom:3px;border-bottom:1px solid rgba(0,212,255,.2);display:flex;align-items:center;gap:6px;">⚡ TACTICAL INSIGHTS<span style="font-family:'Share Tech Mono',monospace;font-size:7px;font-weight:400;color:rgba(160,200,230,.5);letter-spacing:0;">(BTN vs BB想定)</span></div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:6.5px;color:rgba(160,200,230,.45);margin-bottom:6px;">※ 盤面特徴量から導いた傾向であり、具体的なアクションやベットサイズを示すものではありません</div>`
         + insights.map(i => `<div style="margin-bottom:5px;line-height:1.4;display:flex;align-items:flex-start;gap:6px;">
             <span style="font-family:'Orbitron',monospace;font-size:7.5px;font-weight:700;color:${i.color};padding:2px 6px;border:1px solid ${i.color}55;border-radius:3px;background:${i.color}18;white-space:nowrap;flex-shrink:0;box-shadow:0 0 8px ${i.color}22;">${i.tag}</span>
             <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(220,240,255,.9);">${i.text}</span>
@@ -4743,7 +4662,7 @@ function renderStructureRadar(sf, street) {
         <div style="font-family:'Orbitron',monospace;font-size:8px;font-weight:700;color:#00d4ff;letter-spacing:1px;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid rgba(0,212,255,.2);">⚡ TACTICAL INSIGHTS</div>
         <div style="line-height:1.4;display:flex;align-items:center;gap:6px;">
           <span style="font-family:'Orbitron',monospace;font-size:7.5px;font-weight:700;color:#00d4ff;padding:2px 6px;border:1px solid rgba(0,212,255,.4);border-radius:3px;background:rgba(0,212,255,.12);white-space:nowrap;flex-shrink:0;">⚖️ STANDARD</span>
-          <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(210,235,255,.85);">標準的な構造。頻度ベットまたはチェックでレンジを保護</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:rgba(210,235,255,.85);">頻度・強度ともに偏りの少ない標準的な構造</span>
         </div>`;
     }
   }
