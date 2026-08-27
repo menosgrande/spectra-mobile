@@ -54,8 +54,21 @@ function classifyPotential(hand, board) {
   }
 
   if (!hasMadeStraight) {
+    // v3.9.31: 他AIレビューで指摘・検証済みのCriticalバグ修正。
+    // 以前はallRanks（ホールカード+ボードの合成ランク集合）の中から
+    // span===3(OESD)/span===4(GSD)の4連続窓を探すだけで、その窓が
+    // 「ボードのランクだけで完結している」かどうかをチェックしていなかった。
+    // 例: ターンJ-T-9-8（4連続ボード）でHeroがA-K（ランク的に無関係）を持っていても、
+    // allRanksの中の窓がOESD判定され、全169ハンドが一律でOESD扱いになっていた
+    // （ボードがストレートに化ける確率はcomputeBoardStraightPctの仕事であり、
+    // ここはHero固有のドロー判定であるべき）。
+    // → 窓の4ランクのうち少なくとも1つがホールカード由来(ri1/ri2)であることを必須にした。
     for (let k = 0; k <= allRanks.length - 4; k++) {
-      const span = allRanks[k + 3] - allRanks[k];
+      const w0 = allRanks[k], w1 = allRanks[k + 1], w2 = allRanks[k + 2], w3 = allRanks[k + 3];
+      const holeInWindow = w0 === ri1 || w1 === ri1 || w2 === ri1 || w3 === ri1
+        || (ri2 !== null && (w0 === ri2 || w1 === ri2 || w2 === ri2 || w3 === ri2));
+      if (!holeInWindow) continue;
+      const span = w3 - w0;
       if (span === 3) { hasOESD = true; break; }
       if (span === 4) hasGSD = true;
     }
@@ -99,16 +112,24 @@ function classifyDraw(hand, board) {
   }
 
   if (!hasMadeStraight) {
+    // v3.9.31: classifyPotentialと同じCriticalバグ修正。ホールカードが窓に
+    // 参加していないボードオンリーの4連続窓をOESD/GSDとして誤検出しないようにする。
     // OESD: 4 cards spanning exactly 3 ranks (e.g. 5678)
     for (let k = 0; k <= allRanks.length - 4; k++) {
-      if (allRanks[k + 3] - allRanks[k] === 3) {
+      const w0 = allRanks[k], w1 = allRanks[k + 1], w2 = allRanks[k + 2], w3 = allRanks[k + 3];
+      const holeInWindow = w0 === ri1 || w1 === ri1 || w2 === ri1 || w3 === ri1
+        || w0 === ri2 || w1 === ri2 || w2 === ri2 || w3 === ri2;
+      if (holeInWindow && w3 - w0 === 3) {
         return 'OESD';
       }
     }
 
     // GSD: 4 cards spanning exactly 4 ranks with one gap (e.g. 5679)
     for (let k = 0; k <= allRanks.length - 4; k++) {
-      if (allRanks[k + 3] - allRanks[k] === 4) {
+      const w0 = allRanks[k], w1 = allRanks[k + 1], w2 = allRanks[k + 2], w3 = allRanks[k + 3];
+      const holeInWindow = w0 === ri1 || w1 === ri1 || w2 === ri1 || w3 === ri1
+        || w0 === ri2 || w1 === ri2 || w2 === ri2 || w3 === ri2;
+      if (holeInWindow && w3 - w0 === 4) {
         return 'GSD';
       }
     }

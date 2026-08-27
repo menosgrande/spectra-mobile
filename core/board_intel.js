@@ -129,7 +129,13 @@ function classifyNutDynamics(board, context) {
   // 常にNEUTRAL/NUT_ADV_VILLAIN固定になってしまっていた（実際のポジションを無視）。
   const isBtnVsBb = context.heroPos === 'BTN' && context.villainPos === 'BB';
 
-  if ((hasAce || hasKing) && connectivity === 'LOW_CONNECTED' && pairStruct === 'UNPAIRED') {
+  // v3.9.32: 他AIレビューで指摘・ユーザー確認済み。connectivity===LOW_CONNECTED
+  // のみを要求していたため、K-7-2rのような「定石ではBTN(ハイカード)有利の代表格」
+  // なドライなハイボードがDISCONNECTED判定（gaps>6）でこの分岐から漏れ、常に
+  // NEUTRAL扱いになっていた。ハイカード側の主条件からconnectivityの完全一致
+  // 要求を外し、「HIGHLY_CONNECTED（ボード自体が強く繋がっていて相手も
+  // 絡みやすい）でなければ許容する」という減点的な扱いに緩和した。
+  if ((hasAce || hasKing) && pairStruct === 'UNPAIRED' && connectivity !== 'HIGHLY_CONNECTED') {
     return isBtnVsBb ? 'NUT_ADV_HERO' : 'NEUTRAL';
   }
 
