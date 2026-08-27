@@ -274,6 +274,78 @@ test('classifyNutDynamics: Ace+LOW_CONNECTED+UNPAIREDでBTN vs BBはNUT_ADV_HERO
   assert.strictEqual(classifyNutDynamics(board, btnVsBb), 'NUT_ADV_HERO');
 });
 
+test('classifyNutDynamics: K-7-2r（ドライなハイボードの代表格）もBTN vs BBでNUT_ADV_HERO（他AIレビュー指摘・v3.9.32修正）', () => {
+  // 修正前はconnectivity===LOW_CONNECTEDのみを要求しており、K-7-2rはgaps>6の
+  // DISCONNECTED判定になるため、条件を満たさず常にNEUTRAL扱いになっていた。
+  const board = ['Ks', '7h', '2d']; // DISCONNECTED (gaps=11), unpaired, has King
+  const btnVsBb = { heroPos: 'BTN', villainPos: 'BB' };
+  assert.strictEqual(classifyConnectivity(board), 'DISCONNECTED');
+  assert.strictEqual(classifyNutDynamics(board, btnVsBb), 'NUT_ADV_HERO');
+});
+
+test('classifyNutDynamics: HIGHLY_CONNECTEDな高ボード(K-Q-J)はNUT_ADV_HEROの対象外のまま（回帰確認）', () => {
+  const board = ['Ks', 'Qh', 'Jd']; // HIGHLY_CONNECTED, unpaired, has King
+  const btnVsBb = { heroPos: 'BTN', villainPos: 'BB' };
+  assert.strictEqual(classifyConnectivity(board), 'HIGHLY_CONNECTED');
+  assert.strictEqual(classifyNutDynamics(board, btnVsBb), 'NEUTRAL');
+});
+
+
+console.log('\n=== texture.js: Board Feature Classifiers（v3.9.32 golden tests） ===');
+
+test('classifyConnectivity: A-2-3ホイールはHIGHLY_CONNECTED（他AIレビュー指摘。修正前はAceをhigh固定で扱いDISCONNECTEDだった）', () => {
+  assert.strictEqual(classifyConnectivity(['As', '2h', '3d']), 'HIGHLY_CONNECTED');
+});
+
+test('classifyConnectivity: A-2-4/A-3-5等の他のホイール派生も、Ace-high固定判定より繋がっている評価になる', () => {
+  assert.strictEqual(classifyConnectivity(['As', '2h', '4d']), 'CONNECTED');
+});
+
+test('classifyConnectivity: K-7-2r（Ace不在の通常ドライボード）はwheel補正の影響を受けずDISCONNECTEDのまま（回帰確認）', () => {
+  assert.strictEqual(classifyConnectivity(['Ks', '7h', '2d']), 'DISCONNECTED');
+});
+
+test('classifyConnectivity: 通常のストレート(5-6-7-8-9)はwheel補正を入れてもHIGHLY_CONNECTEDのまま（回帰確認）', () => {
+  assert.strictEqual(classifyConnectivity(['5s', '6h', '7d', '8c', '9s']), 'HIGHLY_CONNECTED');
+});
+
+test('classifyFlushPressure: リバーで5枚全て同スート(5-flush)はFIVE_FLUSH（他AIレビュー指摘。修正前はどの分岐にも該当せずRAINBOWに落ちていた）', () => {
+  assert.strictEqual(classifyFlushPressure(['Ah', 'Kh', 'Qh', 'Jh', '9h']), 'FIVE_FLUSH');
+});
+
+test('classifyFlushPressure: 4-flushは引き続きFOUR_FLUSH（回帰確認）', () => {
+  assert.strictEqual(classifyFlushPressure(['Ah', 'Kh', 'Qh', 'Jh', '9d']), 'FOUR_FLUSH');
+});
+
+test('classifyPairStructure: クアッズボードはQUADS_BOARD（他AIレビュー指摘。修正前は該当分岐がなくUNPAIREDに落ちていた）', () => {
+  assert.strictEqual(classifyPairStructure(['Ks', 'Kh', 'Kd', 'Kc', '2s']), 'QUADS_BOARD');
+});
+
+test('classifyPairStructure: トリップスボード・ツーペアボード・通常ペアボードは引き続き正しく分類される（回帰確認）', () => {
+  assert.strictEqual(classifyPairStructure(['As', 'Ad', 'Ac', 'Kd']), 'TRIPS_BOARD');
+  assert.strictEqual(classifyPairStructure(['As', 'Ad', 'Kc', 'Kd']), 'DOUBLE_PAIRED');
+  assert.strictEqual(classifyPairStructure(['As', 'Ad', 'Kc']), 'PAIRED');
+  assert.strictEqual(classifyPairStructure(['As', 'Kd', '2c']), 'UNPAIRED');
+});
+
+
+console.log('\n=== range_matrix.js: OESD/GSD ホールカード非参加バグ（v3.9.31 golden test） ===');
+
+test('classifyDraw: 4連続ボード(J-T-9-8)でホールカードが無関係(33)ならOESD/GSDと判定されない（他AIレビュー指摘のCriticalバグ）', () => {
+  // 注意: A-Kのようなハイカードは9-T-J-K-Qのガットショットが実在するため使えない
+  // （ホール参加の"本物のドロー"になってしまう）。ランク的に完全に無関係な低いペアを使う。
+  const board = ['Js', 'Th', '9d', '8c'];
+  assert.strictEqual(classifyDraw('33', board), null);
+});
+
+test('classifyDraw: 同じ盤面でホールカードが実際に窓へ参加していれば引き続き正しく検出される（回帰確認）', () => {
+  // Hero: K + board 9-T-J → 9,T,J,Kの4枚窓でQを待つ本物のガットショット
+  // （AKoは一見ボードと無関係に見えるが、Kが実際にこの窓に参加する正当なドローなので
+  //  この盤面ではGSDと判定されるのが正しい。上のテストとは異なる盤面(9-T-J、8無し)を使う）
+  const board = ['9d', 'Ts', 'Jc'];
+  assert.strictEqual(classifyDraw('AKo', board), 'GSD');
+});
+
 
 console.log('\n=== 統合: analyzeBoard() ===');
 
