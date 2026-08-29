@@ -1973,9 +1973,27 @@ function computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix) {
   const heroProf    = getPositionProfile(heroPos    || 'BTN');
   const villainProf = getPositionProfile(villainPos || 'BB');
 
-  // Position-based base (hero openWidth vs villain defensibility)
-  const heroBase    = (heroProf.openWidth    || 1.0) * (heroProf.adjustmentFactor    || 1.0);
-  const villainBase = (villainProf.openWidth || 1.0) * (villainProf.adjustmentFactor || 1.0);
+  // v3.9.36: 他AIレビュー指摘・データフロー追跡の上でBugと確定し修正。
+  // 以前はvillain側のベースにも一律villainProf.openWidthを使っていたが、
+  // このアプリが唯一想定している状況（BTNがopen、BBがdefendしてフロップへ
+  // 到達するsingle-raised pot）では、BBは「オープンレンジ」ではなく
+  // 「ディフェンドレンジ」でボードに参加している。BBのopenWidth=0.5
+  // （コメント通り「Fold most hands preflop」＝BBが最初にレイズする場合の
+  // 想定値）はこの局面には無関係で、POSITION_PROFILE.BB.defendWidth=1.8
+  // という正しいフィールドが定義されているのに一度も参照されていなかった。
+  // 実数値で検証：villainBaseがopenWidth(0.5)のままだと基準posAdvが+0.744
+  // （ほぼ最大までHero有利に張り付く）になり、その後のボードテクスチャ
+  // 補正（±0.10〜0.18程度）ではLOW_BOARD_DEFENDER_EDGE（rangeAdvantage<-0.1
+  // が必要）が事実上到達不能になっていた。defendWidthを使うと基準posAdvは
+  // +0.077まで下がり、ボード補正で実際にプラス/マイナス両方向に振れる
+  // ようになることを確認済み。BB以外のポジションはdefendWidthが未定義の
+  // ため、その場合は従来通りopenWidthにフォールバックする（この一点しか
+  // 現状は到達しないUI＝BTN vs BB以外は将来の拡張時に同様の整備が必要）。
+  const villainWidth = villainProf.defendWidth ?? villainProf.openWidth;
+
+  // Position-based base (hero openWidth vs villain defendWidth/openWidth)
+  const heroBase    = (heroProf.openWidth || 1.0) * (heroProf.adjustmentFactor    || 1.0);
+  const villainBase = (villainWidth       || 1.0) * (villainProf.adjustmentFactor || 1.0);
   let posAdv = (heroBase - villainBase) / Math.max(heroBase, villainBase, 0.01); // -1..+1 approx
 
   // Board modifier
