@@ -1921,15 +1921,39 @@ function computeStructureFeatures(rangeMatrix, board) {
   const botAvg = sorted.slice(-q25).reduce((s, v) => s + v, 0) / q25;
   const polarization = Math.round((topAvg - botAvg) * 100);
 
-  // C. Coverage（density → レンジの広さ）
-  // バグ修正: 従来は「169ハンドのうち生存コンボが1つでもあるか」を数えていたが、
-  // 同ランクが3枚以上ボードに出るような極端なケース以外ではほぼ全ハンドが
-  // 多少なりとも生き残るため、実質常に100固定になっていた
-  // （レーダーのCOV軸が常に最大表示になる原因）。
-  // → 169ハンド全体の平均density（生存コンボの割合）に変更し、
-  //   カード除去の影響量を連続的に反映するようにする。
-  const avgDensityAll = rangeMatrix.reduce((s, h) => s + (h.density || 0), 0) / 169;
-  const coverage = Math.round(avgDensityAll * 100);
+  // C. Coverage（MID-STRENGTH COVERAGE — v3.9.37で再定義）
+  // 旧実装は「169ハンド全体の平均density」だったが、他AIレビュー・ユーザーとの
+  // 詳細な実測検証で判明した通り、これはボード構造にほぼ反応しない
+  // （フロップはボード内容に関わらず常に89固定、ターンは常に85固定。最も
+  // 極端なケース＝トリップスAのフロップでさえ89のまま）。理由は、169ハンド
+  // 全体を平均すると、特定の3〜5枚のカード除去がごく一部のハンドにしか
+  // 大きく影響しないため、平均値としては「街（ボード枚数）」だけで決まる
+  // 値に潰れてしまうため（バグではなく、集約方法自体の設計限界）。
+  // UIの説明文「ワンペア・ツーペアなど中間的な強さのヒット手がどれほど
+  // 広く分布しているか」に実装を合わせる形で再定義：
+  // 全1326通りのホールカードコンボ（生存しているもの）のうち、SPECTRAの
+  // madeStrengthが[0.10, 0.45)の中間強度帯に入るコンボの割合。
+  // 169カテゴリ均等平均ではなく1326コンボ加重平均を採用（computeRangeDrawPct()の
+  // 「全1326コンボ平均」と同じ思想で統一。169均等平均も試したが、ほぼ同じ
+  // 挙動でありコンボ加重の方が実際のレンジ構成に近い）。
+  // 実測で確認済み: フロップ10パターンで29〜99、ターンでも各ボードの4枚目
+  // カードで大きく変動（例: A-A-Aフロップ→ターンで4枚目がAなら0%、ブランクなら
+  // 78%）することを確認した。
+  // 既知の限界（意図的に許容・0.35等への恣意的な境界変更はしない）:
+  // ペアボード（K-K-4 / 4-4-3 / 8-8-7等）はボードの質に関わらず軒並み98〜99%に
+  // 集中し、ペアの強さやキッカーの質による差別化ができない。これは「ペアボード
+  // かどうか」という方向としては正しい反応だが、「coverageが高い＝Heroのレンジが
+  // 強い／広くボードに適合している」という戦略的な意味には絶対に飛躍させない
+  // こと。あくまで「中間強度帯に分類される生存コンボが多い」という観測事実に
+  // 留める（UI側の説明文もその前提で記述する）。
+  const MID_LO = 0.10, MID_HI = 0.45;
+  let midLiveCombos = 0, totalLiveCombos = 0;
+  rangeMatrix.forEach(h => {
+    const liveCombos = (h.density || 0) * (h.totalCombos || 0);
+    totalLiveCombos += liveCombos;
+    if (h.madeStrength >= MID_LO && h.madeStrength < MID_HI) midLiveCombos += liveCombos;
+  });
+  const coverage = totalLiveCombos > 0 ? Math.round((midLiveCombos / totalLiveCombos) * 100) : 0;
 
   // D. DrawStructure（drawType → ドロー構造）
   // LiveDrawRatio×0.4 + DrawComplexity×0.4 + DrawOverlap×0.2
@@ -4653,7 +4677,7 @@ const HUD_DEFS = [
 const RADAR_AXES = [
   { key:'drawStructure', label:'DRW', jp:'ドロー感',   color:'#ffb800', explain:'ストレートやフラッシュなどのドロー（未完成の可能性）がどれだけ多い盤面か' },
   { key:'polarization',  label:'POL', jp:'二極化',     color:'#ff3b3b', explain:'最強の役と何もないエアーの二極に分かれており、中途半端な手が少ない度合い' },
-  { key:'coverage',      label:'DEN', jp:'レンジ密度', color:'#00ff9d', explain:'ワンペア・ツーペアなど中間的な強さのヒット手がどれほど広く分布しているか' },
+  { key:'coverage',      label:'DEN', jp:'中間強度帯', color:'#00ff9d', explain:'MID-STRENGTH COVERAGE（SPECTRA独自のヒューリスティック指標）。全1326コンボのうち、madeStrengthが中間強度帯(ワンペア〜ツーペア相当)に分類される生存コンボの構成比という観測事実であり、「レンジが広い/強い」といった戦略的な意味を表すものではない。ペアボードでは軒並み高くなる性質があります' },
   { key:'dominance',     label:'NUT', jp:'ナッツ偏り', color:'#a855f7', explain:'特定の最強手（ナッツ）をどちらかのプレイヤーが独占・偏在しやすい盤面か' },
 ];
 
