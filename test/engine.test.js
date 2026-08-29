@@ -358,5 +358,80 @@ test('analyzeBoard()が例外なく169マトリクスを返す', () => {
 });
 
 
+console.log('\n=== range_matrix.js: drawOverlap 常時0バグ（v3.9.34 golden test） ===');
+
+test('hasComboDraw: OESD+FDのコンボドローは検出される（他AIレビュー指摘。修正前はclassifyDrawの早期returnによりdrawOverlapが構造上常に0だった）', () => {
+  // Hero 98s + board Ts-7s-8d: 9,8,T,7が4連続窓(OESD)、かつT♠7♠でフラッシュドロー(2枚同スート)
+  assert.strictEqual(hasComboDraw('98s', ['Ts', '7s', '8d']), true);
+});
+
+test('hasComboDraw: ガットショット+FDのコンボドローも検出される', () => {
+  assert.strictEqual(hasComboDraw('Q9s', ['Js', 'Ts', '2d']), true);
+});
+
+test('hasComboDraw: フラッシュドローのみ（ストレートドローなし）はfalse（回帰確認）', () => {
+  assert.strictEqual(hasComboDraw('AKs', ['7s', '2s', '9d']), false);
+});
+
+test('hasComboDraw: ストレートドローのみ（フラッシュドローなし・レインボー）はfalse（回帰確認）', () => {
+  assert.strictEqual(hasComboDraw('98s', ['Th', '7d', '2c']), false);
+});
+
+test('hasComboDraw: ペアはストレートドローを持たないためfalseになりやすい（回帰確認）', () => {
+  assert.strictEqual(hasComboDraw('99', ['Th', '8h', '2d']), false);
+});
+
+test('computeStructureFeatures: ドライなレインボーフロップではdrawOverlap寄与分がなく、ウェットな2トーン・コネクテッドフロップより低いdrawStructureになる', () => {
+  const wetBoard = ['Ts', '7s', '8d'];
+  const dryBoard = ['Ah', '7d', '2c'];
+  const wetMatrix = evalRange169(wetBoard, [], {});
+  const dryMatrix = evalRange169(dryBoard, [], {});
+  const wetFeatures = computeStructureFeatures(wetMatrix, wetBoard);
+  const dryFeatures = computeStructureFeatures(dryMatrix, dryBoard);
+  assert.ok(wetFeatures.drawStructure > dryFeatures.drawStructure,
+    `wet(${wetFeatures.drawStructure}) should be > dry(${dryFeatures.drawStructure})`);
+});
+
+test('computeStructureFeatures: boardを渡さない場合はdrawOverlap=0のまま（後方互換のフォールバック確認）', () => {
+  const wetBoard = ['Ts', '7s', '8d'];
+  const wetMatrix = evalRange169(wetBoard, [], {});
+  const withoutBoard = computeStructureFeatures(wetMatrix, null);
+  const withBoard = computeStructureFeatures(wetMatrix, wetBoard);
+  assert.ok(withBoard.drawStructure > withoutBoard.drawStructure);
+});
+
+
+console.log('\n=== range_matrix.js: computeRangeAdvantage BB openWidth/defendWidth取り違え（v3.9.36 golden test） ===');
+
+test('computeRangeAdvantage: BBはdefendWidth(1.8)を使うべきで、openWidth(0.5,「Fold most hands preflop」)を使ってはいけない（他AIレビュー指摘のBug）', () => {
+  // ドライなハイボード(K-7-2)でも、defendWidthを使えば基準値が過度にHero有利に
+  // 張り付かない（+0.744ではなく、ボード補正を含めても現実的な範囲に収まる）ことを確認
+  const board = ['Ks', '7h', '2d'];
+  const context = { street: 'FLOP', heroPos: 'BTN', villainPos: 'BB' };
+  const rangeMatrix = evalRange169(board, [], context);
+  const adv = computeRangeAdvantage(board, 'BTN', 'BB', rangeMatrix);
+  assert.ok(adv < 0.3, `K-7-2ドライボードでrangeAdvantageが${adv}(0.3以上)は基準値がopenWidthのままの疑い`);
+});
+
+test('computeRangeAdvantage: 定石でBB(ディフェンダー)有利とされるウェットな低ボード(7-6-5)では、実際にマイナス（villain=BB優位）に振れる', () => {
+  // 修正前はvillain側の基準がopenWidth(0.5)固定で常に強くHero優位に張り付き、
+  // このような明確にBB有利なボードでもプラス（Hero優位）のままだった
+  const board = ['7s', '6h', '5d'];
+  const context = { street: 'FLOP', heroPos: 'BTN', villainPos: 'BB' };
+  const rangeMatrix = evalRange169(board, [], context);
+  const adv = computeRangeAdvantage(board, 'BTN', 'BB', rangeMatrix);
+  assert.ok(adv < 0, `7-6-5ウェット低ボードでrangeAdvantageが${adv}(0以上)はBB有利を表現できていない`);
+});
+
+test('computeRangeAdvantage: defendWidthが未定義の他ポジションはopenWidthへ従来通りフォールバックする（回帰確認）', () => {
+  const board = ['Ks', '7h', '2d'];
+  const context = { street: 'FLOP', heroPos: 'BTN', villainPos: 'CO' };
+  const rangeMatrix = evalRange169(board, [], context);
+  // CO(villain)にはdefendWidthが無いため例外なく計算できることだけを確認（値そのものは検証しない）
+  const adv = computeRangeAdvantage(board, 'BTN', 'CO', rangeMatrix);
+  assert.ok(typeof adv === 'number' && !Number.isNaN(adv));
+});
+
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);
