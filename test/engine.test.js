@@ -433,5 +433,47 @@ test('computeRangeAdvantage: defendWidthが未定義の他ポジションはopen
 });
 
 
+console.log('\n=== range_matrix.js: coverage軸の恒常化（v3.9.37 golden test） ===');
+
+test('computeStructureFeatures: 旧coverage定義(169ハンド平均density)はフロップ内容に関わらず一定値になる問題があった（回帰確認: 現在は変化する）', () => {
+  const boards = [
+    ['As', 'Ks', 'Qs'],  // monotone
+    ['9s', '7d', '2c'],  // rainbow dry
+    ['Ks', 'Kd', '4c'],  // paired
+    ['As', 'Ad', 'Ac'],  // trips (most extreme card removal)
+  ];
+  const context = { street: 'FLOP', heroPos: 'BTN', villainPos: 'BB' };
+  const coverages = boards.map(b => {
+    const rm = evalRange169(b, [], context);
+    return computeStructureFeatures(rm, b).coverage;
+  });
+  const allSame = coverages.every(c => c === coverages[0]);
+  assert.ok(!allSame, `coverageが全ボードで${coverages[0]}に固定されている（構造変化に反応していない）: ${coverages}`);
+});
+
+test('computeStructureFeatures: MID-STRENGTH COVERAGEはハイドライボードよりペアボードで明確に高い値になる', () => {
+  const context = { street: 'FLOP', heroPos: 'BTN', villainPos: 'BB' };
+  const dryBoard = ['As', 'Kd', '2c'];
+  const pairedBoard = ['Ks', 'Kd', '4c'];
+  const dryRm = evalRange169(dryBoard, [], context);
+  const pairedRm = evalRange169(pairedBoard, [], context);
+  const dryCov = computeStructureFeatures(dryRm, dryBoard).coverage;
+  const pairedCov = computeStructureFeatures(pairedRm, pairedBoard).coverage;
+  assert.ok(pairedCov > dryCov + 30, `paired(${pairedCov}) should be well above dry(${dryCov})`);
+});
+
+test('computeStructureFeatures: ターンでも4枚目のカード次第でcoverageが大きく変動する（フロップ止まりではなくストリート内でも反応することを確認）', () => {
+  const context = { street: 'TURN', heroPos: 'BTN', villainPos: 'BB' };
+  const blankTurn = ['As', 'Ad', 'Ac', '2h'];   // trip aces flop + irrelevant turn
+  const quadsTurn = ['As', 'Ad', 'Ac', 'Ah'];   // same flop + board goes to quads
+  const blankRm = evalRange169(blankTurn, [], context);
+  const quadsRm = evalRange169(quadsTurn, [], context);
+  const blankCov = computeStructureFeatures(blankRm, blankTurn).coverage;
+  const quadsCov = computeStructureFeatures(quadsRm, quadsTurn).coverage;
+  assert.ok(Math.abs(blankCov - quadsCov) > 30,
+    `同一フロップでも4枚目カードでcoverageが大きく変わるはず: blank=${blankCov} quads=${quadsCov}`);
+});
+
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);
