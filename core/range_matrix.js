@@ -86,6 +86,59 @@ function classifyPotential(hand, board) {
 }
 
 
+// v3.9.34: 他AIレビュー指摘・ユーザー確認済み。classifyDraw()は「1ハンド=1タグ」の
+// 早期return方式（ストレートドローが見つかったらフラッシュドロー判定へは進まない）
+// のため、ストレートドローとフラッシュドローが同時に存在するコンボドロー
+// （例: 9-8suited on T-7-2ツートーン＝OESD+FD）でも必ずどちらか一方しか
+// タグ付けされない。そのためcomputeStructureFeatures()内のdrawOverlap
+// （fdSet ∩ sdSet）は構造上常に空集合＝0%になっており、drawStructure特徴量の
+// 0.20の重みが常に死んでいた（STRUCTURE RADARのDRW軸・generateTacticalInsights
+// のDRAW POTENTIAL分類の両方に影響）。ブルートフォース確認：ドライな
+// レインボーフロップでは0/169だが、ウェットな2トーン・コネクテッドフロップ
+// （例: T♠7♠8♦）では35/169ハンドが実際にコンボドロー該当だった。
+// classifyDraw()自体の「1ハンド1タグ」という既存の返り値の形はNUTSバッジ・
+// ヒートマップのglow色等、多くの消費側が前提にしているため変更せず、
+// drawOverlap計算専用に、フラッシュドロー該当とストレートドロー該当を
+// それぞれ独立に（早期returnなしで）判定する軽量ヘルパーを別途用意した。
+function hasComboDraw(hand, board) {
+  if (!board || board.length < 3 || board.length >= 5) return false;
+
+  const ri1 = RANK_IDX[hand[0]];
+  const ri2 = RANK_IDX[hand[1]];
+  const boardRanks = board.map(c => RANK_IDX[c[0]]).sort((a, b) => a - b);
+  const allRanks = [...new Set([ri1, ri2, ...boardRanks])].sort((a, b) => a - b);
+
+  const straightCheckRanks = allRanks[0] === 0 ? [...allRanks, 13] : allRanks;
+  let hasMadeStraight = false;
+  for (let k = 0; k <= straightCheckRanks.length - 5; k++) {
+    if (straightCheckRanks[k + 4] - straightCheckRanks[k] === 4) { hasMadeStraight = true; break; }
+  }
+
+  let hasStraightDraw = false;
+  if (!hasMadeStraight) {
+    for (let k = 0; k <= allRanks.length - 4; k++) {
+      const w0 = allRanks[k], w1 = allRanks[k + 1], w2 = allRanks[k + 2], w3 = allRanks[k + 3];
+      const holeInWindow = w0 === ri1 || w1 === ri1 || w2 === ri1 || w3 === ri1
+        || w0 === ri2 || w1 === ri2 || w2 === ri2 || w3 === ri2;
+      const span = w3 - w0;
+      if (holeInWindow && (span === 3 || span === 4)) { hasStraightDraw = true; break; }
+    }
+  }
+
+  const isSuited = hand[2] === 's';
+  const isPair   = hand[0] === hand[1] && hand[2] === undefined;
+  let hasFlushDraw = false;
+  if (isSuited || isPair) {
+    const suitCounts = {};
+    board.forEach(c => suitCounts[c[1]] = (suitCounts[c[1]] || 0) + 1);
+    const maxSuitCount = Math.max(...Object.values(suitCounts));
+    hasFlushDraw = maxSuitCount === 2;
+  }
+
+  return hasStraightDraw && hasFlushDraw;
+}
+
+
 function classifyDraw(hand, board) {
   if (board.length < 3) return null;
   // バグ修正: 同上。リバー(5枚)ではドロー概念自体が存在しないため、
@@ -319,7 +372,7 @@ function computeRangeStats(rangeMatrix) {
                 0=全ハンドの強さが均等  100=一部ハンドが格差を独占
                 ← モノトーンボードで高い、クアッズボードで低い
 ══════════════════════════════ */
-function computeStructureFeatures(rangeMatrix) {
+function computeStructureFeatures(rangeMatrix, board) {
   const live = rangeMatrix.filter(h => h.density > 0);
   if (live.length === 0) {
     return { entropy: 0, polarization: 0, coverage: 0, drawStructure: 0, dominance: 0 };
@@ -365,9 +418,18 @@ function computeStructureFeatures(rangeMatrix) {
   const liveDrawRatio = withDraw.length / n;
   const drawTypes     = new Set(withDraw.map(h => h.drawType));
   const drawComplexity = drawTypes.size / 4; // FD/OESD/GSD/BD-FD → max 4種
-  const fdSet   = new Set(withDraw.filter(h => h.drawType.includes('FD')).map(h => h.hand));
-  const sdSet   = new Set(withDraw.filter(h => h.drawType === 'OESD' || h.drawType === 'GSD').map(h => h.hand));
-  const drawOverlap   = [...fdSet].filter(h => sdSet.has(h)).length / n;
+  // v3.9.34: 他AIレビュー指摘・ユーザー確認済み。classifyDraw()は1ハンド1タグの
+  // 早期return方式のため、fdSet(drawTypeに'FD'を含む)とsdSet(drawTypeが
+  // 厳密にOESD/GSD)は同一ハンドについて絶対に両立せず、この交差は構造上
+  // 常に空集合＝drawOverlapが常に0になっていた（ブルートフォース確認：
+  // ウェットな2トーン・コネクテッドフロップでも常に0、本来は非ゼロになるべき）。
+  // → 上のfdSet/sdSetによる交差ではなく、hasComboDraw()でストレートドロー・
+  //   フラッシュドローの該当を独立に（早期returnなしで）判定して数える。
+  // boardが渡されない呼び出し（未使用の旧経路等）に対する後方互換として、
+  // その場合は0のまま（従来の壊れた挙動と同じ）にフォールバックする。
+  const drawOverlap = board
+    ? live.filter(h => hasComboDraw(h.hand, board)).length / n
+    : 0;
   const drawStructure = Math.round(
     clamp01(liveDrawRatio * 0.40 + drawComplexity * 0.40 + drawOverlap * 0.20) * 100
   );
@@ -392,9 +454,27 @@ function computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix) {
   const heroProf    = getPositionProfile(heroPos    || 'BTN');
   const villainProf = getPositionProfile(villainPos || 'BB');
 
-  // Position-based base (hero openWidth vs villain defensibility)
-  const heroBase    = (heroProf.openWidth    || 1.0) * (heroProf.adjustmentFactor    || 1.0);
-  const villainBase = (villainProf.openWidth || 1.0) * (villainProf.adjustmentFactor || 1.0);
+  // v3.9.36: 他AIレビュー指摘・データフロー追跡の上でBugと確定し修正。
+  // 以前はvillain側のベースにも一律villainProf.openWidthを使っていたが、
+  // このアプリが唯一想定している状況（BTNがopen、BBがdefendしてフロップへ
+  // 到達するsingle-raised pot）では、BBは「オープンレンジ」ではなく
+  // 「ディフェンドレンジ」でボードに参加している。BBのopenWidth=0.5
+  // （コメント通り「Fold most hands preflop」＝BBが最初にレイズする場合の
+  // 想定値）はこの局面には無関係で、POSITION_PROFILE.BB.defendWidth=1.8
+  // という正しいフィールドが定義されているのに一度も参照されていなかった。
+  // 実数値で検証：villainBaseがopenWidth(0.5)のままだと基準posAdvが+0.744
+  // （ほぼ最大までHero有利に張り付く）になり、その後のボードテクスチャ
+  // 補正（±0.10〜0.18程度）ではLOW_BOARD_DEFENDER_EDGE（rangeAdvantage<-0.1
+  // が必要）が事実上到達不能になっていた。defendWidthを使うと基準posAdvは
+  // +0.077まで下がり、ボード補正で実際にプラス/マイナス両方向に振れる
+  // ようになることを確認済み。BB以外のポジションはdefendWidthが未定義の
+  // ため、その場合は従来通りopenWidthにフォールバックする（この一点しか
+  // 現状は到達しないUI＝BTN vs BB以外は将来の拡張時に同様の整備が必要）。
+  const villainWidth = villainProf.defendWidth ?? villainProf.openWidth;
+
+  // Position-based base (hero openWidth vs villain defendWidth/openWidth)
+  const heroBase    = (heroProf.openWidth || 1.0) * (heroProf.adjustmentFactor    || 1.0);
+  const villainBase = (villainWidth       || 1.0) * (villainProf.adjustmentFactor || 1.0);
   let posAdv = (heroBase - villainBase) / Math.max(heroBase, villainBase, 0.01); // -1..+1 approx
 
   // Board modifier
