@@ -3359,7 +3359,7 @@ self.onmessage = function (e) {
         <div id="hero-street-label" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.45);margin-bottom:3px;"></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px 14px;">
           <span>役<span class="help-q" title="ここは連続値スコアからの逆算ではなく、実際のポーカー役判定(evaluate7)の結果そのものです">?</span>: <b id="hero-handname" style="color:#ffd700;">--</b></span>
-          <span>勝率目安: <b id="hero-strength" style="color:#00d4ff;">--%</b></span>
+          <span>強さ目安<span class="help-q" title="SPECTRA独自の強さスコアです。役カテゴリとキッカー、およびボード危険度をもとに算出した相対的な強さの目安で、対戦相手に対する勝率・Equity・EVを表すものではありません">?</span>: <b id="hero-strength" style="color:#00d4ff;">--</b></span>
           <span>将来性: <b id="hero-potential" style="color:#ff6a1a;">--%</b></span>
         </div>
         <div id="hero-draw-row" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:3px;align-items:center;">
@@ -5956,7 +5956,7 @@ function renderHeroAnalysis() {
       streetLabel.textContent = '▸ 計算中…';
       drawRow.style.display = 'none';
       document.getElementById('hero-handname').textContent = '--';
-      document.getElementById('hero-strength').textContent = '--%';
+      document.getElementById('hero-strength').textContent = '--';
       return;
     }
     const cell = lastHeatmapData.find(item => item.hand === label);
@@ -5965,7 +5965,7 @@ function renderHeroAnalysis() {
       streetLabel.textContent = '▸ 計算中…';
       drawRow.style.display = 'none';
       document.getElementById('hero-handname').textContent = '--';
-      document.getElementById('hero-strength').textContent = '--%';
+      document.getElementById('hero-strength').textContent = '--';
       return;
     }
     isPreflop = false;
@@ -6020,7 +6020,7 @@ function renderHeroAnalysis() {
 
   panel.style.display = 'block';
   document.getElementById('hero-handname').textContent  = isPreflop ? 'プリフロップ' : handNameText;
-  document.getElementById('hero-strength').textContent  = (strength01 * 100).toFixed(1) + '%';
+  document.getElementById('hero-strength').textContent  = Math.round(strength01 * 100) + ' / 100';
   document.getElementById('hero-potential').textContent = (potential01 * 100).toFixed(0) + '%';
 
   const combined = strength01 + potential01 * 0.3;
