@@ -728,9 +728,14 @@ function classifyPairStructure(board) {
   // に該当する分岐が存在せず、UNPAIRED誤判定になっていた。下流(deriveHudSignals
   // のQUADS_BOARD加点・BOARD_LOCKED等)は既にQUADS_BOARDという値を期待していたが、
   // この関数が一度もその値を返していなかったため到達不能だった。
-  // なお counts[0]===3 && counts[1]===2（フルハウスボード）は今回スコープ外
-  // としてTRIPS_BOARD命名のまま維持（FULL_HOUSE_BOARDへの分離は下流の重み表を
-  // 別途監査してから行うべきなので、意図的に見送っている）。
+  // なお counts[0]===3 && counts[1]===2（フルハウスボード）は下流影響監査
+  // （複数回の他AIレビュー）実施済みだが、TRIPS_BOARD命名のまま維持している。
+  // calcRangeDynamics/deriveAggressionSignal/deriveInterpretationsは「paired系」
+  // として両者を区別せず扱う設計で分離しても壊れないが、contextMultiplier(×1.2)と
+  // NUT_REGION_POLARIZEDのconfidence_rule(w:0.55)は分離した場合に個別の重み付けが
+  // 必要になり、その根拠となる実測データが今はない。分離自体は安全だが正当化する
+  // 明確なメリットがまだ確認できていないため、意図的に見送っている
+  // （詳細はREADME「保留機能（設計メモ）」参照）。
   if (counts[0] === 4) return 'QUADS_BOARD';
   if (counts[0] === 3 && counts[1] === 2) return 'TRIPS_BOARD';
   if (counts[0] === 3) return 'TRIPS_BOARD';
@@ -3453,11 +3458,18 @@ function generateTacticalInsights(sf) {
   }
 
   // 2. 【キャップ率・レンジ構造 (CAP & RANGE PROTECTION)】
+  // v3.9.38: 他AIレビューで指摘・ユーザー確認済み。coverage(MID-STRENGTH COVERAGE)は
+  // computeStructureFeatures()側のコメントで「中間強度帯に分類される生存コンボの
+  // 割合」という観測事実に留め、「相手のレンジが強い/キャップ傾向にある」という
+  // 戦略的推論へは飛躍させないと明記されている（UI側の説明文もその前提で書くこと、
+  // とまで書かれている）。にもかかわらずこのタグの文言は「相手レンジのキャップ傾向」
+  // という、sfからは計算していない相手視点の推論を含んでいた。観測できる構造の
+  // 説明に戻す。cov>=58/pol<=38という計算条件自体は変更していない。
   if (pol <= 38 || cov >= 58) {
     tags.push({
       tag: '🛡️ RANGE CAPPED (キャップ警戒)',
       color: '#00ff9d',
-      text: '相手レンジのキャップ傾向または中手ヒット多発。中間強度のハンドが広く存在し、レンジが比較的分散した構造'
+      text: '中間強度帯の分布が厚い、または強弱差が小さい構造。レンジ内の強さが特定の層に極端に偏らない盤面傾向を示す'
     });
   } else {
     tags.push({
@@ -3489,11 +3501,15 @@ function generateTacticalInsights(sf) {
   }
 
   // 4. 【バリュー・ブラフ構造 (VALUE & BLUFF STRUCTURE)】
+  // v3.9.38: RANGE CAPPEDと同様の理由でテキストを修正。「相手のコールレンジ」は
+  // sfから一切計算していない推論だったため除去し、coverageの定義（中間強度帯の
+  // 生存コンボ割合）以上の解釈を付け足さない表現に戻した。cov>=55 && pol<55と
+  // いう計算条件自体は変更していない。
   if (cov >= 55 && pol < 55) {
     tags.push({
       tag: '💎 VALUE DENSE (バリュー構造厚め)',
       color: '#00ff9d',
-      text: '相手のコールレンジが広く中手が多い。中間強度のハンドが広く分布し、バリュー側の構造が比較的厚い'
+      text: '中間強度帯のハンドが比較的多く分布する構造'
     });
   } else if (pol >= 50 && drw >= 45) {
     tags.push({
