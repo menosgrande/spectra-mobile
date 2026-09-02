@@ -593,6 +593,19 @@ function cacheSet(key, value) {
   evalCache.set(key, value);
 }
 
+// v3.9.39: HERO_RANK専用キャッシュ。BOARD_INTELLIGENCEのevalCacheとは責務が
+// 異なる（board+hero単位でキーが変わり、analyzeBoard()のパイプラインとは無関係）ため、
+// 意図的に分離している。
+let heroRankCache = new Map();
+const HERO_RANK_CACHE_MAX = 300;
+function heroRankCacheSet(key, value) {
+  if (heroRankCache.size >= HERO_RANK_CACHE_MAX && !heroRankCache.has(key)) {
+    const oldestKey = heroRankCache.keys().next().value;
+    heroRankCache.delete(oldestKey);
+  }
+  heroRankCache.set(key, value);
+}
+
 function clamp01(x) {
   return Math.max(0, Math.min(1, x));
 }
@@ -1838,6 +1851,67 @@ function eval169(board, hero) {
 }
 
 
+// v3.9.39: 「強さ目安 v1」— Hero自身の具体的な2枚を、現在のboard+heroを除いた
+// 生存コンボ全体（具体的な2枚の組み合わせ単位）と直接比較し、stronger/tied/weaker
+// を数える。169セルに集約されたeval169()の代表コンボ値を経由しないため、v3.9.31の
+// ペア曖昧さ問題（カテゴリ集約後のsuits Setが和集合になり偽陽性を生む懸念）を
+// 構造的に回避できる。対象はFlop/Turn/Riverのみ（board.length>=3が前提。
+// evaluate7()は5枚未満のカードでは常にscore:0のハードコード値を返す仕様のため、
+// Preflopではこの関数を呼ばないこと。呼び出し側でガードする）。
+// madeStrengthでの比較を採用（computeMadeStrength()のboardHazardペナルティは
+// board単位の定数でコンボ間では変わらないため、rawEval7に対する狭義単調増加の
+// アフィン変換であり、rawEval7で比較してもmadeStrengthで比較しても順位は
+// 数式上・実測上（5盤面×各1176コンボで検証済み）完全に一致する。madeStrengthに
+// 揃えるのは他の計算箇所との一貫性のため）。
+function computeHeroRank(board, hero) {
+  const boardSet = new Set(board);
+  const heroSet  = new Set(hero || []);
+  const deadSet  = new Set([...boardSet, ...heroSet]);
+
+  const heroRaw  = evaluate7([...hero, ...board]);
+  const heroMade = computeMadeStrength(heroRaw.score, board);
+
+  const deck = [];
+  for (let i = 0; i < 13; i++) {
+    for (let s = 0; s < 4; s++) {
+      const c = RANKS[i] + SUITS[s];
+      if (!deadSet.has(c)) deck.push(c);
+    }
+  }
+
+  let strongerCount = 0, tiedCount = 0, weakerCount = 0;
+  for (let i = 0; i < deck.length; i++) {
+    for (let j = i + 1; j < deck.length; j++) {
+      const e = evaluate7([deck[i], deck[j], ...board]);
+      const made = computeMadeStrength(e.score, board);
+      if (made > heroMade)      strongerCount++;
+      else if (made < heroMade) weakerCount++;
+      else                      tiedCount++;
+    }
+  }
+
+  // contract: strongerCount + tiedCount + weakerCount === population
+  // Hero自身はpopulationに含めない（Heroはpopulationと比較される対象であり、
+  // populationの要素そのものではない）
+  const population = strongerCount + tiedCount + weakerCount;
+  const strengthPercentile = population > 0
+    ? (weakerCount + tiedCount * 0.5) / population * 100
+    : 0;
+  const rankPos = Math.round(strongerCount + tiedCount * 0.5) + 1;
+
+  return {
+    madeStrength: heroMade,
+    handName: heroRaw.categoryName || heroRaw.category,
+    strongerCount,
+    tiedCount,
+    weakerCount,
+    population,
+    strengthPercentile,
+    rankPos
+  };
+}
+
+
 function evalRange169(board, hero, context) {
   const raw = eval169(board, hero); // hero passed for removal
   return raw.map(item => ({
@@ -2976,7 +3050,7 @@ self.onmessage = function (e) {
       self.postMessage({
         type: 'INIT_OK',
         version: '3.9.1',
-        capabilities: ['BOARD_INTELLIGENCE', 'EVAL_169', 'TEXTURE']
+        capabilities: ['BOARD_INTELLIGENCE', 'EVAL_169', 'TEXTURE', 'HERO_RANK']
       });
       return;
     }
@@ -3054,6 +3128,55 @@ self.onmessage = function (e) {
         type: 'TEXTURE',
         requestId,
         data: calcBoardTexture(payload.board || [])
+      });
+      return;
+    }
+
+    if (type === 'HERO_RANK') {
+      // v3.9.39: 「強さ目安 v1」専用API。BOARD_INTELLIGENCE(analyzeBoard())の
+      // パイプラインには一切触れない、独立した軽量リクエスト。Hero Handの
+      // カード変更時にこれだけを呼ぶ設計で、triggerUpdate()は呼ばない。
+      const t0    = performance.now();
+      const board = payload.board || [];
+      const hero  = payload.hero  || [];
+
+      // evaluate7()は5枚未満のカードでは常にscore:0を返す仕様のため、
+      // Preflop（board.length<3）ではHERO_RANKの結果は無意味になる。
+      // 呼び出し側（renderHeroAnalysis）は既にPreflopをChen percentile経路に
+      // 分岐させているので、ここに到達するのは想定外だが、防御的にガードする。
+      if (board.length < 3 || hero.length !== 2) {
+        self.postMessage({
+          type: 'HERO_RANK',
+          requestId,
+          data: null,
+          reason: 'HERO_RANK requires board.length>=3 and hero.length===2 (Preflop is out of scope for v1)'
+        });
+        return;
+      }
+
+      const cacheKey = 'hr:' + board.join(',') + '|' + [...hero].sort().join(',');
+
+      if (heroRankCache.has(cacheKey)) {
+        self.postMessage({
+          type: 'HERO_RANK',
+          requestId,
+          data: heroRankCache.get(cacheKey),
+          cached: true,
+          calcTime: 0
+        });
+        return;
+      }
+
+      const result = computeHeroRank(board, hero);
+      const ms     = Math.round(performance.now() - t0);
+      heroRankCacheSet(cacheKey, result);
+
+      self.postMessage({
+        type: 'HERO_RANK',
+        requestId,
+        data: result,
+        cached: false,
+        calcTime: ms
       });
       return;
     }
@@ -3364,7 +3487,7 @@ self.onmessage = function (e) {
         <div id="hero-street-label" style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.45);margin-bottom:3px;"></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px 14px;">
           <span>役<span class="help-q" title="ここは連続値スコアからの逆算ではなく、実際のポーカー役判定(evaluate7)の結果そのものです">?</span>: <b id="hero-handname" style="color:#ffd700;">--</b></span>
-          <span>強さ目安<span class="help-q" title="SPECTRA独自の強さスコアです。役カテゴリとキッカー、およびボード危険度をもとに算出した相対的な強さの目安で、対戦相手に対する勝率・Equity・EVを表すものではありません">?</span>: <b id="hero-strength" style="color:#00d4ff;">--</b></span>
+          <span>強さ目安<span class="help-q" title="Flop/Turn/River: 現在のboardでHeroの2枚+既知boardを除いた残り具体ホールカードコンボ全体の中で、Heroの手が何%より強いか（同点は0.5件分に按分。対戦相手に対する勝率・Equity・EVではありません）。Preflop: 便宜的にChen式ベースの相対的な強さの目安を表示（169レンジ内での相対順位）">?</span>: <b id="hero-strength" style="color:#00d4ff;">--</b></span>
           <span>将来性: <b id="hero-potential" style="color:#ff6a1a;">--%</b></span>
         </div>
         <div id="hero-draw-row" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:3px;align-items:center;">
@@ -3572,6 +3695,26 @@ let spectraWorker  = null;
 let workerReady    = false;
 let calcTimer      = null;
 let lastHeatmapData= [];     // For tooltip access
+// v3.9.39: 「強さ目安 v1」用。HERO_RANKは独自のrequestId系列を持つ（BOARD_INTELLIGENCEの
+// currentRequestIdとは別管理。stale-check参照: onWorkerMessage）。lastHeroRankKeyは
+// 「その結果がどのboard+heroに対するものか」を示すマッチキーで、renderHeroAnalysis()が
+// 現在のboard+heroと一致するかを確認してから表示する。
+let currentHeroRankRequestId = 0;
+let lastHeroRankData = null;
+let lastHeroRankKey  = null;
+function heroRankKey(board, hero) {
+  return board.join(',') + '|' + [...hero].sort().join(',');
+}
+function requestHeroRank() {
+  if (!spectraWorker || !workerReady) return;
+  if (currentBoard.length < 3 || heroHand.length !== 2) return;
+  currentHeroRankRequestId++;
+  spectraWorker.postMessage({
+    type: 'HERO_RANK',
+    requestId: currentHeroRankRequestId,
+    payload: { board: currentBoard, hero: heroHand }
+  });
+}
 let _ttHideTimer = null;     // モバイルツールチップの自動非表示タイマー（連続タップでの積み上がり防止用）
 let lastNutsFeatures = null;   // renderNuts再描画（帯の折りたたみ）用にfeaturesをキャッシュ
 let collapsedNutBands = new Set(['HIGH CARD']); // 折りたたみ状態（デフォルトHIGH CARDのみ畳む）
@@ -3644,6 +3787,23 @@ function onWorkerMessage(e) {
     return;
   }
 
+  // v3.9.39: HERO_RANKはBOARD_INTELLIGENCEとは独立したrequestId系列
+  // （currentHeroRankRequestId）を使うため、下のcurrentRequestIdによる
+  // stale-checkの対象から明示的に外す。ここで先に処理して return する。
+  if (type === 'HERO_RANK') {
+    if (requestId !== undefined && requestId !== currentHeroRankRequestId) return; // stale
+    if (data) {
+      lastHeroRankData = data;
+      lastHeroRankKey  = heroRankKey(currentBoard, heroHand);
+    } else {
+      // Preflop等、Worker側でガードされ data:null が返ったケース
+      lastHeroRankData = null;
+      lastHeroRankKey  = null;
+    }
+    renderHeroAnalysis();
+    return;
+  }
+
   // v3.9.13: stale response対策。INIT_OK以外は、送信時点のrequestIdと
   // 一致しない（＝その後さらに新しい盤面変更が発生し、この応答が古くなった）
   // 場合は無視する。
@@ -3692,6 +3852,7 @@ function onWorkerMessage(e) {
         `CALC: ${calcTime||0}ms${cached?' (cache)':''}`;
       setStabState('DONE');
       updateHeroCells();
+      requestHeroRank(); // v3.9.39: board変更でpopulationが変わるため再リクエスト（BOARD_INTELLIGENCEのパイプラインには合流させない、独立リクエストのまま）
       renderHeroAnalysis(); // v3.9.16: 盤面更新のたびにHero分析も再描画（読み取り専用・一方向）
       break;
 
@@ -5713,6 +5874,7 @@ function onHeroChanged() {
   updateHeroDuplicateGuard();
   updateOutsPanel();
   updateBoardCards();
+  requestHeroRank(); // v3.9.39: 強さ目安v1。triggerUpdate()等メインのWorker経路は呼ばない、独立リクエスト
   renderHeroAnalysis(); // v3.9.16: 独立表示。メインのtriggerUpdate等は一切呼ばない
 }
 
@@ -6034,9 +6196,24 @@ function renderHeroAnalysis() {
     document.getElementById('range-straight-pct').textContent = rangeDraw ? rangeDraw.straightPct.toFixed(1) + '%' : '--';
   }
 
+  // v3.9.39: 「強さ目安 v1」。strength01/combinedはFOLD/CALL/RAISE等の
+  // 意思決定バーの既存キャリブレーションに使われているため、ここでは一切変更しない
+  // （HERO_RANKはあくまで#hero-strengthの表示専用の別経路）。
+  // 対象はFlop/Turn/Riverのみ。Preflopは既存のChen percentile表示のまま。
+  let heroRankText = Math.round(strength01 * 100) + ' / 100'; // フォールバック（Preflop、またはHERO_RANK未着時）
+  if (!isPreflop) {
+    const key = heroRankKey(currentBoard, heroHand);
+    if (lastHeroRankData && lastHeroRankKey === key) {
+      heroRankText = `全体の${lastHeroRankData.strengthPercentile.toFixed(1)}%より強い（${lastHeroRankData.rankPos} / ${lastHeroRankData.population}）`;
+    } else {
+      heroRankText = '計算中…';
+      requestHeroRank(); // HERO_RANK未リクエストのまま到達した場合の保険（Workerのheroキャッシュがあるため多重送信のコストは小さい）
+    }
+  }
+
   panel.style.display = 'block';
   document.getElementById('hero-handname').textContent  = isPreflop ? 'プリフロップ' : handNameText;
-  document.getElementById('hero-strength').textContent  = Math.round(strength01 * 100) + ' / 100';
+  document.getElementById('hero-strength').textContent  = heroRankText;
   document.getElementById('hero-potential').textContent = (potential01 * 100).toFixed(0) + '%';
 
   const combined = strength01 + potential01 * 0.3;
