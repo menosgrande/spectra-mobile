@@ -475,5 +475,41 @@ test('computeStructureFeatures: ターンでも4枚目のカード次第でcover
 });
 
 
+console.log('\n=== range_matrix.js: categoryBreakdown/comboSuitsのcore未反映 同期修正（v3.9.40 golden test） ===');
+
+test('eval169: モノトーンスペードフロップでQJsのcategoryBreakdownがFLUSH(♠1コンボ)とHIGH CARD(他3コンボ)に分離される（v3.9.11/v3.9.31導入分がcoreに存在しなかった欠落の回帰確認）', () => {
+  const board = ['As', 'Ks', '7s'];
+  const rm = eval169(board, []);
+  const qjs = rm.find(h => h.hand === 'QJs');
+  assert.ok(qjs.categoryBreakdown, 'categoryBreakdownがundefinedのまま（core未反映バグの再発）');
+  assert.strictEqual(qjs.categoryBreakdown.length, 2, `カテゴリ数は2のはず: ${JSON.stringify(qjs.categoryBreakdown)}`);
+  const flush = qjs.categoryBreakdown.find(g => g.name === 'FLUSH');
+  const highCard = qjs.categoryBreakdown.find(g => g.name === 'HIGH CARD');
+  assert.strictEqual(flush.count, 1, 'FLUSHは4コンボ中スート一致の1コンボのみのはず');
+  assert.deepStrictEqual(flush.suits, ['s'], 'FLUSHの関与スートは♠のみのはず');
+  assert.strictEqual(highCard.count, 3, 'HIGH CARDは残り3コンボ(オフスート側)のはず');
+  assert.deepStrictEqual(highCard.suits.sort(), ['c', 'd', 'h'], 'HIGH CARDの関与スートは♠以外の3つのはず');
+});
+
+test('eval169: ペアハンド(88)のcomboSuitsが6コンボ全ての組み合わせスートを正しく集約する（772rボード、TWO PAIR全6コンボ）', () => {
+  const board = ['7h', '7d', '2c'];
+  const rm = eval169(board, []);
+  const pair88 = rm.find(h => h.hand === '88');
+  assert.ok(pair88.categoryBreakdown, 'categoryBreakdownがundefinedのまま（core未反映バグの再発）');
+  assert.strictEqual(pair88.categoryBreakdown.length, 1, '772rでは88は常にTWO PAIRのみ、カテゴリ分岐は無いはず');
+  const twoPair = pair88.categoryBreakdown[0];
+  assert.strictEqual(twoPair.name, 'TWO PAIR');
+  assert.strictEqual(twoPair.count, 6, 'ペアの全6コンボがTWO PAIRのはず');
+  assert.deepStrictEqual(twoPair.suits.sort(), ['c', 'd', 'h', 's'], 'ペアは4スート全てがcomboSuitsに現れるはず（各スート3コンボずつ関与）');
+});
+
+test('evalRange169: categoryBreakdownがUI(renderHeroAnalysis)向けにpassthroughされる（evalRange169のマッピングからcategoryBreakdownキーが欠落していた回帰確認）', () => {
+  const board = ['As', 'Ks', '7s'];
+  const rm = evalRange169(board, [], null);
+  const qjs = rm.find(h => h.hand === 'QJs');
+  assert.ok(qjs.categoryBreakdown, 'evalRange169の出力にcategoryBreakdownが無い（マッピング欠落の再発）');
+  assert.strictEqual(qjs.categoryBreakdown.length, 2);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);
