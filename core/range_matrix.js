@@ -232,7 +232,9 @@ function eval169(board, hero) {
             const c2 = r1 + SUITS[s2];
             if (!deadSet.has(c1) && !deadSet.has(c2)) {
               activeCombos++;
-              evals.push(evaluate7([c1, c2, ...board]));
+              const e = evaluate7([c1, c2, ...board]);
+              e.comboSuits = [SUITS[s1], SUITS[s2]]; // v3.9.11: どのスートの組み合わせか記録
+              evals.push(e);
             }
           }
         }
@@ -244,7 +246,9 @@ function eval169(board, hero) {
           const c2 = r2 + SUITS[s];
           if (!deadSet.has(c1) && !deadSet.has(c2)) {
             activeCombos++;
-            evals.push(evaluate7([c1, c2, ...board]));
+            const e = evaluate7([c1, c2, ...board]);
+            e.comboSuits = [SUITS[s]]; // v3.9.11: スーテッドは単一スート
+            evals.push(e);
           }
         }
       } else {
@@ -257,7 +261,9 @@ function eval169(board, hero) {
             const c2 = r1 + SUITS[s2];
             if (!deadSet.has(c1) && !deadSet.has(c2)) {
               activeCombos++;
-              evals.push(evaluate7([c1, c2, ...board]));
+              const e = evaluate7([c1, c2, ...board]);
+              e.comboSuits = [SUITS[s1], SUITS[s2]]; // v3.9.31: オフスートも追跡（Hero厳密照合用）
+              evals.push(e);
             }
           }
         }
@@ -294,6 +300,31 @@ function eval169(board, hero) {
       // 代表コンボの category と直接一致するコンボだけを数える（スコアの逆算比較ではない）。
       const topClassCombos = best ? evals.filter(e => e.category === best.category).length : 0;
 
+      // v3.9.11: カテゴリ内訳を「役名+件数」から「実際の勝率(平均madeStrength)+関与スート」に
+      // 強化。例: モノトーンボードのAKsは「♠(1/4コンボ): 68%（フラッシュ）」
+      // 「他(3/4コンボ): 42%（ハイカード）」のように、弱い方の実際の強さも数値で見える形にする。
+      const categoryGroups = {};
+      evals.forEach(e => {
+        if (!categoryGroups[e.category]) {
+          categoryGroups[e.category] = { count: 0, name: e.categoryName, score: e.score, scoreSum: 0, suitSet: new Set() };
+        }
+        const g = categoryGroups[e.category];
+        g.count++;
+        g.scoreSum += e.score;
+        if (e.score > g.score) g.score = e.score;
+        (e.comboSuits || []).forEach(s => g.suitSet.add(s));
+      });
+      const categoryBreakdown = Object.values(categoryGroups)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 12) // v3.9.31: 3→12に拡大。Hero厳密照合(renderHeroAnalysis)がスート単位で
+        // 正しいグループを引けるよう、実質的に全カテゴリ(最大12コンボ=最大12カテゴリ)を保持する。
+        .map(g => ({
+          name:  g.name,
+          count: g.count,
+          avgMadeStrength: computeMadeStrength(g.scoreSum / g.count, board), // 0-1
+          suits: [...g.suitSet] // 空配列 = オフスート等、スート特定なし
+        }));
+
       results.push({
         hand:             hand,
         rawScore:         rawScore,
@@ -304,6 +335,7 @@ function eval169(board, hero) {
         activeCombos:     activeCombos,
         topClassCombos:   topClassCombos,
         totalCombos:      totalCombos,
+        categoryBreakdown: categoryBreakdown,
         potential:        potStrength,    // alias: UI/rangeEngine との互換
         drawType:         classifyDraw(hand, board),
         outs:             Math.round(potStrength * 20) // potStrength = outs/20 から逆算
@@ -329,7 +361,8 @@ function evalRange169(board, hero, context) {
     drawType:          item.drawType,     // UI: renderNuts で使用
     outs:              item.outs,         // UI: アウツ表示で使用
     topClassCombos:    item.topClassCombos, // UI: renderNutsのLive Combo表示で使用（同じ役に到達したコンボ数）
-    totalCombos:       item.totalCombos     // UI: renderNutsでのbaseTotal算出に使用
+    totalCombos:       item.totalCombos,    // UI: renderNutsでのbaseTotal算出に使用
+    categoryBreakdown: item.categoryBreakdown // UI: ヒートマップのポップアップ・三角塗りで使用
   }));
 }
 
