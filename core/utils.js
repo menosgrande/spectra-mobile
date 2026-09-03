@@ -4,6 +4,7 @@
  * SPECTRA v3.5 Worker
  * Protocol: INIT_OK handshake
  * Public API : BOARD_INTELLIGENCE (unified entry point)
+ * Secondary  : HERO_RANK (v3.9.39〜, Hero Hand専用の独立API)
  * Legacy API : EVAL_169 / TEXTURE  (backward compat, internally delegated)
  *
  * Evaluation stack:
@@ -45,6 +46,23 @@ function cacheSet(key, value) {
     evalCache.delete(oldestKey);
   }
   evalCache.set(key, value);
+}
+
+// v3.9.39: HERO_RANK専用キャッシュ。evalCache（BOARD_INTELLIGENCE用）とは責務が
+// 異なるため意図的に分離している（BOARD_INTELLIGENCEのanalyzeBoard()やそのキャッシュ
+// には一切触れない、独立したHero Hand専用API）。FIFO方式・キー設計の考え方は
+// evalCache/cacheSetと同一にして一貫性を保つ。
+// キーはboard+hero（ソート済み）のみで一意に決まる：computeHeroRank(board, hero)は
+// context/streetを引数に取らず、streetはboardの枚数（3/4/5）から一意に定まるため、
+// BOARD_INTELLIGENCEのキャッシュキーのようにcontext.heroPos等を追加で含める必要はない。
+let heroRankCache = new Map();
+const HERO_RANK_CACHE_MAX = 300;
+function heroRankCacheSet(key, value) {
+  if (heroRankCache.size >= HERO_RANK_CACHE_MAX && !heroRankCache.has(key)) {
+    const oldestKey = heroRankCache.keys().next().value;
+    heroRankCache.delete(oldestKey);
+  }
+  heroRankCache.set(key, value);
 }
 
 function clamp01(x) {
