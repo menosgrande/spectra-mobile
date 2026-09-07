@@ -38,9 +38,9 @@
 }
 /* ═══════════════════════════════════════════════════════
    SPECTRA v3.9.1 — Board Intelligence OS  (Python完全追放・Worker純JS駆動)
-   ─ Hue: 勝率（赤=強→青緑=弱）
-   ─ Saturation: コンボ密度（鮮=存在する→灰=幻のハンド）
-   ─ Lightness: 将来性・ドロー力（白=アウツ多→暗=死手）
+   ─ 背景マスク（枠線）: ハンドの静的カテゴリ（Pocket Pair/Suited Broadway等）
+   ─ Saturation + Lightness: 現在の強さ（madeStrength、暗い赤=弱→鮮やかで明るい赤=強）
+   ─ 右上ドット: 将来性・ドロー力（大きい/濃い=アウツ多）
 ═══════════════════════════════════════════════════════ */
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{width:100%;height:100%;overflow:hidden;background:#04080f;color:#c8dff0;font-family:'Rajdhani',sans-serif;}
@@ -1804,7 +1804,7 @@ function eval169(board, hero) {
       // 代表コンボの category と直接一致するコンボだけを数える（スコアの逆算比較ではない）。
       const topClassCombos = best ? evals.filter(e => e.category === best.category).length : 0;
 
-      // v3.9.11: カテゴリ内訳を「役名+件数」から「実際の勝率(平均madeStrength)+関与スート」に
+      // v3.9.11: カテゴリ内訳を「役名+件数」から「実際の強さ(平均madeStrength)+関与スート」に
       // 強化。例: モノトーンボードのAKsは「♠(1/4コンボ): 68%（フラッシュ）」
       // 「他(3/4コンボ): 42%（ハイカード）」のように、弱い方の実際の強さも数値で見える形にする。
       const categoryGroups = {};
@@ -2110,7 +2110,22 @@ function computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix) {
     if (tex.texture === 'DRY' || tex.texture === 'VERY_DRY') posAdv += 0.10;
     if (tex.texture === 'WET' || tex.texture === 'VERY_WET') posAdv -= 0.10;
     if (conn === 'CONNECTED' || conn === 'HIGHLY_CONNECTED') posAdv -= 0.12;
-    if (pair === 'PAIRED' || pair === 'DOUBLE_PAIRED') posAdv -= 0.12;
+    // v3.9.42: 保留リスト②の監査で確定・修正。TRIPS_BOARD/QUADS_BOARDという
+    // 盤面構造が存在する一方、ここではPAIRED/DOUBLE_PAIREDのみを見ており
+    // TRIPS_BOARDが欠落していた。同じ「villain側がセットでトラップしやすい/
+    // レンジが偏る」という意味論を持つ他の2箇所（calcRangeDynamics()の
+    // isPaired判定、deriveAggressionSignal()のPOLARIZE判定）は両方とも
+    // PAIRED/DOUBLE_PAIRED/TRIPS_BOARDの3値を一貫してグループ化しており、
+    // computeRangeAdvantage()だけがこの拡張を欠いていたことをgrep監査で確認。
+    // QUADS_BOARDは意図的に対象外のまま維持する：上記2箇所を含むアプリ内の
+    // どの「villain trap/polarize」系分岐にも一度もQUADS_BOARDは含まれておらず、
+    // 代わりにBOARD_LOCKED（deriveHudSignals、importance 0.85）という完全に
+    // 別系統のHUDシグナルで扱われている（quadsは極端に稀・ロックされたボード
+    // でこの加減算モデルに馴染まないという設計判断が一貫している）。
+    // 20000盤面のbrute forceで検証済み：TRIPS_BOARD該当盤面は全て厳密に-0.12
+    // だけシフトし（PAIRED/DOUBLE_PAIRED/UNPAIRED/QUADS_BOARDは無変化）、
+    // 副作用は確認されなかった。
+    if (pair === 'PAIRED' || pair === 'DOUBLE_PAIRED' || pair === 'TRIPS_BOARD') posAdv -= 0.12;
     if (rank === 'LOW') posAdv -= 0.14;
   }
 
@@ -5178,7 +5193,7 @@ function renderRangeAdvantage(data) {
 
 /* ══════════════════════════════
 /* v3.9.1: POSITION MATRIX（5×6グリッド）は削除済み。
-   面積を取る割に変化が乏しく、Range Profile（勝率バー）やBoard Intelligenceの
+   面積を取る割に変化が乏しく、Range Profile（強さバー）やBoard Intelligenceの
    有利不利表示と情報が重複していたため。ポジション自体の選択は
    hero-pos-select / villain-pos-select のドロップダウンで引き続き行う。 */
 /* ══════════════════════════════
@@ -5651,7 +5666,7 @@ function showTooltip(c, x, y) {
   }
   // v3.9.11: コンボごとに役が割れる場合の内訳を2行までに集約して表示。
   // 例: モノトーンボードのAKs → 「♠(1/4): 68%（フラッシュ）」「他(3/4): 42%（ハイカード）」
-  // 役名の羅列ではなく実際の勝率(%)を出すことで弱い側のコンボの強さも見える。
+  // 役名の羅列ではなく実際の強さ(madeStrength %)を出すことで弱い側のコンボの強さも見える。
   const breakRow1 = document.getElementById('tt-break-row1');
   const breakRow2 = document.getElementById('tt-break-row2');
   if (breakRow1 && breakRow2) {
