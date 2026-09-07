@@ -511,5 +511,37 @@ test('evalRange169: categoryBreakdownがUI(renderHeroAnalysis)向けにpassthrou
   assert.strictEqual(qjs.categoryBreakdown.length, 2);
 });
 
+console.log('\n=== range_matrix.js: computeHeroRank (HERO_RANK v1, v3.9.39) core同期・golden test（v3.9.43） ===');
+
+test('computeHeroRank: AsKs on Qs7d2c (flop, ハイカード) — population/rank/percentileの実測固定', () => {
+  const r = computeHeroRank(['Qs', '7d', '2c'], ['As', 'Ks']);
+  assert.strictEqual(r.population, 1081, 'flopの生存コンボ数はC(47,2)=1081のはず');
+  assert.strictEqual(r.strongerCount + r.tiedCount + r.weakerCount, r.population, 'stronger+tied+weaker=populationの契約');
+  assert.strictEqual(r.rankPos, 438);
+  assert.ok(Math.abs(r.strengthPercentile - 59.620721554116564) < 1e-9);
+});
+
+test('computeHeroRank: 7c7d on Ks7h2d (flop, セット) — population同一盤面サイズでも上位ハンドは高percentile', () => {
+  const r = computeHeroRank(['Ks', '7h', '2d'], ['7c', '7d']);
+  assert.strictEqual(r.population, 1081);
+  assert.strictEqual(r.rankPos, 4);
+  assert.ok(Math.abs(r.strengthPercentile - 99.72247918593895) < 1e-9);
+});
+
+test('computeHeroRank: AsAd on KsKd4c9h (turn, オーバーペア=ツーペア) — turnはpopulation=1035(C(45,2))', () => {
+  const r = computeHeroRank(['Ks', 'Kd', '4c', '9h'], ['As', 'Ad']);
+  assert.strictEqual(r.population, 1035);
+  assert.strictEqual(r.rankPos, 97);
+  assert.ok(Math.abs(r.strengthPercentile - 90.77294685990339) < 1e-9);
+});
+
+test('computeHeroRank: Th9h on 8h7h2cJd3s (river, ストレート・tied9件) — riverはpopulation=990(C(44,2))、tiedCountが正しく0.5按分される', () => {
+  const r = computeHeroRank(['8h', '7h', '2c', 'Jd', '3s'], ['Th', '9h']);
+  assert.strictEqual(r.population, 990);
+  assert.strictEqual(r.tiedCount, 9);
+  assert.strictEqual(r.rankPos, 6);
+  assert.ok(Math.abs(r.strengthPercentile - 99.54545454545455) < 1e-9);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);
