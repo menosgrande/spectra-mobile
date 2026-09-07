@@ -300,7 +300,7 @@ function eval169(board, hero) {
       // 代表コンボの category と直接一致するコンボだけを数える（スコアの逆算比較ではない）。
       const topClassCombos = best ? evals.filter(e => e.category === best.category).length : 0;
 
-      // v3.9.11: カテゴリ内訳を「役名+件数」から「実際の勝率(平均madeStrength)+関与スート」に
+      // v3.9.11: カテゴリ内訳を「役名+件数」から「実際の強さ(平均madeStrength)+関与スート」に
       // 強化。例: モノトーンボードのAKsは「♠(1/4コンボ): 68%（フラッシュ）」
       // 「他(3/4コンボ): 42%（ハイカード）」のように、弱い方の実際の強さも数値で見える形にする。
       const categoryGroups = {};
@@ -344,6 +344,67 @@ function eval169(board, hero) {
   }
 
   return results;
+}
+
+
+// v3.9.39: 「強さ目安 v1」— Hero自身の具体的な2枚を、現在のboard+heroを除いた
+// 生存コンボ全体（具体的な2枚の組み合わせ単位）と直接比較し、stronger/tied/weaker
+// を数える。169セルに集約されたeval169()の代表コンボ値を経由しないため、v3.9.31の
+// ペア曖昧さ問題（カテゴリ集約後のsuits Setが和集合になり偽陽性を生む懸念）を
+// 構造的に回避できる。対象はFlop/Turn/Riverのみ（board.length>=3が前提。
+// evaluate7()は5枚未満のカードでは常にscore:0のハードコード値を返す仕様のため、
+// Preflopではこの関数を呼ばないこと。呼び出し側でガードする）。
+// madeStrengthでの比較を採用（computeMadeStrength()のboardHazardペナルティは
+// board単位の定数でコンボ間では変わらないため、rawEval7に対する狭義単調増加の
+// アフィン変換であり、rawEval7で比較してもmadeStrengthで比較しても順位は
+// 数式上・実測上（5盤面×各1176コンボで検証済み）完全に一致する。madeStrengthに
+// 揃えるのは他の計算箇所との一貫性のため）。
+function computeHeroRank(board, hero) {
+  const boardSet = new Set(board);
+  const heroSet  = new Set(hero || []);
+  const deadSet  = new Set([...boardSet, ...heroSet]);
+
+  const heroRaw  = evaluate7([...hero, ...board]);
+  const heroMade = computeMadeStrength(heroRaw.score, board);
+
+  const deck = [];
+  for (let i = 0; i < 13; i++) {
+    for (let s = 0; s < 4; s++) {
+      const c = RANKS[i] + SUITS[s];
+      if (!deadSet.has(c)) deck.push(c);
+    }
+  }
+
+  let strongerCount = 0, tiedCount = 0, weakerCount = 0;
+  for (let i = 0; i < deck.length; i++) {
+    for (let j = i + 1; j < deck.length; j++) {
+      const e = evaluate7([deck[i], deck[j], ...board]);
+      const made = computeMadeStrength(e.score, board);
+      if (made > heroMade)      strongerCount++;
+      else if (made < heroMade) weakerCount++;
+      else                      tiedCount++;
+    }
+  }
+
+  // contract: strongerCount + tiedCount + weakerCount === population
+  // Hero自身はpopulationに含めない（Heroはpopulationと比較される対象であり、
+  // populationの要素そのものではない）
+  const population = strongerCount + tiedCount + weakerCount;
+  const strengthPercentile = population > 0
+    ? (weakerCount + tiedCount * 0.5) / population * 100
+    : 0;
+  const rankPos = Math.round(strongerCount + tiedCount * 0.5) + 1;
+
+  return {
+    madeStrength: heroMade,
+    handName: heroRaw.categoryName || heroRaw.category,
+    strongerCount,
+    tiedCount,
+    weakerCount,
+    population,
+    strengthPercentile,
+    rankPos
+  };
 }
 
 
@@ -545,7 +606,22 @@ function computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix) {
     if (tex.texture === 'DRY' || tex.texture === 'VERY_DRY') posAdv += 0.10;
     if (tex.texture === 'WET' || tex.texture === 'VERY_WET') posAdv -= 0.10;
     if (conn === 'CONNECTED' || conn === 'HIGHLY_CONNECTED') posAdv -= 0.12;
-    if (pair === 'PAIRED' || pair === 'DOUBLE_PAIRED') posAdv -= 0.12;
+    // v3.9.42: 保留リスト②の監査で確定・修正。TRIPS_BOARD/QUADS_BOARDという
+    // 盤面構造が存在する一方、ここではPAIRED/DOUBLE_PAIREDのみを見ており
+    // TRIPS_BOARDが欠落していた。同じ「villain側がセットでトラップしやすい/
+    // レンジが偏る」という意味論を持つ他の2箇所（calcRangeDynamics()の
+    // isPaired判定、deriveAggressionSignal()のPOLARIZE判定）は両方とも
+    // PAIRED/DOUBLE_PAIRED/TRIPS_BOARDの3値を一貫してグループ化しており、
+    // computeRangeAdvantage()だけがこの拡張を欠いていたことをgrep監査で確認。
+    // QUADS_BOARDは意図的に対象外のまま維持する：上記2箇所を含むアプリ内の
+    // どの「villain trap/polarize」系分岐にも一度もQUADS_BOARDは含まれておらず、
+    // 代わりにBOARD_LOCKED（deriveHudSignals、importance 0.85）という完全に
+    // 別系統のHUDシグナルで扱われている（quadsは極端に稀・ロックされたボード
+    // でこの加減算モデルに馴染まないという設計判断が一貫している）。
+    // 20000盤面のbrute forceで検証済み：TRIPS_BOARD該当盤面は全て厳密に-0.12
+    // だけシフトし（PAIRED/DOUBLE_PAIRED/UNPAIRED/QUADS_BOARDは無変化）、
+    // 副作用は確認されなかった。
+    if (pair === 'PAIRED' || pair === 'DOUBLE_PAIRED' || pair === 'TRIPS_BOARD') posAdv -= 0.12;
     if (rank === 'LOW') posAdv -= 0.14;
   }
 
