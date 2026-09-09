@@ -394,8 +394,10 @@ STREET_COLORS = { PREFLOP:'#00d4ff', FLOP:'#00ff9d', TURN:'#ffb800', RIVER:'#ff3
 **注意:** 過去に `new Worker('worker/spectra-worker.js')` という誤ったパス参照により、
 `spectra-worker.js` が404 → `onerror`/3秒タイムアウト経由で `startFallback()` に落ちる
 （≒Workerエンジンが一切機能せずUIのみの空回り状態になる）バグがあった。
-現在の正しい参照パス: `new Worker('spectra-worker.js')`（index.htmlと同階層を直接参照）。
+当時の正しい参照パス: `new Worker('spectra-worker.js')`（index.htmlと同階層を直接参照）。
 `spectra-worker.js` 側の `importScripts('./core/utils.js', ...)` は変更不要（自身と同階層のcore/を見るため）。
+
+**v3.9.46追記：この節はv3.9.5より前の記述で現状と異なる。** v3.9.5でWorker起動はBlob URL方式（`getSpectraWorkerUrl()`が`index.html`埋め込みの`spectra-worker-src`からBlobを生成）に変更されており、`new Worker('spectra-worker.js')`への直接参照は`spectra-worker-src`が存在しない場合の実質到達しないフォールバックでしかない。`spectra-worker.js`自体はv3.9.46でcanonical source（`core/*.js`と共に）と位置付けられたが、実行経路としては使われていない。詳細はREADMEのv3.9.5・v3.9.46エントリを参照。
 
 ---
 
