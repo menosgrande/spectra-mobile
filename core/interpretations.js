@@ -283,7 +283,9 @@ function deriveInterpretations(features) {
 
   // ─ Flush pressure layer ─
   if (features.flushPressure === 'THREE_FLUSH') base.push('FLUSH_THREAT_ACTIVE');
-  if (features.flushPressure === 'FOUR_FLUSH') base.push('FLUSH_COMPLETED_BOARD');
+  // v3.9.32: classifyFlushPressureがFIVE_FLUSHを返せるようになったため、
+  // FOUR_FLUSHだけでなくFIVE_FLUSHでも「ボード上でフラッシュ完成済み」を発火させる。
+  if (features.flushPressure === 'FOUR_FLUSH' || features.flushPressure === 'FIVE_FLUSH') base.push('FLUSH_COMPLETED_BOARD');
 
   // ─ Pair structure layer ─
   if (features.pairStructure === 'DOUBLE_PAIRED') base.push('NUT_REGION_NARROW');

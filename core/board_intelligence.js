@@ -53,7 +53,7 @@ function analyzeBoard(board, context) {
   const rangeAdv        = computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix);
   const nutAdv          = computeNutAdvantage(board, heroPos, villainPos, rangeMatrix);
   const rangeStats      = computeRangeStats(rangeMatrix);
-  const structureFeatures = computeStructureFeatures(rangeMatrix);
+  const structureFeatures = computeStructureFeatures(rangeMatrix, board);
 
   // Attach continuous advantage values + range stats to features for downstream consumers
   features.rangeAdvantage    = rangeAdv;              // -1..+1

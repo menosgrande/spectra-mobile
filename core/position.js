@@ -12,6 +12,38 @@ const POSITION_PROFILE = {
     adjustmentFactor: 1.0     // baseline
   },
 
+  // v3.9.8: 9-max対応で追加。UTG〜HJの間を内挿したヒューリスティック値
+  // （GTOソルバー由来ではなく、公開レンジ表の中央値付近を目安に補間）。
+  UTG1: {
+    label: 'UTG+1',
+    openWidth: 0.65,
+    nutDensity: 1.17,
+    highCardDensity: 1.08,
+    drawCoverage: 0.82,
+    defensibility: 0.71,
+    adjustmentFactor: 1.02
+  },
+
+  UTG2: {
+    label: 'UTG+2',
+    openWidth: 0.70,
+    nutDensity: 1.15,
+    highCardDensity: 1.06,
+    drawCoverage: 0.84,
+    defensibility: 0.72,
+    adjustmentFactor: 1.05
+  },
+
+  LJ: {
+    label: 'LJ (Lojack)',
+    openWidth: 0.75,
+    nutDensity: 1.12,
+    highCardDensity: 1.03,
+    drawCoverage: 0.87,
+    defensibility: 0.73,
+    adjustmentFactor: 1.08
+  },
+
   HJ: {
     label: 'HJ (Hijack)',
     openWidth: 0.8,

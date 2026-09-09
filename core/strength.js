@@ -438,7 +438,13 @@ function boardHazard(board) {
 
 function computeMadeStrength(rawEval7, board) {
   const haz     = boardHazard(board);
-  const penalty = haz * 0.03 * (1 - rawEval7);
+  // v3.9.12: 係数0.03→0.10。以前は最大でも0.03程度しか下がらず、モノトーン
+  // ボードでオフスートがフラッシュ持ちに対して弱いという現実がほぼ色に出なかった。
+  // v3.9.46: index.html本番Blob bundleは既にv3.9.12時点でこの値だったが、
+  // core/strength.jsだけがimportScripts経由の実行系統に存在せず放置されており、
+  // 0.03のまま取り残されていた（v3.9.40で発見・報告のみ、v3.9.45で本番実測により
+  // 「0.10が既に本番の実挙動」と確定、v3.9.46のcanonical source統合で反映）。
+  const penalty = haz * 0.10 * (1 - rawEval7);
   return Math.max(0, rawEval7 - penalty);
 }
 

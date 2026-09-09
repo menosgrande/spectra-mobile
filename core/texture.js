@@ -126,9 +126,14 @@ function classifyPairStructure(board) {
   // に該当する分岐が存在せず、UNPAIRED誤判定になっていた。下流(deriveHudSignals
   // のQUADS_BOARD加点・BOARD_LOCKED等)は既にQUADS_BOARDという値を期待していたが、
   // この関数が一度もその値を返していなかったため到達不能だった。
-  // なお counts[0]===3 && counts[1]===2（フルハウスボード）は今回スコープ外
-  // としてTRIPS_BOARD命名のまま維持（FULL_HOUSE_BOARDへの分離は下流の重み表を
-  // 別途監査してから行うべきなので、意図的に見送っている）。
+  // なお counts[0]===3 && counts[1]===2（フルハウスボード）は下流影響監査
+  // （複数回の他AIレビュー）実施済みだが、TRIPS_BOARD命名のまま維持している。
+  // calcRangeDynamics/deriveAggressionSignal/deriveInterpretationsは「paired系」
+  // として両者を区別せず扱う設計で分離しても壊れないが、contextMultiplier(×1.2)と
+  // NUT_REGION_POLARIZEDのconfidence_rule(w:0.55)は分離した場合に個別の重み付けが
+  // 必要になり、その根拠となる実測データが今はない。分離自体は安全だが正当化する
+  // 明確なメリットがまだ確認できていないため、意図的に見送っている
+  // （詳細はREADME「保留機能（設計メモ）」参照）。
   if (counts[0] === 4) return 'QUADS_BOARD';
   if (counts[0] === 3 && counts[1] === 2) return 'TRIPS_BOARD';
   if (counts[0] === 3) return 'TRIPS_BOARD';
