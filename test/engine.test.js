@@ -334,8 +334,14 @@ console.log('\n=== range_matrix.js: OESD/GSD ホールカード非参加バグ�
 test('classifyDraw: 4連続ボード(J-T-9-8)でホールカードが無関係(33)ならOESD/GSDと判定されない（他AIレビュー指摘のCriticalバグ）', () => {
   // 注意: A-Kのようなハイカードは9-T-J-K-Qのガットショットが実在するため使えない
   // （ホール参加の"本物のドロー"になってしまう）。ランク的に完全に無関係な低いペアを使う。
+  // v3.9.46: このboard(Js,Th,9d,8c)は4スート全て異なる完全レインボーのため、
+  // ペア33はどのスートとも1枚しか被らずbackdoor flush draw（BD-FD）の対象になる
+  // （これはOESD/GSDとは無関係の別シグナルで、v3.9.46でcore側にも反映した
+  // ペア+backdoor FD対応により正しく検出されるようになった。本番Blob bundleでも
+  // 同じ入力でBD-FDが返ることを確認済み）。このテストの本来の目的である
+  // 「OESD/GSDには該当しない」という点は変わらず正しい。
   const board = ['Js', 'Th', '9d', '8c'];
-  assert.strictEqual(classifyDraw('33', board), null);
+  assert.strictEqual(classifyDraw('33', board), 'BD-FD');
 });
 
 test('classifyDraw: 同じ盤面でホールカードが実際に窓へ参加していれば引き続き正しく検出される（回帰確認）', () => {
@@ -541,6 +547,35 @@ test('computeHeroRank: Th9h on 8h7h2cJd3s (river, ストレート・tied9件) �
   assert.strictEqual(r.tiedCount, 9);
   assert.strictEqual(r.rankPos, 6);
   assert.ok(Math.abs(r.strengthPercentile - 99.54545454545455) < 1e-9);
+});
+
+console.log('\n=== v3.9.46: canonical source統合（本番Blob bundleとの5件のドリフト解消）golden test ===');
+
+test('POSITION_PROFILE: UTG1/UTG2/LJ（9-max対応、v3.9.8）がcore側にも存在する', () => {
+  assert.ok(getPositionProfile('UTG1'), 'core/position.jsに欠落していたUTG1が復元されているはず');
+  assert.ok(getPositionProfile('UTG2'), 'core/position.jsに欠落していたUTG2が復元されているはず');
+  assert.ok(getPositionProfile('LJ'), 'core/position.jsに欠落していたLJが復元されているはず');
+  assert.strictEqual(getPositionProfile('UTG1').label, 'UTG+1');
+});
+
+test('computeMadeStrength: 係数0.03→0.10（v3.9.12、本番Blob bundleでは既に適用済みだったがcoreだけ0.03のまま放置されていた）', () => {
+  // 778.3盤面（ペア・コネクテッド）でのhaz込みペナルティを実測固定。
+  // 0.03のままなら 0.5 - (haz*0.03*0.5) ≈ 0.4977、0.10なら0.4925。
+  const v = computeMadeStrength(0.5, ['7s', '7h', '8d']);
+  assert.ok(Math.abs(v - 0.4925) < 1e-9, `0.10係数での期待値0.4925に対し実際は${v}`);
+});
+
+test('deriveInterpretations: FIVE_FLUSH（5枚同スートのriverボード）でもFLUSH_COMPLETED_BOARDが発火する（v3.9.32のFIVE_FLUSH判定追加がcore側で見落とされていた）', () => {
+  const r = analyzeBoard(['2s', '5s', '9s', 'Ks', '7s'], {});
+  assert.strictEqual(r.features.flushPressure, 'FIVE_FLUSH');
+  assert.ok(r.interpretations.some(i => i.key === 'FLUSH_COMPLETED_BOARD'), 'FIVE_FLUSHでもFLUSH_COMPLETED_BOARDが発火するはず（FOUR_FLUSHのみのチェックだと見落とす）');
+});
+
+test('analyzeBoard: computeStructureFeatures()にboard引数が渡り、drawOverlapが機能する（渡っていないとdrawStructureのdrawOverlap寄与が常に0になる）', () => {
+  // 9-T-J-Qはドローが非常に豊富な盤面。board引数が渡っていれば
+  // drawOverlap(fd∩sd)が非ゼロになり得るため、drawStructureは高めに出るはず。
+  const r = analyzeBoard(['9d', 'Ts', 'Jc', 'Qh'], {});
+  assert.strictEqual(r.structureFeatures.drawStructure, 62);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
