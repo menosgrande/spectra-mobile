@@ -27,14 +27,24 @@ function classifyPotential(hand, board) {
     const suitCounts = {};
     board.forEach(c => suitCounts[c[1]] = (suitCounts[c[1]] || 0) + 1);
     const maxSuitOnBoard = Math.max(...Object.values(suitCounts));
-    // バグ修正: maxSuitOnBoard>=2なら常に「ドロー」として+0.45していたが、
-    // board側に既に3枚以上同スートがある場合、スーテッドハンド（2枚）と合わせて
-    // 5枚以上になり、フラッシュは既に完成している（ドローではない）。
-    // 例: 4-flushボード+スーテッドハンド = ロイヤル/フラッシュ完成なのに
-    // 「まだドロー中」として二重にpotentialを加算していた。
-    // → ちょうど2枚（=まだ1枚足りない、本物のドロー）の時だけ加算する。
-    hasFlushDraw  = maxSuitOnBoard === 2;
-    hasBackdoorFD = maxSuitOnBoard === 1; // バグ修正: 以前はバックドアに数値を一切与えていなかった
+    // バグ修正（v3.9.47、他AIレビュー指摘・実測検証済み）: スーテッドハンドは
+    // 2枚とも同じ1スートを共有するため、そのスートについて「board+hand」の
+    // 合計はmaxSuitOnBoard+2。一方ペアは2枚が必ず異なるスートなので、特定の
+    // 1スートに寄与できるのは最大1枚だけ、合計はmaxSuitOnBoard+1。
+    // 以前はこの違いを無視し、ペアにもスーテッドと同じ閾値（===2→FD, ===1→BD-FD）
+    // を使っていたため、ペアの判定が実際より1段階ズレていた
+    // （例: 33 on 3-flushフロップ=本物のFDなのにnull、33 on rainbowフロップ
+    // =フラッシュ到達が数学的に不可能なのにBD-FDという「幽霊ドロー」を検出していた）。
+    // さらにBD-FD（バックドア、残り2枚が必要）はturn以降（残り1枚）では成立
+    // し得ないため、board.length===3（フロップ）限定のガードも追加した
+    // （以前はturnでもBD-FDが誤って発火し、幽霊のoutsがUIに流れていた）。
+    if (isSuited) {
+      hasFlushDraw  = maxSuitOnBoard === 2;
+      hasBackdoorFD = maxSuitOnBoard === 1 && board.length === 3;
+    } else if (isPair) {
+      hasFlushDraw  = maxSuitOnBoard === 3;
+      hasBackdoorFD = maxSuitOnBoard === 2 && board.length === 3;
+    }
   }
 
   // ── Straight draw potential ──
@@ -143,7 +153,17 @@ function hasComboDraw(hand, board) {
     const suitCounts = {};
     board.forEach(c => suitCounts[c[1]] = (suitCounts[c[1]] || 0) + 1);
     const maxSuitCount = Math.max(...Object.values(suitCounts));
-    hasFlushDraw = maxSuitCount === 2;
+    // バグ修正（v3.9.48、他AIによる2回目の独立監査で指摘）: classifyDraw/
+    // classifyPotential（v3.9.47で修正済み）と全く同じ閾値誤共用バグが
+    // この関数にも独立に存在していた。hasComboDraw()はcomputeStructureFeatures()
+    // のdrawOverlap専用に独自のフラッシュ判定を持っており、v3.9.47の修正が
+    // ここには波及していなかった（UIのタグには出ないが、STRUCTURE RADARの
+    // DRW軸に歪みが残っていた）。スーテッドは2枚とも同スート(+2)、ペアは
+    // 1枚しか寄与できない(+1)ため閾値を分ける。ここでは「本物のFD」のみを
+    // 判定すればよく（backdoorはコンボドローの定義に含めない）、BD-FDの
+    // ケースは扱わない。
+    if (isSuited)    hasFlushDraw = maxSuitCount === 2;
+    else if (isPair) hasFlushDraw = maxSuitCount === 3;
   }
 
   return hasStraightDraw && hasFlushDraw;
@@ -213,11 +233,17 @@ function classifyDraw(hand, board) {
     const suitCounts = {};
     board.forEach(c => suitCounts[c[1]] = (suitCounts[c[1]] || 0) + 1);
     const maxSuitCount = Math.max(...Object.values(suitCounts));
-    // バグ修正: board側に既に3枚以上同スートがあれば、スーテッドハンド(2枚)と
-    // 合わせて5枚以上=フラッシュは既に完成しておりドローではない。
-    // 「まだ1枚足りない」ちょうど2枚の時だけFDタグを付ける。
-    if (maxSuitCount === 2) return 'FD';
-    if (maxSuitCount === 1) return 'BD-FD';
+    // バグ修正（v3.9.47、classifyPotentialと同一の根拠）: スーテッドハンドは
+    // 2枚とも同じスートなのでboard+hand=maxSuitCount+2、ペアは1枚しか寄与
+    // できないのでmaxSuitCount+1。閾値をisSuited/isPairで分け、BD-FD
+    // （残り2枚必要）はフロップ限定（board.length===3）にガードする。
+    if (isSuited) {
+      if (maxSuitCount === 2) return 'FD';
+      if (maxSuitCount === 1 && board.length === 3) return 'BD-FD';
+    } else if (isPair) {
+      if (maxSuitCount === 3) return 'FD';
+      if (maxSuitCount === 2 && board.length === 3) return 'BD-FD';
+    }
   }
 
   return null;

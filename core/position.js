@@ -142,7 +142,16 @@ const RANGE_ARCHETYPE_PROFILE = {
 
 
 function getPositionProfile(position) {
-  return POSITION_PROFILE[position] || POSITION_PROFILE.BB;
+  // v3.9.47: 他AIによる独立監査の指摘。未知のposition文字列（タイポ等）が
+  // 黙ってBBにフォールバックすると、UTG1/UTG2/LJ復元(v3.9.46)前は特にBBの
+  // defendWidth:1.8が誤って全未定義positionに適用される実害があった。
+  // 復元後の実害は無いが、タイポを静かな誤計算にしないため警告だけ残す。
+  const profile = POSITION_PROFILE[position];
+  if (!profile) {
+    console.warn(`[SPECTRA] getPositionProfile: 未知のposition "${position}" — BBにフォールバックします`);
+    return POSITION_PROFILE.BB;
+  }
+  return profile;
 }
 
 
