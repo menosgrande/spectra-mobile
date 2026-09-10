@@ -78,7 +78,7 @@ const INTERP_META = {
   NUT_REGION_POLARIZED: {
     category: 'NUT', importance: 0.85,
     confidence_rules: [
-      { w: 0.55, test: f => f.pairStructure === 'TRIPS_BOARD' },
+      { w: 0.55, test: f => f.pairStructure === 'TRIPS_BOARD' || f.pairStructure === 'FULL_HOUSE_BOARD' },
       { w: 0.20, test: f => f.nutAdvantage && Math.abs(f.nutAdvantage.advantage) > 0.3 },
       { w: 0.15, test: f => f.rankStructure === 'HIGH' || f.rankStructure === 'LOW' },
       { w: 0.10, test: f => (f.rangeStats?.madeSpread || 0) > 0.22 } // extreme spread = very polarized
@@ -240,7 +240,7 @@ function contextMultiplier(features) {
   else if (features.connectivity === 'CONNECTED') m *= 1.1;
 
   if (features.pairStructure === 'DOUBLE_PAIRED') m *= 1.25;
-  else if (features.pairStructure === 'TRIPS_BOARD') m *= 1.2;
+  else if (features.pairStructure === 'TRIPS_BOARD' || features.pairStructure === 'FULL_HOUSE_BOARD') m *= 1.2;
 
   if (features.flushPressure === 'THREE_FLUSH') m *= 1.2;
   else if (features.flushPressure === 'FOUR_FLUSH') m *= 1.25;
@@ -289,7 +289,7 @@ function deriveInterpretations(features) {
 
   // ─ Pair structure layer ─
   if (features.pairStructure === 'DOUBLE_PAIRED') base.push('NUT_REGION_NARROW');
-  if (features.pairStructure === 'TRIPS_BOARD') base.push('NUT_REGION_POLARIZED');
+  if (features.pairStructure === 'TRIPS_BOARD' || features.pairStructure === 'FULL_HOUSE_BOARD') base.push('NUT_REGION_POLARIZED');
   if (features.pairStructure === 'QUADS_BOARD') base.push('BOARD_LOCKED');
 
   // ─ Rank + Range layer (NOW ARCHETYPE-MODULATED UPSTREAM) ─

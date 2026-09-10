@@ -661,7 +661,7 @@ function computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix) {
     // 20000盤面のbrute forceで検証済み：TRIPS_BOARD該当盤面は全て厳密に-0.12
     // だけシフトし（PAIRED/DOUBLE_PAIRED/UNPAIRED/QUADS_BOARDは無変化）、
     // 副作用は確認されなかった。
-    if (pair === 'PAIRED' || pair === 'DOUBLE_PAIRED' || pair === 'TRIPS_BOARD') posAdv -= 0.12;
+    if (pair === 'PAIRED' || pair === 'DOUBLE_PAIRED' || pair === 'TRIPS_BOARD' || pair === 'FULL_HOUSE_BOARD') posAdv -= 0.12;
     if (rank === 'LOW') posAdv -= 0.14;
   }
 

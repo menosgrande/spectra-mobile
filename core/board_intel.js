@@ -68,7 +68,7 @@ function calcRangeDynamics(texture, connectivity, rankStructure, pairStructure, 
   const isHighCardAdvantage = rankStructure === 'HIGH' && connectivity === 'LOW_CONNECTED';
   const isDrawHeavy = texture === 'VERY_WET' || texture === 'WET';
   const isConnected = connectivity === 'CONNECTED' || connectivity === 'HIGHLY_CONNECTED';
-  const isPaired = pairStructure === 'PAIRED' || pairStructure === 'DOUBLE_PAIRED' || pairStructure === 'TRIPS_BOARD';
+  const isPaired = pairStructure === 'PAIRED' || pairStructure === 'DOUBLE_PAIRED' || pairStructure === 'TRIPS_BOARD' || pairStructure === 'FULL_HOUSE_BOARD';
 
   // ─ Board adjustments to position advantage ─
   let boardModifier = 1.0;
@@ -162,7 +162,7 @@ function deriveAggressionSignal(features) {
     return 'DEFEND';
   }
 
-  if (pairStructure === 'PAIRED' || pairStructure === 'DOUBLE_PAIRED' || pairStructure === 'TRIPS_BOARD') {
+  if (pairStructure === 'PAIRED' || pairStructure === 'DOUBLE_PAIRED' || pairStructure === 'TRIPS_BOARD' || pairStructure === 'FULL_HOUSE_BOARD') {
     return 'POLARIZE';
   }
 
