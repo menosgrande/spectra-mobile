@@ -17,7 +17,11 @@ const path = require('path');
 const { Hand } = require('pokersolver');
 
 // ── SPECTRA core を読み込み（Workerと同じ結合方式） ──
-const CORE_DIR = path.join(__dirname, '..', 'testrun', 'core');
+const CORE_DIR = path.join(__dirname, '..', 'core');
+// v3.9.47: 他AIによる独立監査で指摘。'testrun/core'という存在しないパスを
+// 参照しており、このファイルは単体では実行不能だった。engine.test.jsと
+// 同じ../coreに修正。ただしpokersolver自体は依存関係として未導入
+// （package.jsonが無い）ため、`npm install pokersolver`が別途必要。
 const FILES = [
   'utils.js', 'texture.js', 'position.js', 'strength.js',
   'range_matrix.js', 'board_intel.js', 'interpretations.js',

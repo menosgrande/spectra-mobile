@@ -334,14 +334,18 @@ console.log('\n=== range_matrix.js: OESD/GSD ホールカード非参加バグ�
 test('classifyDraw: 4連続ボード(J-T-9-8)でホールカードが無関係(33)ならOESD/GSDと判定されない（他AIレビュー指摘のCriticalバグ）', () => {
   // 注意: A-Kのようなハイカードは9-T-J-K-Qのガットショットが実在するため使えない
   // （ホール参加の"本物のドロー"になってしまう）。ランク的に完全に無関係な低いペアを使う。
-  // v3.9.46: このboard(Js,Th,9d,8c)は4スート全て異なる完全レインボーのため、
-  // ペア33はどのスートとも1枚しか被らずbackdoor flush draw（BD-FD）の対象になる
-  // （これはOESD/GSDとは無関係の別シグナルで、v3.9.46でcore側にも反映した
-  // ペア+backdoor FD対応により正しく検出されるようになった。本番Blob bundleでも
-  // 同じ入力でBD-FDが返ることを確認済み）。このテストの本来の目的である
-  // 「OESD/GSDには該当しない」という点は変わらず正しい。
+  // v3.9.46で一度BD-FDに書き換えたが誤りだった。v3.9.46時点の本番Blob bundleが
+  // 実際にBD-FDを返していたことは事実だが、「本番と同じだから正しい」という
+  // 検証だけで期待値を更新し、その挙動自体がポーカーとして正しいかを検証して
+  // いなかった（他AIによる独立監査で指摘・実測確認）。このboard(Js,Th,9d,8c)は
+  // 4スート全て異なる完全レインボーで、33はどのスートも1枚しか持たないため、
+  // ボード+ホール=1+1=2枚にしかならず、フラッシュ完成に必要な3枚（残りturn+river
+  // の2枚）を全て自分と同スートで揃える必要がある——backdoorとしてもボードの
+  // 寄与が0なので数学的に到達不可能で、正しくはドロー無し(null)。v3.9.47で
+  // classifyDraw/classifyPotentialのペア閾値バグ（スーテッドと同じ閾値を誤流用
+  // していた）を修正し、本来のnullに戻した。
   const board = ['Js', 'Th', '9d', '8c'];
-  assert.strictEqual(classifyDraw('33', board), 'BD-FD');
+  assert.strictEqual(classifyDraw('33', board), null);
 });
 
 test('classifyDraw: 同じ盤面でホールカードが実際に窓へ参加していれば引き続き正しく検出される（回帰確認）', () => {
@@ -549,6 +553,55 @@ test('computeHeroRank: Th9h on 8h7h2cJd3s (river, ストレート・tied9件) �
   assert.ok(Math.abs(r.strengthPercentile - 99.54545454545455) < 1e-9);
 });
 
+console.log('\n=== v3.9.47: ペアFD/BD-FDの閾値バグ修正（他AIによる独立監査で発見）意味論マトリクステスト ===');
+// 設計方針（監査提言どおり）: 実カード列挙による「フラッシュ到達可能性」という
+// ポーカー規則そのものから正解を導き、コード出力と突き合わせる。suitedは2枚とも
+// 同一スート（board+hand=maxSuit+2）、pairは1枚しか寄与できない（+1）。
+// BD-FD（残り2枚必要）はflop（board.length===3）限定。
+
+test('classifyDraw: ペア×3-flushフロップ = 本物のFD（board3+ペア1枚=4枚、あと1枚待ち）', () => {
+  assert.strictEqual(classifyDraw('33', ['3s', '7s', 'Ks']), 'FD');
+});
+test('classifyDraw: ペア×2-toneフロップ = バックドアFD（board2+ペア1枚=3枚、残り2枚必要）', () => {
+  assert.strictEqual(classifyDraw('33', ['7s', '2d', '9s']), 'BD-FD');
+});
+test('classifyDraw: ペア×rainbowフロップ = ドロー無し（board1+ペア1枚=2枚、残り3枚必要=到達不可能）', () => {
+  assert.strictEqual(classifyDraw('33', ['2s', '7h', '9d']), null);
+});
+test('classifyDraw: ペア×rainbowターン = ドロー無し（turn以降はbackdoor自体が成立し得ない、残りriver1枚のみ）', () => {
+  assert.strictEqual(classifyDraw('33', ['2s', '7h', '9d', 'Kc']), null);
+});
+test('classifyDraw: ペア×1-flushターン = 本物のFD（board3+ペア1枚=4枚、river待ちの実在ドロー）', () => {
+  assert.strictEqual(classifyDraw('33', ['3s', '7s', '9d', 'Ks']), 'FD');
+});
+test('classifyDraw: スーテッド×rainbowターン = ドロー無し（turnのBD-FDは残りriver1枚のみで成立不能）', () => {
+  assert.strictEqual(classifyDraw('AKs', ['2s', '7h', '9d', 'Kc']), null);
+});
+test('classifyDraw: スーテッド×1-flushターン = 本物のFD（board2枚+スーテッド2枚=4枚、river待ちの実在ドロー）', () => {
+  // 2s,7h,9s,Kcのうちsスートが2枚(2s,9s)。スーテッドは2枚とも同スートなので
+  // board2+hand2=4枚、river1枚待ちの本物のフラッシュドロー。
+  assert.strictEqual(classifyDraw('AKs', ['2s', '7h', '9s', 'Kc']), 'FD');
+});
+test('classifyPotential: ペア×rainbowフロップはpotential=0（幽霊ドローのoutsがUIに出ない回帰確認）', () => {
+  assert.strictEqual(classifyPotential('33', ['2s', '7h', '9d']), 0);
+});
+test('classifyPotential: ペア×3-flushフロップは非ゼロ（本物のFDとしてpotentialに反映される）', () => {
+  assert.ok(classifyPotential('33', ['3s', '7s', 'Ks']) > 0);
+});
+
+console.log('\n=== v3.9.48: hasComboDraw()に残っていた同一バグ（他AIによる2回目の独立監査で発見）===');
+test('hasComboDraw: ペア66×3-flushフロップ(5s,7s,8s)でストレートドロー+本物のFD=combo drawとしてtrue', () => {
+  // v3.9.47の修正はclassifyDraw/classifyPotentialのみで、drawOverlap専用の
+  // 独自フラッシュ判定を持つhasComboDraw()には波及していなかった（他AIによる
+  // 2回目の独立監査で指摘）。board(5s,7s,8s)は3-flush(board3+ペア1枚=4枚、
+  // 本物のFD)かつ66にとってOESD/GSD相当のストレートドローも存在するため、
+  // 修正後は正しくtrueになるはず。
+  assert.strictEqual(hasComboDraw('66', ['5s', '7s', '8s']), true);
+});
+test('hasComboDraw: ペア66×2-toneフロップ(5s,7d,8s)は本物のFDではない（backdoorはコンボドローに含めない）ためfalse', () => {
+  assert.strictEqual(hasComboDraw('66', ['5s', '7d', '8s']), false);
+});
+
 console.log('\n=== v3.9.46: canonical source統合（本番Blob bundleとの5件のドリフト解消）golden test ===');
 
 test('POSITION_PROFILE: UTG1/UTG2/LJ（9-max対応、v3.9.8）がcore側にも存在する', () => {
@@ -572,11 +625,31 @@ test('deriveInterpretations: FIVE_FLUSH（5枚同スートのriverボード）�
 });
 
 test('analyzeBoard: computeStructureFeatures()にboard引数が渡り、drawOverlapが機能する（渡っていないとdrawStructureのdrawOverlap寄与が常に0になる）', () => {
-  // 9-T-J-Qはドローが非常に豊富な盤面。board引数が渡っていれば
-  // drawOverlap(fd∩sd)が非ゼロになり得るため、drawStructureは高めに出るはず。
-  const r = analyzeBoard(['9d', 'Ts', 'Jc', 'Qh'], {});
-  assert.strictEqual(r.structureFeatures.drawStructure, 62);
+  // v3.9.47修正: 他AIによる独立監査で指摘。旧テスト(9d-Ts-Jc-Qh)は4スートが
+  // バラバラの完全レインボーで、hasComboDrawのフラッシュ側条件が全ハンドで
+  // falseになりdrawOverlapが構造上常に0になる盤面だったため、board引数を
+  // 渡しても渡さなくても結果が同一(=62)になり、テストの目的（board引数の
+  // 有無で結果が変わることの確認）を一度も証明していなかった。
+  // 9s-Ts-Jc-2dはスート2枚(9s,Ts)を含みコンボドローが実際に発生するため、
+  // board引数の有無で drawStructure が 63(あり) vs 59(なし) と分岐する
+  // （v3.9.48でhasComboDraw()のペア閾値バグを修正した際に64→63へ変化。
+  // ペア絡みの偽陽性コンボドローが1件減った分の妥当な変化）。
+  const r = analyzeBoard(['9s', 'Ts', 'Jc', '2d'], {});
+  assert.strictEqual(r.structureFeatures.drawStructure, 63);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
-process.exit(fail > 0 ? 1 : 0);
+
+// v3.9.47: 他AIによる独立監査の指摘（テストと`--check`が非束縛で、テストが
+// 通ってもindex.htmlの生成物が同期している保証がなかった）を受けて追加。
+// core/*.jsのテストが全通過しても、tools/build-worker-bundle.js --checkが
+// 失敗する状態（index.html未再生成）ではCI的には失敗として扱う。
+const { execFileSync } = require('child_process');
+let checkOk = true;
+try {
+  execFileSync('node', [path.join(__dirname, '..', 'tools', 'build-worker-bundle.js'), '--check'], { stdio: 'inherit' });
+} catch (e) {
+  checkOk = false;
+}
+
+process.exit((fail > 0 || !checkOk) ? 1 : 0);
