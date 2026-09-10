@@ -589,6 +589,37 @@ test('classifyPotential: ペア×3-flushフロップは非ゼロ（本物のFD�
   assert.ok(classifyPotential('33', ['3s', '7s', 'Ks']) > 0);
 });
 
+console.log('\n=== v3.9.49: FULL_HOUSE_BOARD分離（TRIPS_BOARDから独立、⑤対応）golden test ===');
+test('classifyPairStructure: AAA22（フルハウスボード）はFULL_HOUSE_BOARDを返す', () => {
+  assert.strictEqual(classifyPairStructure(['As', 'Ad', 'Ac', '2s', '2d']), 'FULL_HOUSE_BOARD');
+});
+test('classifyPairStructure: AAA27（純粋なトリップス、フルハウスではない）は引き続きTRIPS_BOARDのまま', () => {
+  assert.strictEqual(classifyPairStructure(['As', 'Ad', 'Ac', '2s', '7d']), 'TRIPS_BOARD');
+});
+test('classifyPairStructure: AAAA2（クアッズ）は引き続きQUADS_BOARDのまま（このグループの対象外）', () => {
+  assert.strictEqual(classifyPairStructure(['As', 'Ad', 'Ac', 'Ah', '2s']), 'QUADS_BOARD');
+});
+test('computeRangeAdvantage: フルハウスボードでもTRIPS_BOARDと同じ-0.12シフトを受ける（重み値は共用のまま分離）', () => {
+  // 6s,6d,6c,2s,9d(TRIPS_BOARD)から5枚目だけ2dに変えてFULL_HOUSE_BOARD化すると、
+  // rank/connectivity分類も連動して変わってしまうため定数比較で差分を厳密分離
+  // するのは困難。ここでは実測値を直接固定する（このファイルの他のgolden test
+  // と同じ方針）。値が変わった場合、-0.12シフト条件からFULL_HOUSE_BOARDが
+  // 抜け落ちていないか、他の分類関数に変更が無いかをまず疑うこと。
+  const adv = computeRangeAdvantage(['6s', '6d', '6c', '2s', '2d'], 'BTN', 'BB', []);
+  assert.ok(Math.abs(adv - (-0.303076923076923)) < 1e-9, `実測値-0.303076923076923に対し実際は${adv}`);
+});
+test('deriveInterpretations: フルハウスボードでもNUT_REGION_POLARIZEDが引き続き発火する', () => {
+  const r = analyzeBoard(['As', 'Ad', 'Ac', '2s', '2d'], {});
+  assert.ok(r.interpretations.some(i => i.key === 'NUT_REGION_POLARIZED'), 'FULL_HOUSE_BOARDでもNUT_REGION_POLARIZEDが発火するはず（TRIPS_BOARDと同じ条件に追加済み）');
+});
+test('calcRangeDynamics/deriveAggressionSignal: フルハウスボードもisPaired/POLARIZE判定に含まれ続ける', () => {
+  const r = analyzeBoard(['As', 'Ad', 'Ac', '2s', '2d'], {});
+  assert.strictEqual(r.features.aggressionSignal === 'POLARIZE' || r.features.rangeDynamics !== undefined, true);
+  // isPairedはrangeDynamics算出のboardModifier経由で間接的にしか見えないため、
+  // ここではderiveAggressionSignal側のPOLARIZE分岐（より直接的）で確認する。
+  assert.strictEqual(r.features.aggressionSignal, 'POLARIZE');
+});
+
 console.log('\n=== v3.9.48: hasComboDraw()に残っていた同一バグ（他AIによる2回目の独立監査で発見）===');
 test('hasComboDraw: ペア66×3-flushフロップ(5s,7s,8s)でストレートドロー+本物のFD=combo drawとしてtrue', () => {
   // v3.9.47の修正はclassifyDraw/classifyPotentialのみで、drawOverlap専用の
