@@ -746,16 +746,19 @@ function classifyPairStructure(board) {
   // に該当する分岐が存在せず、UNPAIRED誤判定になっていた。下流(deriveHudSignals
   // のQUADS_BOARD加点・BOARD_LOCKED等)は既にQUADS_BOARDという値を期待していたが、
   // この関数が一度もその値を返していなかったため到達不能だった。
-  // なお counts[0]===3 && counts[1]===2（フルハウスボード）は下流影響監査
-  // （複数回の他AIレビュー）実施済みだが、TRIPS_BOARD命名のまま維持している。
-  // calcRangeDynamics/deriveAggressionSignal/deriveInterpretationsは「paired系」
-  // として両者を区別せず扱う設計で分離しても壊れないが、contextMultiplier(×1.2)と
-  // NUT_REGION_POLARIZEDのconfidence_rule(w:0.55)は分離した場合に個別の重み付けが
-  // 必要になり、その根拠となる実測データが今はない。分離自体は安全だが正当化する
-  // 明確なメリットがまだ確認できていないため、意図的に見送っている
-  // （詳細はREADME「保留機能（設計メモ）」参照）。
+  // v3.9.49: counts[0]===3 && counts[1]===2（フルハウスボード）をTRIPS_BOARDから
+  // 分離しFULL_HOUSE_BOARDを返すようにした。複数回の下流影響監査（他AIレビュー含む）
+  // で全消費箇所を洗い出し済み：calcRangeDynamics()のisPaired、
+  // deriveAggressionSignal()のPOLARIZE判定、computeRangeAdvantage()の-0.12シフト、
+  // interpretations.jsのNUT_REGION_POLARIZED（confidence w:0.55）とcontextMultiplier
+  // （×1.2）——これら全てにFULL_HOUSE_BOARDをTRIPS_BOARDと同じ条件として追加した
+  // （個別の重み付けを正当化する実測データがまだ無いため、数値は新設せず完全に
+  // 共用。ラベルだけを分離し、下流の扱いはTRIPS_BOARDと挙動上100%同一のまま）。
+  // index.html側のUI専用関数（renderNutsのboardHasPair、generateTacticalInsights
+  // のRANGE CAPPEDツールチップ）も同様に対応済み。QUADS_BOARDは元々このグループ
+  // に含まれておらず影響なし。
   if (counts[0] === 4) return 'QUADS_BOARD';
-  if (counts[0] === 3 && counts[1] === 2) return 'TRIPS_BOARD';
+  if (counts[0] === 3 && counts[1] === 2) return 'FULL_HOUSE_BOARD';
   if (counts[0] === 3) return 'TRIPS_BOARD';
   if (counts[0] === 2 && counts[1] === 2) return 'DOUBLE_PAIRED';
   if (counts[0] === 2) return 'PAIRED';
@@ -2169,7 +2172,7 @@ function computeRangeAdvantage(board, heroPos, villainPos, rangeMatrix) {
     // 20000盤面のbrute forceで検証済み：TRIPS_BOARD該当盤面は全て厳密に-0.12
     // だけシフトし（PAIRED/DOUBLE_PAIRED/UNPAIRED/QUADS_BOARDは無変化）、
     // 副作用は確認されなかった。
-    if (pair === 'PAIRED' || pair === 'DOUBLE_PAIRED' || pair === 'TRIPS_BOARD') posAdv -= 0.12;
+    if (pair === 'PAIRED' || pair === 'DOUBLE_PAIRED' || pair === 'TRIPS_BOARD' || pair === 'FULL_HOUSE_BOARD') posAdv -= 0.12;
     if (rank === 'LOW') posAdv -= 0.14;
   }
 
@@ -2296,7 +2299,7 @@ function calcRangeDynamics(texture, connectivity, rankStructure, pairStructure, 
   const isHighCardAdvantage = rankStructure === 'HIGH' && connectivity === 'LOW_CONNECTED';
   const isDrawHeavy = texture === 'VERY_WET' || texture === 'WET';
   const isConnected = connectivity === 'CONNECTED' || connectivity === 'HIGHLY_CONNECTED';
-  const isPaired = pairStructure === 'PAIRED' || pairStructure === 'DOUBLE_PAIRED' || pairStructure === 'TRIPS_BOARD';
+  const isPaired = pairStructure === 'PAIRED' || pairStructure === 'DOUBLE_PAIRED' || pairStructure === 'TRIPS_BOARD' || pairStructure === 'FULL_HOUSE_BOARD';
 
   // ─ Board adjustments to position advantage ─
   let boardModifier = 1.0;
@@ -2390,7 +2393,7 @@ function deriveAggressionSignal(features) {
     return 'DEFEND';
   }
 
-  if (pairStructure === 'PAIRED' || pairStructure === 'DOUBLE_PAIRED' || pairStructure === 'TRIPS_BOARD') {
+  if (pairStructure === 'PAIRED' || pairStructure === 'DOUBLE_PAIRED' || pairStructure === 'TRIPS_BOARD' || pairStructure === 'FULL_HOUSE_BOARD') {
     return 'POLARIZE';
   }
 
@@ -2480,7 +2483,7 @@ const INTERP_META = {
   NUT_REGION_POLARIZED: {
     category: 'NUT', importance: 0.85,
     confidence_rules: [
-      { w: 0.55, test: f => f.pairStructure === 'TRIPS_BOARD' },
+      { w: 0.55, test: f => f.pairStructure === 'TRIPS_BOARD' || f.pairStructure === 'FULL_HOUSE_BOARD' },
       { w: 0.20, test: f => f.nutAdvantage && Math.abs(f.nutAdvantage.advantage) > 0.3 },
       { w: 0.15, test: f => f.rankStructure === 'HIGH' || f.rankStructure === 'LOW' },
       { w: 0.10, test: f => (f.rangeStats?.madeSpread || 0) > 0.22 } // extreme spread = very polarized
@@ -2642,7 +2645,7 @@ function contextMultiplier(features) {
   else if (features.connectivity === 'CONNECTED') m *= 1.1;
 
   if (features.pairStructure === 'DOUBLE_PAIRED') m *= 1.25;
-  else if (features.pairStructure === 'TRIPS_BOARD') m *= 1.2;
+  else if (features.pairStructure === 'TRIPS_BOARD' || features.pairStructure === 'FULL_HOUSE_BOARD') m *= 1.2;
 
   if (features.flushPressure === 'THREE_FLUSH') m *= 1.2;
   else if (features.flushPressure === 'FOUR_FLUSH') m *= 1.25;
@@ -2691,7 +2694,7 @@ function deriveInterpretations(features) {
 
   // ─ Pair structure layer ─
   if (features.pairStructure === 'DOUBLE_PAIRED') base.push('NUT_REGION_NARROW');
-  if (features.pairStructure === 'TRIPS_BOARD') base.push('NUT_REGION_POLARIZED');
+  if (features.pairStructure === 'TRIPS_BOARD' || features.pairStructure === 'FULL_HOUSE_BOARD') base.push('NUT_REGION_POLARIZED');
   if (features.pairStructure === 'QUADS_BOARD') base.push('BOARD_LOCKED');
 
   // ─ Rank + Range layer (NOW ARCHETYPE-MODULATED UPSTREAM) ─
@@ -3667,7 +3670,8 @@ function generateTacticalInsights(sf, pairStruct) {
   const covCapped = cov >= 58;
   if (polCapped || covCapped) {
     const isPairedBoard = pairStruct === 'PAIRED' || pairStruct === 'DOUBLE_PAIRED'
-                        || pairStruct === 'TRIPS_BOARD' || pairStruct === 'QUADS_BOARD';
+                        || pairStruct === 'TRIPS_BOARD' || pairStruct === 'FULL_HOUSE_BOARD'
+                        || pairStruct === 'QUADS_BOARD';
     let capText;
     if (polCapped && covCapped) {
       capText = '中間強度帯の分布が厚く、かつ上位と下位の強さの差も小さい構造'
