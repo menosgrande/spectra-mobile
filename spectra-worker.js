@@ -36,7 +36,12 @@ self.onmessage = function (e) {
     if (type === 'INIT') {
       self.postMessage({
         type: 'INIT_OK',
-        version: '3.9.1',
+        // v3.9.47: 他AIによる独立監査で指摘。この文字列はv3.9.1以降ずっと
+        // 更新されておらず、実際のバージョンと乖離していた（診断時の混乱種）。
+        // このプロジェクトにバージョンの単一の正はREADMEの変更履歴しかなく、
+        // ここだけを機械的に同期する仕組みも無いため、精度の低い数字を
+        // 更新し続けるより「追跡していない」ことを明示する方が安全と判断。
+        version: 'unspecified (see README changelog)',
         capabilities: ['BOARD_INTELLIGENCE', 'EVAL_169', 'TEXTURE', 'HERO_RANK']
       });
       return;
