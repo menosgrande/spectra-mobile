@@ -26,7 +26,7 @@ const fs = require('fs');
 const path = require('path');
 
 const CORE_DIR = process.argv[2] || path.join(__dirname, 'core');
-const FILES = ['utils.js','texture.js','position.js','strength.js','range_matrix.js','board_intel.js','interpretations.js','narrative.js','board_intelligence.js'];
+const FILES = ['utils.js','texture.js','position.js','strength.js','equity.js','range_matrix.js','board_intel.js','interpretations.js','narrative.js','board_intelligence.js'];
 let code = '';
 for (const f of FILES) code += fs.readFileSync(path.join(CORE_DIR, f), 'utf8') + '\n';
 eval(code);

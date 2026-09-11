@@ -23,7 +23,7 @@ const CORE_DIR = path.join(__dirname, '..', 'core');
 // 同じ../coreに修正。ただしpokersolver自体は依存関係として未導入
 // （package.jsonが無い）ため、`npm install pokersolver`が別途必要。
 const FILES = [
-  'utils.js', 'texture.js', 'position.js', 'strength.js',
+  'utils.js', 'texture.js', 'position.js', 'strength.js', 'equity.js',
   'range_matrix.js', 'board_intel.js', 'interpretations.js',
   'narrative.js', 'board_intelligence.js'
 ];

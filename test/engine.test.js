@@ -19,7 +19,7 @@ const assert = require('assert');
 
 const CORE_DIR = path.join(__dirname, '..', 'core');
 const FILES = [
-  'utils.js', 'texture.js', 'position.js', 'strength.js',
+  'utils.js', 'texture.js', 'position.js', 'strength.js', 'equity.js',
   'range_matrix.js', 'board_intel.js', 'interpretations.js',
   'narrative.js', 'board_intelligence.js'
 ];
@@ -587,6 +587,56 @@ test('classifyPotential: ペア×rainbowフロップはpotential=0（幽霊ド�
 });
 test('classifyPotential: ペア×3-flushフロップは非ゼロ（本物のFDとしてpotentialに反映される）', () => {
   assert.ok(classifyPotential('33', ['3s', '7s', 'Ks']) > 0);
+});
+
+console.log('\n=== v3.9.50: computeEquity() ⑥-B/C（river完全列挙のみ）golden test ===');
+test('computeEquity: ロイヤルフラッシュ(Ah,Kh on Th,Jh,Qh,2c,3d)は唯一無二の最強手なのでequity=1.0', () => {
+  // ハート5枚(Ah,Kh,Qh,Jh,Th)でロイヤルフラッシュ完成。これを上回る/並ぶ役は
+  // 存在せず、かつ必要なAh/Khを両方Heroが保持しているため他の誰にも再現
+  // できない（手計算で自明にwin=100%になるケース）。
+  const r = computeEquity({ hero: ['Ah', 'Kh'], board: ['Th', 'Jh', 'Qh', '2c', '3d'] });
+  assert.strictEqual(r.totalWeight, 990); // C(45,2)
+  assert.strictEqual(r.winCount, 990);
+  assert.strictEqual(r.tieCount, 0);
+  assert.strictEqual(r.lossCount, 0);
+  assert.strictEqual(r.equity, 1);
+});
+
+test('computeEquity: クアッズ2ボード(2c,2d,2h,2s,Kc)でHero=As,Qd — 手計算(win=861/990,tie=129/990,loss=0)と一致', () => {
+  // ボードの2222はクアッズとして全員共通。勝敗は「board外で最も高いカード
+  // （キッカー）」のみで決まる。HeroはAsを持つため、Villainが残り3枚の
+  // エース(Ah,Ac,Ad)のいずれかを持てばキッカー同点＝tie、持たなければ
+  // Heroのキッカー(A)がVillainの最良キッカー(最大でK)を上回るため必ずwin。
+  // Villainが敗北するケースは数学的に存在しない（Heroのキッカーがすでに
+  // 最強のAのため）。
+  // 全コンボ=C(45,2)=990。エースを1枚以上含むコンボ=990-C(42,2)=990-861=129（tie）。
+  // エースを含まないコンボ=861（win）。
+  const r = computeEquity({ hero: ['As', 'Qd'], board: ['2c', '2d', '2h', '2s', 'Kc'] });
+  assert.strictEqual(r.totalWeight, 990);
+  assert.strictEqual(r.winCount, 861);
+  assert.strictEqual(r.tieCount, 129);
+  assert.strictEqual(r.lossCount, 0);
+  assert.ok(Math.abs(r.equity - (861 / 990 + 129 / 990 * 0.5)) < 1e-9);
+});
+
+test('computeEquity: turn(board.length===4)は⑥-D未実装のため明示的にエラー', () => {
+  assert.throws(() => computeEquity({ hero: ['As', 'Ks'], board: ['2c', '7d', '9s', 'Jh'] }), /turn.*not yet implemented/);
+});
+
+test('computeEquity: flop(board.length===3)は⑥-F未実装のため明示的にエラー', () => {
+  assert.throws(() => computeEquity({ hero: ['As', 'Ks'], board: ['2c', '7d', '9s'] }), /flop.*not yet implemented/);
+});
+
+test('computeEquity: preflop(board.length<3)はHERO_RANKと同じ理由で非対応、明示的にエラー', () => {
+  assert.throws(() => computeEquity({ hero: ['As', 'Ks'], board: [] }), /preflop/);
+});
+
+test('computeEquity: villainRange指定はMVPで未実装のため黙って無視せず明示的にエラー（API予約のみ）', () => {
+  assert.throws(() => computeEquity({
+    hero: ['As', 'Ks'],
+    board: ['2c', '7d', '9s', 'Jh', 'Kc'],
+    villainRange: [{ cards: ['Qh', 'Qd'], weight: 1 }]
+  }), /villainRange.*not yet implemented/);
 });
 
 console.log('\n=== v3.9.49: FULL_HOUSE_BOARD分離（TRIPS_BOARDから独立、⑤対応）golden test ===');
