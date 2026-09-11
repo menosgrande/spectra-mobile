@@ -5,7 +5,7 @@
  * 計算・評価・意味生成はすべて core/ モジュールが行う。
  *
  * importScripts 読込順（依存グラフ順）:
- *   utils → texture → position → strength → range_matrix
+ *   utils → texture → position → strength → equity → range_matrix
  *   → board_intel → interpretations → narrative → board_intelligence
  */
 
@@ -14,6 +14,7 @@ importScripts(
   './core/texture.js',
   './core/position.js',
   './core/strength.js',
+  './core/equity.js',
   './core/range_matrix.js',
   './core/board_intel.js',
   './core/interpretations.js',
