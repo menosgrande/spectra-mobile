@@ -1538,13 +1538,35 @@ function computeProjectedRawScore(madeStrength, potentialStrength) {
  *   [{cards:['As','Kd'], weight:0.5}, ...] 形式の重み付きコンボ列へ拡張する
  *   ためのAPI予約のみ。指定された場合は明示的にエラーを投げる（黙って無視しない）。
  *
- * 街ごとの計算方式（⑥-D以降で段階的に実装）:
- *   river（board.length===5）: 完全列挙、厳密値。v3.9.50で実装。
- *   turn（board.length===4） : 残り1枚を完全列挙。未実装（⑥-D）。
- *   flop（board.length===3） : モンテカルロ（デフォルトiterations=50000）。未実装（⑥-F）。
+ * 街ごとの計算方式:
+ *   river（board.length===5）: 完全列挙、厳密値（precise:true）。v3.9.50で実装。
+ *   turn（board.length===4） : 残り1枚を完全列挙、厳密値（precise:true）。v3.9.51（⑥-D）で実装。
+ *   flop（board.length===3） : Monte Carlo（デフォルトiterations=50000、precise:false）。
+ *   v3.9.52（⑥-E）で実装。mulberry32による軽量seedable PRNGを使用。公開APIとして
+ *   seedは正式に持たない（将来のvillainRange/Worker API整備と合わせて検討）が、
+ *   computeEquityFlop()自体は直接seedを渡せるため、テストでの再現性は担保できる。
  *   preflop（board.length<3）: evaluate7が5枚未満で機能しないため非対応
  *   （HERO_RANKと同じ制約）。
  */
+
+const DEFAULT_FLOP_ITERATIONS = 50000;
+
+// v3.9.52（⑥-E）: mulberry32 — 軽量・seedable PRNG。Worker内でも安全に動く
+// （Math.randomより若干遅いだけで、依存ライブラリ無しで書ける）。flopの
+// Monte Carloは公開APIとしてseedを正式に持たない（今回は見送り、将来の
+// villainRange/Worker API整備と合わせて検討する）が、テストの再現性
+// （同一seed・同一入力で同一結果）を担保するため、computeEquityFlop()
+// 自体はseedを直接受け取れる形にしてある。
+function mulberry32(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) | 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 function buildDefaultVillainCombos(deadSet) {
   // computeHeroRank()（range_matrix.js）と同じ実績あるパターン：
@@ -1587,12 +1609,113 @@ function computeEquity({ hero, board, villainRange, iterations } = {}) {
     return computeEquityRiver(hero, board, villainCombos);
   }
   if (board.length === 4) {
-    throw new Error('computeEquity: turn (board.length === 4) is not yet implemented (planned: ⑥-D)');
+    return computeEquityTurn(hero, board, villainCombos);
   }
   if (board.length === 3) {
-    throw new Error('computeEquity: flop (board.length === 3) is not yet implemented (planned: ⑥-F, Monte Carlo)');
+    return computeEquityFlop(hero, board, villainCombos, iterations || DEFAULT_FLOP_ITERATIONS);
   }
   throw new Error(`computeEquity: unsupported board.length ${board.length}`);
+}
+
+function computeEquityFlop(hero, board, villainCombos, iterations, seed) {
+  // v3.9.52（⑥-E）: flopは残り2枚（C(45,2)最大990通り）×Villainコンボ数
+  // （最大C(47,2)=1081通り）で組み合わせ爆発するため、river/turnと違い
+  // 完全列挙ではなくMonte Carloで近似する。villainRangeは今回もMVPの
+  // 均等レンジのみなので、Villainコンボは重み無視で一様抽出してよい
+  // （全コンボweight=1のため、一様抽出＝重み付き抽出と数学的に同一）。
+  const rng = mulberry32(seed == null ? (Date.now() >>> 0) : seed);
+  const n   = villainCombos.length;
+
+  let winWeight = 0, tieWeight = 0, lossWeight = 0, totalWeight = 0;
+
+  for (let t = 0; t < iterations; t++) {
+    const combo = villainCombos[Math.floor(rng() * n)];
+
+    const dead = new Set([...board, ...hero, ...combo.cards]);
+    const deck = [];
+    for (let i = 0; i < 13; i++) {
+      for (let s = 0; s < 4; s++) {
+        const c = RANKS[i] + SUITS[s];
+        if (!dead.has(c)) deck.push(c);
+      }
+    }
+
+    // 残りデッキから重複無しで2枚（turn+river）を抽出。
+    const i1 = Math.floor(rng() * deck.length);
+    let i2 = Math.floor(rng() * (deck.length - 1));
+    if (i2 >= i1) i2++;
+
+    const fullBoard    = [...board, deck[i1], deck[i2]];
+    const heroScore    = evaluate7([...hero, ...fullBoard]).score;
+    const villainScore = evaluate7([...combo.cards, ...fullBoard]).score;
+
+    totalWeight++;
+    if (heroScore > villainScore)      winWeight++;
+    else if (heroScore < villainScore) lossWeight++;
+    else                                tieWeight++;
+  }
+
+  const winProbability  = totalWeight > 0 ? winWeight  / totalWeight : 0;
+  const tieProbability  = totalWeight > 0 ? tieWeight  / totalWeight : 0;
+  const lossProbability = totalWeight > 0 ? lossWeight / totalWeight : 0;
+
+  return {
+    winCount: winWeight,
+    tieCount: tieWeight,
+    lossCount: lossWeight,
+    totalWeight,
+    winProbability,
+    tieProbability,
+    lossProbability,
+    equity: winProbability + tieProbability * 0.5,
+    precise: false // flop: Monte Carlo推計のため近似値
+  };
+}
+
+function computeEquityTurn(hero, board, villainCombos) {
+  // v3.9.51（⑥-D）: turn（残り1枚）は組み合わせ爆発しないため、river同様に
+  // 完全列挙する（モンテカルロ不要）。riverと異なり、各Villainコンボごとに
+  // 「Hero+turn board+そのVillainコンボ」を除いた残りカードからriverを
+  // 選ぶ必要がある——computeHeroRank()のpopulation列挙とは違い、Villain
+  // 自身の2枚も除外対象になる点が重要（ユーザー指摘どおり）。
+  let winWeight = 0, tieWeight = 0, lossWeight = 0, totalWeight = 0;
+
+  for (const combo of villainCombos) {
+    const deadForRiver = new Set([...board, ...hero, ...combo.cards]);
+    const riverDeck = [];
+    for (let i = 0; i < 13; i++) {
+      for (let s = 0; s < 4; s++) {
+        const c = RANKS[i] + SUITS[s];
+        if (!deadForRiver.has(c)) riverDeck.push(c);
+      }
+    }
+
+    for (const riverCard of riverDeck) {
+      const fullBoard    = [...board, riverCard];
+      const heroScore    = evaluate7([...hero, ...fullBoard]).score;
+      const villainScore = evaluate7([...combo.cards, ...fullBoard]).score;
+      totalWeight += combo.weight;
+      if (heroScore > villainScore)      winWeight += combo.weight;
+      else if (heroScore < villainScore) lossWeight += combo.weight;
+      else                                tieWeight += combo.weight;
+    }
+  }
+
+  const winProbability  = totalWeight > 0 ? winWeight  / totalWeight : 0;
+  const tieProbability  = totalWeight > 0 ? tieWeight  / totalWeight : 0;
+  const lossProbability = totalWeight > 0 ? lossWeight / totalWeight : 0;
+
+  return {
+    winCount: winWeight,
+    tieCount: tieWeight,
+    lossCount: lossWeight,
+    totalWeight,
+    winProbability,
+    tieProbability,
+    lossProbability,
+    equity: winProbability + tieProbability * 0.5,
+    precise: true // turn: 完全列挙のため厳密値
+  };
 }
 
 function computeEquityRiver(hero, board, villainCombos) {
@@ -1619,7 +1742,8 @@ function computeEquityRiver(hero, board, villainCombos) {
     winProbability,
     tieProbability,
     lossProbability,
-    equity: winProbability + tieProbability * 0.5
+    equity: winProbability + tieProbability * 0.5,
+    precise: true // river: 完全列挙のため厳密値
   };
 }
 

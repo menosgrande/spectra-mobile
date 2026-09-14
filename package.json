@@ -1,0 +1,13 @@
+{
+  "name": "spectra-mobile",
+  "private": true,
+  "description": "SPECTRA — client-side poker board analysis and GTO strategy visualization. No build step for the shipped app (index.html runs standalone via file://); this package.json exists solely to declare the dev-only dependency used by test/crossval.js.",
+  "scripts": {
+    "test": "node test/engine.test.js",
+    "check": "node tools/build-worker-bundle.js --check",
+    "crossval": "node test/crossval.js"
+  },
+  "devDependencies": {
+    "pokersolver": "^2.1.4"
+  }
+}
