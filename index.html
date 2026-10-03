@@ -611,6 +611,40 @@ function heroRankCacheSet(key, value) {
   heroRankCache.set(key, value);
 }
 
+// v3.9.55（⑥-G）: EQUITY専用キャッシュ。heroRankCacheと同じFIFO方式・同じ
+// 責務分離の考え方（BOARD_INTELLIGENCEのパイプラインには一切触れない独立API）。
+// ただしキー設計はHERO_RANKより複雑：computeEquity()はvillainRangeとiterations
+// にも依存するため、これらをキーに含める必要がある。
+//   - villainRangeは順序に依存しないよう各コンボをソートしてから正規化する
+//     （同じレンジを違う順序で渡しても同一キーになるべき）。
+//   - iterationsはflopのMonte Carlo精度を変えるため、同じboard/heroでも
+//     iterationsが違えば別エントリにする（1万試行の結果と5万試行の結果を
+//     同じキーで返してしまうと、preciseの意味が曖昧になる）。
+// 1件あたりの計算コストがHERO_RANKより高い（flopは5万試行）ため、上限は
+// 控えめの200件に設定する。
+let equityCache = new Map();
+const EQUITY_CACHE_MAX = 200;
+function equityCacheSet(key, value) {
+  if (equityCache.size >= EQUITY_CACHE_MAX && !equityCache.has(key)) {
+    const oldestKey = equityCache.keys().next().value;
+    equityCache.delete(oldestKey);
+  }
+  equityCache.set(key, value);
+}
+
+function equityCacheKey(board, hero, villainRange, iterations) {
+  const b = [...board].sort().join(',');
+  const h = [...hero].sort().join(',');
+  const r = villainRange
+    ? villainRange
+        .map(c => [...c.cards].sort().join('') + ':' + c.weight)
+        .sort()
+        .join(',')
+    : 'default';
+  const i = iterations == null ? 'auto' : String(iterations);
+  return `eq:${b}|${h}|${r}|${i}`;
+}
+
 function clamp01(x) {
   return Math.max(0, Math.min(1, x));
 }
@@ -1525,8 +1559,24 @@ function computeProjectedRawScore(madeStrength, potentialStrength) {
  * データ契約:
  *   computeEquity({ hero, board, villainRange?, iterations? })
  *   → { winCount, tieCount, lossCount, totalWeight,
- *       winProbability, tieProbability, lossProbability, equity }
+ *       winProbability, tieProbability, lossProbability, equity, precise }
  *   equity = winProbability + tieProbability * 0.5
+ *
+ *   v3.9.54追記（他AIレビュー指摘）: winCount/tieCount/lossCount/totalWeightの
+ *   「単位」はriver/turn（precise:true）とflop（precise:false）で異なる。
+ *     river/turn: 全villainコンボ×全runoutを完全列挙するため、これらは
+ *                 「weightの合計」（villainRangeのweightをそのまま合算した値）。
+ *                 例: villainRangeが[{weight:1},{weight:2}]なら、river/turnの
+ *                 totalWeightは(1+2)×runout数になる。
+ *     flop      : Monte Carloで「villainコンボをweightに比例した確率で抽出→
+ *                 ランダムなrunout2枚を引く」を1試行として繰り返すため、これらは
+ *                 「Monte Carloの試行回数（サンプル数）」であり、totalWeight は
+ *                 常に iterations と一致する（villainRangeのweight自体は既に
+ *                 サンプリング確率に織り込まれているため、集計側で重ねて
+ *                 掛け直す必要が無い——数学的には不偏推定量として正しいが、
+ *                 フィールド名の「単位」が街ごとに違う点は呼び出し側が
+ *                 意識すること）。この違いを外部から判別するには`precise`
+ *                 フィールドを見ればよい（true=weightの合計、false=試行回数）。
  *
  *   villainRange省略時: Hero+boardと衝突しない全2-card combinationsを
  *   weight=1で均等採用する（computeHeroRank()の比較母集団に近い「全生存
@@ -1534,9 +1584,16 @@ function computeProjectedRawScore(madeStrength, potentialStrength) {
  *   流用しない——実際のequity計算にはスート・カード除去を反映した具体的な
  *   2枚コンボへの展開が必須なため。
  *
- *   villainRange指定時: MVPでは未実装。将来
- *   [{cards:['As','Kd'], weight:0.5}, ...] 形式の重み付きコンボ列へ拡張する
- *   ためのAPI予約のみ。指定された場合は明示的にエラーを投げる（黙って無視しない）。
+ *   villainRange指定時（v3.9.53、⑥-F）: `[{cards:['As','Kd'], weight:0.5}, ...]` 形式の
+ *   具体的コンボ+相対weight列を受け付ける。169表（'AKs'等のクラス表現）は今回も
+ *   接続しない——スート・カード除去を反映した具体的な2枚コンボへの展開は呼び出し側の
+ *   責務のまま。weightは確率そのものではなく相対weightで、内部でtotalWeightにより
+ *   正規化される（既存のwin+tie*0.5の一般化）。Hero/boardと衝突するコンボ、同一カードを
+ *   2枚とも含む不正コンボは黙って除外する（エラーにはしない——衝突除外は正常な運用の
+ *   一部であるため）。ただし除外の結果、有効コンボが0件になった場合は明示的にエラーを
+ *   投げる（黙って空の結果を返さない）。archetype（'TIGHT'/'STANDARD'等の文字列指定）は
+ *   意図的に対応しない——全コンボへ同一係数を掛けてから正規化すると係数が数学的に
+ *   完全に相殺されるため機能として成立しないことを検証済み（README v3.9.53参照）。
  *
  * 街ごとの計算方式:
  *   river（board.length===5）: 完全列挙、厳密値（precise:true）。v3.9.50で実装。
@@ -1587,6 +1644,40 @@ function buildDefaultVillainCombos(deadSet) {
   return combos;
 }
 
+function validateAndFilterVillainRange(villainRange, deadSet) {
+  // v3.9.53（⑥-F）: villainRangeの検証＋フィルタ。
+  //   - Hero/boardと衝突するコンボ、同一カードを2枚とも含む不正コンボは
+  //     黙って除外する（衝突除外は正常な運用の一部でありエラーではない）。
+  //   - weightは非負の数値であることのみ検証（0は有効——「明示的に除外した
+  //     ハンド」を表現する自然な手段として許容する）。
+  //   - 結果として有効コンボが1件も残らなかった場合のみ、明示的にエラーを
+  //     投げる（黙って空の結果を返さない）。
+  const valid = [];
+  for (const entry of villainRange) {
+    if (!entry || !Array.isArray(entry.cards) || entry.cards.length !== 2) {
+      throw new Error('computeEquity: each villainRange entry must have "cards": [card, card]');
+    }
+    if (typeof entry.weight !== 'number' || !(entry.weight >= 0)) {
+      throw new Error('computeEquity: each villainRange entry must have a non-negative numeric "weight"');
+    }
+    const [c1, c2] = entry.cards;
+    if (c1 === c2) continue;                                  // 同一カード2枚は不正コンボ、除外
+    if (deadSet.has(c1) || deadSet.has(c2)) continue;          // Hero/boardと衝突、除外
+    valid.push({ cards: [c1, c2], weight: entry.weight });
+  }
+  if (valid.length === 0) {
+    throw new Error('computeEquity: villainRange has no valid combos after removing collisions with hero/board and invalid entries');
+  }
+  const sumWeight = valid.reduce((s, c) => s + c.weight, 0);
+  if (sumWeight <= 0) {
+    // v3.9.53: 全コンボがweight=0だと、勝敗自体は数学的に無意味
+    // （何を「相手が持っている」と仮定しても確率0なので、加重サンプリングも
+    // 加重集計もできない）。空扱いと同じくエラーにする。
+    throw new Error('computeEquity: villainRange has zero total weight (all valid combos have weight 0)');
+  }
+  return valid;
+}
+
 function computeEquity({ hero, board, villainRange, iterations } = {}) {
   if (!hero || hero.length !== 2) {
     throw new Error('computeEquity: hero must be exactly 2 cards');
@@ -1596,14 +1687,11 @@ function computeEquity({ hero, board, villainRange, iterations } = {}) {
     // 非対応（HERO_RANKと同じ制約をそのまま踏襲）。
     throw new Error('computeEquity: preflop (board.length < 3) is not supported');
   }
-  if (villainRange) {
-    // v3.9.50: MVPでは未実装。黙って無視せず明示的にエラーにする
-    // （API予約のみ、将来[{cards, weight}, ...]形式で対応）。
-    throw new Error('computeEquity: villainRange is reserved for future use and not yet implemented in this MVP');
-  }
 
   const deadSet = new Set([...board, ...hero]);
-  const villainCombos = buildDefaultVillainCombos(deadSet);
+  const villainCombos = villainRange
+    ? validateAndFilterVillainRange(villainRange, deadSet)
+    : buildDefaultVillainCombos(deadSet);
 
   if (board.length === 5) {
     return computeEquityRiver(hero, board, villainCombos);
@@ -1620,16 +1708,36 @@ function computeEquity({ hero, board, villainRange, iterations } = {}) {
 function computeEquityFlop(hero, board, villainCombos, iterations, seed) {
   // v3.9.52（⑥-E）: flopは残り2枚（C(45,2)最大990通り）×Villainコンボ数
   // （最大C(47,2)=1081通り）で組み合わせ爆発するため、river/turnと違い
-  // 完全列挙ではなくMonte Carloで近似する。villainRangeは今回もMVPの
-  // 均等レンジのみなので、Villainコンボは重み無視で一様抽出してよい
-  // （全コンボweight=1のため、一様抽出＝重み付き抽出と数学的に同一）。
+  // 完全列挙ではなくMonte Carloで近似する。
+  // v3.9.53（⑥-F）: villainRangeで重みが異なり得るようになったため、
+  // コンボの抽出を「配列インデックスの一様抽出」から「weightに比例した
+  // 重み付き抽出」に変更（累積weight配列に対する二分探索）。全コンボが
+  // weight=1（デフォルトレンジ）の場合、これは一様抽出と数学的に同一の
+  // 結果分布になるため、villainRange未指定時の既存挙動は変わらない。
   const rng = mulberry32(seed == null ? (Date.now() >>> 0) : seed);
   const n   = villainCombos.length;
+
+  const cumulative = new Array(n);
+  let comboTotalWeight = 0;
+  for (let i = 0; i < n; i++) {
+    comboTotalWeight += villainCombos[i].weight;
+    cumulative[i] = comboTotalWeight;
+  }
+
+  function pickWeightedCombo() {
+    const r = rng() * comboTotalWeight;
+    let lo = 0, hi = n - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (cumulative[mid] < r) lo = mid + 1; else hi = mid;
+    }
+    return villainCombos[lo];
+  }
 
   let winWeight = 0, tieWeight = 0, lossWeight = 0, totalWeight = 0;
 
   for (let t = 0; t < iterations; t++) {
-    const combo = villainCombos[Math.floor(rng() * n)];
+    const combo = pickWeightedCombo();
 
     const dead = new Set([...board, ...hero, ...combo.cards]);
     const deck = [];
@@ -1649,6 +1757,8 @@ function computeEquityFlop(hero, board, villainCombos, iterations, seed) {
     const heroScore    = evaluate7([...hero, ...fullBoard]).score;
     const villainScore = evaluate7([...combo.cards, ...fullBoard]).score;
 
+    // v3.9.53: 抽出そのものは重み付き（重いコンボほど選ばれやすい）なので、
+    // 集計側は等分（+1）でよい——抽出確率に重みが既に織り込まれている。
     totalWeight++;
     if (heroScore > villainScore)      winWeight++;
     else if (heroScore < villainScore) lossWeight++;
@@ -1659,6 +1769,12 @@ function computeEquityFlop(hero, board, villainCombos, iterations, seed) {
   const tieProbability  = totalWeight > 0 ? tieWeight  / totalWeight : 0;
   const lossProbability = totalWeight > 0 ? lossWeight / totalWeight : 0;
 
+  // v3.9.54追記: ここのwinCount/tieCount/lossCount/totalWeightは「weightの
+  // 合計」ではなく「Monte Carloの試行回数」（totalWeight===iterations）。
+  // river/turnの同名フィールドとは単位が異なる（ファイル冒頭のデータ契約
+  // コメント参照）。villainのweightは抽出確率に既に織り込み済みなので、
+  // ここで重ねて掛け直すと二重計上になる——数学的な不偏性は保たれているが、
+  // フィールドの「意味」は`precise:false`で判別する必要がある。
   return {
     winCount: winWeight,
     tieCount: tieWeight,
@@ -3358,7 +3474,7 @@ self.onmessage = function (e) {
         // ここだけを機械的に同期する仕組みも無いため、精度の低い数字を
         // 更新し続けるより「追跡していない」ことを明示する方が安全と判断。
         version: 'unspecified (see README changelog)',
-        capabilities: ['BOARD_INTELLIGENCE', 'EVAL_169', 'TEXTURE', 'HERO_RANK']
+        capabilities: ['BOARD_INTELLIGENCE', 'EVAL_169', 'TEXTURE', 'HERO_RANK', 'EQUITY']
       });
       return;
     }
@@ -3481,6 +3597,77 @@ self.onmessage = function (e) {
 
       self.postMessage({
         type: 'HERO_RANK',
+        requestId,
+        data: result,
+        cached: false,
+        calcTime: ms
+      });
+      return;
+    }
+
+    if (type === 'EQUITY') {
+      // v3.9.55（⑥-G）: computeEquity()（core/equity.js）のWorker公開API。
+      // HERO_RANKと同じ設計方針：BOARD_INTELLIGENCE(analyzeBoard())の
+      // パイプラインには一切触れない独立リクエストで、triggerUpdate()は呼ばない。
+      // HERO_RANKとは数学的に別物（HERO_RANK=静的な強さのpercentile、
+      // EQUITY=Villainレンジとrunoutを尽くしたshowdown結果）なので、
+      // 計算コアもメッセージ型も意図的に分離している。
+      const t0           = performance.now();
+      const board        = payload.board || [];
+      const hero         = payload.hero  || [];
+      const villainRange = payload.villainRange || null;
+      const iterations   = payload.iterations || null;
+
+      // computeEquity()側も同じガードを持つが、Workerの境界で早めに
+      // 弾いて分かりやすいreasonを返す（HERO_RANKと同じ方針）。
+      if (board.length < 3 || hero.length !== 2) {
+        self.postMessage({
+          type: 'EQUITY',
+          requestId,
+          data: null,
+          reason: 'EQUITY requires board.length>=3 and hero.length===2 (Preflop is out of scope: evaluate7 needs 5+ cards)',
+          cached: false
+        });
+        return;
+      }
+
+      const cacheKey = equityCacheKey(board, hero, villainRange, iterations);
+
+      if (equityCache.has(cacheKey)) {
+        self.postMessage({
+          type: 'EQUITY',
+          requestId,
+          data: equityCache.get(cacheKey),
+          cached: true,
+          calcTime: 0
+        });
+        return;
+      }
+
+      // computeEquity()はvillainRangeの検証失敗（有効コンボ0件、全weight=0、
+      // 不正なcards/weight等）で例外を投げる。これは呼び出し側の入力起因の
+      // エラーであってエンジンの障害ではないため、ENGINE_ERRORとして扱わず
+      // reason付きのEQUITY応答として返す（外側のcatchに落とすと
+      // ENGINE ERRORバッジが点灯してしまい、UIの意味が変わってしまう）。
+      let result;
+      try {
+        result = computeEquity({ hero, board, villainRange, iterations });
+      } catch (e) {
+        self.postMessage({
+          type: 'EQUITY',
+          requestId,
+          data: null,
+          reason: 'invalid EQUITY request: ' + (e?.message || String(e)),
+          cached: false
+        });
+        return;
+      }
+
+      const ms = Math.round(performance.now() - t0);
+      equityCacheSet(cacheKey, result);
+
+      self.postMessage({
+        type: 'EQUITY',
         requestId,
         data: result,
         cached: false,
@@ -3808,6 +3995,14 @@ self.onmessage = function (e) {
           <span>フラッシュ化: <b id="range-flush-pct" style="color:#3b9eff;">--%</b></span>
           <span>ストレート化: <b id="range-straight-pct" style="color:#34d399;">--%</b></span>
         </div>
+        <div id="equity-row" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:5px;padding-top:5px;border-top:1px solid rgba(100,220,180,.15);align-items:center;">
+          <span style="font-family:'Orbitron',monospace;font-size:6.5px;letter-spacing:.5px;color:rgba(100,220,180,.55);">数学的EQUITY<span class="help-q" title="上の「強さ目安」とは別物です。強さ目安は「今このboardで、Heroの手が生存コンボ全体の中で何%より強いか」という静的な相対順位。こちらのEQUITYは「相手が残りの全2枚組を等確率で持っていると仮定し、ターン・リバーまで配り切ったときに、実際のショーダウンで平均して何割ポットを取れるか」という期待取り分です（引き分けは0.5で按分）。River/Turnは全ての組み合わせを完全列挙した厳密値、FlopのみMonte Carlo推計です。Preflopは役判定が5枚未満で成立しないため非対応。GTO推奨アクションやEVではありません">?</span></span>
+          <span>Equity: <b id="equity-value" style="color:#34d399;">--</b></span>
+          <span>Win: <b id="equity-win" style="color:rgba(220,230,245,.75);">--</b></span>
+          <span>Tie: <b id="equity-tie" style="color:rgba(220,230,245,.75);">--</b></span>
+          <span>Loss: <b id="equity-loss" style="color:rgba(220,230,245,.75);">--</b></span>
+          <span id="equity-note" style="font-size:7px;color:rgba(255,180,80,.75);"></span>
+        </div>
         <div style="margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,215,0,.1);">
           <div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:rgba(255,215,0,.5);margin-bottom:3px;">相対的な判断傾向（GTO頻度ではありません・4択の目安）<span class="help-q" title="ハンドの強さと今後の伸びしろの2値だけから作った相対スコアです。pot/stack/SPR/ポジション/アクション履歴/相手レンジ等は一切考慮していないため、実際の混合戦略頻度（GTO頻度）ではありません。数値同士の大小関係の参考程度に見てください">?</span></div>
           <div id="hero-dec-bars" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
@@ -4049,6 +4244,68 @@ function requestHeroRank() {
     payload: { board: currentBoard, hero: heroHand }
   });
 }
+
+// ── v3.9.56（⑥-H）: EQUITY（数学的Equity）用のUI状態 ──
+// HERO_RANKと同じく独自のrequestId系列を持つ独立経路（BOARD_INTELLIGENCEの
+// currentRequestIdとも、HERO_RANKのcurrentHeroRankRequestIdとも別管理）。
+// 意図的にtriggerUpdate()には差し込まない：flopは5万回のMonte Carloで
+// 数十〜百数十msかかるため、カード入力のたびに同期的に走らせるとUXが悪化する。
+// 代わりにdebounceを挟んだ独立トリガにする（④の大規模リファクタ前に既存の
+// triggerUpdate()へ雑に相乗りさせない、という方針も兼ねる）。
+//
+// 表示の境界（⑥-Hのスコープとして意図的に固定）:
+//   表示する  : Equity / Win% / Tie% / Loss% / flopのMonte Carlo注記 /
+//               未計算・計算中・入力エラーの状態区別
+//   表示しない: 「強さ目安」(HERO_RANK)への統合や置換、169レンジとの接続、
+//               GTO推奨アクション、EV、Villain archetype
+// HERO_RANKは「現在のboardに対するHeroの相対的な手の強さ（静的percentile）」、
+// EQUITYは「Villainレンジ+将来のrunoutを含むshowdown時の期待取り分」で
+// 数学的に別物なので、同じ欄に混ぜず専用の表示枠を持たせる。
+let currentEquityRequestId = 0;
+let lastEquityData  = null;
+let lastEquityKey   = null;
+// 'IDLE'（未計算）| 'CALC'（計算中）| 'OK'（正常）| 'ERROR'（入力エラー）
+// equity=0（正常な0%）と計算失敗を混同しないために、数値とは別に状態を持つ。
+let equityState     = 'IDLE';
+let equityErrorMsg  = null;
+let _equityDebounce = null;
+
+function equityKey(board, hero) {
+  return board.join(',') + '|' + [...hero].sort().join(',');
+}
+
+function requestEquity() {
+  if (!spectraWorker || !workerReady) return;
+  // preflopはevaluate7が5枚未満で機能しないため数学的Equityを出せない。
+  // 推測値で埋めるのは⑥の目的（真のEquity）から外れるので、表示側で
+  // 「Preflopでは利用不可」と明示する（IDLEのまま送信しない）。
+  if (currentBoard.length < 3 || heroHand.length !== 2) {
+    equityState    = 'IDLE';
+    lastEquityData = null;
+    lastEquityKey  = null;
+    renderEquity();
+    return;
+  }
+  currentEquityRequestId++;
+  equityState = 'CALC';
+  renderEquity();
+  spectraWorker.postMessage({
+    type: 'EQUITY',
+    requestId: currentEquityRequestId,
+    // villainRangeは渡さない＝Hero/Boardと衝突しない残り全2-cardコンボを
+    // weight=1で使う既定動作。169レンジUIとの接続は⑥-Hのスコープ外。
+    payload: { board: currentBoard, hero: heroHand }
+  });
+}
+
+// board/heroの変更直後に連続で呼ばれても、最後の1回だけ実際に投げる。
+function requestEquityDebounced() {
+  if (_equityDebounce) clearTimeout(_equityDebounce);
+  _equityDebounce = setTimeout(() => {
+    _equityDebounce = null;
+    requestEquity();
+  }, 300);
+}
 let _ttHideTimer = null;     // モバイルツールチップの自動非表示タイマー（連続タップでの積み上がり防止用）
 let lastNutsFeatures = null;   // renderNuts再描画（帯の折りたたみ）用にfeaturesをキャッシュ
 let collapsedNutBands = new Set(['HIGH CARD']); // 折りたたみ状態（デフォルトHIGH CARDのみ畳む）
@@ -4138,6 +4395,31 @@ function onWorkerMessage(e) {
     return;
   }
 
+  // v3.9.56（⑥-H）: EQUITYもHERO_RANKと同様に独立したrequestId系列
+  // （currentEquityRequestId）を使うため、下のcurrentRequestIdによる
+  // stale-checkの対象から外し、ここで先に処理してreturnする。
+  // stale判定は必須：board A の EQUITY #10 → board B の #11 と投げた後に
+  // #10が遅れて返ってきた場合、古いEquityで現在の表示を上書きしてはいけない。
+  if (type === 'EQUITY') {
+    if (requestId !== undefined && requestId !== currentEquityRequestId) return; // stale
+    if (data) {
+      lastEquityData = data;
+      lastEquityKey  = equityKey(currentBoard, heroHand);
+      equityState    = 'OK';
+      equityErrorMsg = null;
+    } else {
+      // Worker側でガードされ data:null + reason が返ったケース
+      // （preflop、不正なvillainRange等）。equity=0（正常な0%）とは
+      // 明確に区別するため、状態をERRORにしてreasonを保持する。
+      lastEquityData = null;
+      lastEquityKey  = null;
+      equityState    = 'ERROR';
+      equityErrorMsg = e.data.reason || '計算できませんでした';
+    }
+    renderEquity();
+    return;
+  }
+
   // v3.9.13: stale response対策。INIT_OK以外は、送信時点のrequestIdと
   // 一致しない（＝その後さらに新しい盤面変更が発生し、この応答が古くなった）
   // 場合は無視する。
@@ -4187,6 +4469,7 @@ function onWorkerMessage(e) {
       setStabState('DONE');
       updateHeroCells();
       requestHeroRank(); // v3.9.39: board変更でpopulationが変わるため再リクエスト（BOARD_INTELLIGENCEのパイプラインには合流させない、独立リクエストのまま）
+      requestEquityDebounced(); // v3.9.56: 同じく独立リクエスト。flopは5万回MCなのでdebounce越しに投げる
       renderHeroAnalysis(); // v3.9.16: 盤面更新のたびにHero分析も再描画（読み取り専用・一方向）
       break;
 
@@ -4743,6 +5026,192 @@ function detectDraws(r1, r2, s1, s2, board) {
    RENDER NUTS — street-aware
 ══════════════════════════════ */
 // 初心者向け: 専門用語の簡単な説明（title属性のツールチップとして使用）
+/* AUTO-GENERATED-START: core/nuts_display.js */
+/* core/nuts_display.js — computeNutDisplayData(): index.html の renderNuts() から
+ * 分析ロジックのみを抽出した純粋関数（④、UI構造整理）。
+ *
+ * v3.9.57（④-3）: renderNuts()（index.html）の224行のうち、DOM操作・色・
+ * ラベル文字列・折りたたみ状態を除いた「分析結果」の部分だけをここへ移した。
+ * 既存の計算結果を一切変えないことを目的とした移植であり、新しい分類・
+ * 新しいsort順・新しいcombo統合ルール・新しいflush判定は追加していない
+ * （golden testで既存renderNuts()の出力と一致することを確認済み）。
+ *
+ * 依存関係について（重要）: このファイルは意図的に他のcore/*.jsに依存しない
+ * 完全自己完結にしている。理由は配布経路が他のcore/*.jsと異なるため——
+ * computeNutDisplayData()はrenderNuts()というメインスレッド（UIスレッド）の
+ * 関数から同期的に呼ばれるが、他のcore/*.jsはWorkerスレッドにしか
+ * importScriptsされない（Workerとメインスレッドはグローバルスコープを
+ * 共有しないため、Worker側にしか無い関数はメインスレッドから呼べない）。
+ * そのためtools/build-worker-bundle.jsは、このファイルをWorkerバンドルとは
+ * 別に、index.html側のメインスレッド用<script>ブロックへも直接注入する
+ * （AUTO-GENERATED-START/ENDマーカー参照）。もしcore/utils.jsのRANK_IDX等に
+ * 依存すると、注入先でRANK_IDXの重複宣言や、utils.js全体を追加注入する
+ * 必要が生じて話が複雑になるため、必要な最小限（ランク文字→序列の対応）を
+ * このファイル内に閉じたユニークな名前で持つ。
+ *
+ * 境界の方針（ユーザー確認済み）:
+ *   core側（この関数）  = 分析上必要な事実・分類・数値
+ *     - live filter、combos計算、strength→band分類、band別集計
+ *     - activeBandsの絞り込み（hiddenはboardHasPair由来の分析結果であり
+ *       UIトグルの折りたたみ状態とは別物なのでcore側に残す）
+ *     - pct算出
+ *     - mergeSuitedOffsuit相当の集計（ただしlabel文字列・isMerged flagは
+ *       除く——これらは表示専用で分析には使われないため。isMergedは
+ *       renderNuts()内でも他から一切参照されていないことを確認済み）
+ *     - flush帯のbeatsBoard/chopRisk判定（ランク比較という分析ロジック）
+ *   UI側（index.html）に残すもの = 色・ラベル・表示状態・DOM・HTML
+ *     - DOM操作、SSYM/SCOL、drawColor()、DRAW_TYPE_EXPLAIN
+ *     - collapsedNutBands、toggleNutBand
+ *     - CHIP_LIMITによるshown/overflow分割（実装時に原コードと照合済み：
+ *       CHIP_LIMITはband集計後のcombos/pctには一切影響せず、表示する
+ *       チップ件数を絞るだけの純粋な表示制限。flush帯のbeatsBoard/chopRisk
+ *       も、renderGroup()呼び出し時にCHIP_LIMITで別途切っているだけで、
+ *       分析結果自体（配列の中身）はCHIP_LIMIT適用前の全件のまま）
+ *       → よってcoreはbeatsBoard/chopRiskを全件返し、UI側で表示件数を絞る
+ *     - HTML文字列生成
+ *
+ * HAND_BANDSの名称・閾値(min)は既存renderNuts()と同一（SPECTRA独自の
+ * strengthスコア閾値による分類。evaluate7()の実際の役判定とは別物という
+ * 位置づけも既存のまま——詳細はindex.html側のHAND_BANDS定義コメント参照）。
+ */
+
+// core/utils.jsのRANKS/RANK_IDXとは意図的に別名にしている（上記の理由により
+// このファイルは他のcore/*.jsと同一スコープで読まれない前提のため衝突は
+// 起きないが、万一将来どこかで一緒にevalされても安全なようにユニーク名にする）。
+const _NUTS_RANKS_ORDER = 'AKQJT98765432';
+function _nutsRankIdx(rankChar) {
+  const i = _NUTS_RANKS_ORDER.indexOf(rankChar);
+  return i === -1 ? 12 : i;
+}
+
+const NUT_DISPLAY_BANDS = [
+  { name: 'ROYAL FLUSH',     min: 0.955 },
+  { name: 'STRAIGHT FLUSH',  min: 0.896 },
+  { name: 'FOUR OF A KIND',  min: 0.796 },
+  { name: 'FULL HOUSE',      min: 0.676 },
+  { name: 'FLUSH',           min: 0.576 },
+  { name: 'STRAIGHT',        min: 0.466 },
+  { name: 'THREE OF A KIND', min: 0.376 },
+  { name: 'TWO PAIR',        min: 0.256 },
+  { name: 'ONE PAIR',        min: 0.096 },
+  { name: 'HIGH CARD',       min: 0.000 }
+];
+
+// renderNuts()のmergeSuitedOffsuit()と同じ集計だが、label文字列・isMerged
+// flagは含まない（表示専用で分析結果としては使われないため）。isSuitedは
+// 「このグループがsuitedコンボのみで構成されているか」という分析上の
+// 意味を持つ（flush帯のbeatsBoard/chopRisk判定で使われる）ため保持する。
+function mergeSuitedOffsuitCombos(items) {
+  const map = new Map();
+  for (const it of items) {
+    const key = it.hand.slice(0, 2);
+    if (!map.has(key)) {
+      map.set(key, {
+        key, combos: 0, isPair: it.isPair,
+        suitedCombos: 0, offsuitCombos: 0,
+        drawType: null, outs: 0, bestScore: 0,
+        bestRankIdx: Math.min(_nutsRankIdx(key[0]), _nutsRankIdx(key[1]))
+      });
+    }
+    const g = map.get(key);
+    g.combos += it.combos;
+    if ((it.score ?? 0) > g.bestScore) g.bestScore = it.score ?? 0;
+    if (!it.isPair) {
+      if (it.isSuited) {
+        g.suitedCombos += it.combos;
+        if (!g.drawType) { g.drawType = it.drawType; g.outs = it.outs; }
+      } else {
+        g.offsuitCombos += it.combos;
+      }
+    }
+  }
+  return [...map.values()].map(g => {
+    let isSuited;
+    if (g.isPair) {
+      isSuited = false;
+    } else if (g.suitedCombos > 0 && g.offsuitCombos > 0) {
+      isSuited = false; g.drawType = null; // 両方存在→ドロータグは片方に偏るため曖昧、出さない
+    } else if (g.suitedCombos > 0) {
+      isSuited = true;
+    } else {
+      isSuited = false;
+    }
+    return { ...g, hand: g.key, isSuited };
+  });
+}
+
+function computeNutDisplayData(data, features, currentBoard) {
+  const suitCnt = {};
+  currentBoard.forEach(c => suitCnt[c[1]] = (suitCnt[c[1]] || 0) + 1);
+  const suitsSorted  = Object.entries(suitCnt).sort((a, b) => b[1] - a[1]);
+  const dominantSuit = suitsSorted[0]?.[0] || 'h';
+
+  const pairStruct = features?.pairStructure || '';
+  const boardHasPair = ['PAIRED', 'DOUBLE_PAIRED', 'TRIPS_BOARD', 'FULL_HOUSE_BOARD', 'QUADS_BOARD'].includes(pairStruct);
+  const boardFlushComplete = features?.flushPressure === 'FOUR_FLUSH' || features?.flushPressure === 'FIVE_FLUSH';
+
+  const bandDefs = NUT_DISPLAY_BANDS.map(b => ({
+    name: b.name,
+    min: b.min,
+    confirmed: b.name === 'FLUSH' ? boardFlushComplete : (b.name === 'ONE PAIR' ? boardHasPair : false),
+    hidden: b.name === 'HIGH CARD' ? boardHasPair : false
+  }));
+
+  const live = data.filter(h => (h.density ?? 1) > 0);
+  let totalCombos = 0;
+  const bands = bandDefs.map(b => ({ ...b, combos: 0, items: [] }));
+
+  live.forEach(h => {
+    const isPair    = h.hand.length === 2 && h.hand[0] === h.hand[1];
+    const isSuited  = h.hand.endsWith('s');
+    const baseTotal = isPair ? 6 : isSuited ? 4 : 12;
+    const combos = h.topClassCombos ?? Math.round((h.density ?? 1) * baseTotal);
+    totalCombos += combos;
+    const score = h.madeStrength ?? h.rawScore ?? 0;
+    const bi = bands.findIndex(b => score >= b.min);
+    if (bi >= 0 && combos > 0) {
+      bands[bi].combos += combos;
+      bands[bi].items.push({ hand: h.hand, combos, isSuited, isPair, drawType: h.drawType, outs: h.outs, score });
+    }
+  });
+
+  const activeBands = bands.filter(b => !b.hidden && b.combos > 0);
+
+  const resultBands = activeBands.map(b => {
+    const pct = totalCombos > 0 ? (b.combos / totalCombos * 100) : 0;
+    const isFlushBand = b.name === 'FLUSH' || b.name === 'STRAIGHT FLUSH' || b.name === 'ROYAL FLUSH';
+    const mergedItems = mergeSuitedOffsuitCombos(b.items);
+    const sortedItems = [...mergedItems].sort((x, y) => y.bestScore - x.bestScore);
+
+    let flushSplit = null;
+    if (isFlushBand && b.name === 'FLUSH') {
+      const boardFlushRanks = currentBoard
+        .filter(c => c[1] === dominantSuit)
+        .map(c => _nutsRankIdx(c[0]));
+      const boardTopFlushRank = boardFlushRanks.length ? Math.min(...boardFlushRanks) : null;
+
+      if (boardTopFlushRank !== null) {
+        const suitedOnly = sortedItems.filter(i => i.isSuited);
+        const beatsBoard  = suitedOnly.filter(i => i.bestRankIdx < boardTopFlushRank);
+        const chopRisk    = suitedOnly.filter(i => i.bestRankIdx >= boardTopFlushRank);
+        flushSplit = { boardTopFlushRank, boardTopIsAce: boardTopFlushRank === 0, beatsBoard, chopRisk };
+      }
+    }
+
+    return {
+      name: b.name,
+      confirmed: b.confirmed,
+      combos: b.combos,
+      pct,
+      isFlushBand,
+      items: sortedItems,
+      flushSplit
+    };
+  });
+
+  return { dominantSuit, totalCombos, bands: resultBands };
+}
+/* AUTO-GENERATED-END: core/nuts_display.js */
 const DRAW_TYPE_EXPLAIN = {
   'FD':    'フラッシュドロー：同じスートがあと1枚でフラッシュ完成',
   'OESD':  'オープンエンドストレートドロー：両端どちらでもストレートが完成（アウツ8枚）',
@@ -4760,63 +5229,20 @@ function drawColor(type) {
   return 'rgba(160,200,230,.7)';
 }
 
-// ── 同ランクの suited/offsuit をまとめる ──
-// 同じ帯の中で ATs と ATo が両方とも存在する（＝ボードにフラッシュ関連が無く
-// スート違いでも強さが同じ）場合、チップが倍増して見づらいので
-// 「AT s/o」の1チップにまとめる。ペアはそもそも対象外（常に単独）。
-function mergeSuitedOffsuit(items) {
-  const map = new Map();
-  for (const it of items) {
-    const key = it.hand.slice(0, 2); // "AT" 等（ランク2文字、pairも同様に2文字）
-    if (!map.has(key)) {
-      map.set(key, {
-        key, combos: 0, isPair: it.isPair,
-        suitedCombos: 0, offsuitCombos: 0,
-        drawType: null, outs: 0, bestScore: 0,
-        bestRankIdx: Math.min(RANK_IDX[key[0]] ?? 12, RANK_IDX[key[1]] ?? 12)
-      });
-    }
-    const g = map.get(key);
-    g.combos += it.combos;
-    // バグ修正（外部フィードバック）: チップの並び順が生存コンボ数(combos)基準だったため、
-    // 「盤面にブロックされて生存コンボが少ないだけの、実際には最強のハンド」
-    // （例: KKKAAボードでのAA、Aが2枚場に出ているためコンボが少ない）が
-    // K系の弱いハンドより後ろに表示され、「Kの方が強そうに見える」誤解を生んでいた。
-    // 各グループの中で最も強いスコア(bestScore)を記録し、そちらで並べ替える。
-    if ((it.score ?? 0) > g.bestScore) g.bestScore = it.score ?? 0;
-    if (!it.isPair) {
-      if (it.isSuited) {
-        g.suitedCombos += it.combos;
-        if (!g.drawType) { g.drawType = it.drawType; g.outs = it.outs; }
-      } else {
-        g.offsuitCombos += it.combos;
-      }
-    }
-  }
-  return [...map.values()].map(g => {
-    let label, isSuited, isMerged = false;
-    if (g.isPair) {
-      label = g.key; isSuited = false;
-    } else if (g.suitedCombos > 0 && g.offsuitCombos > 0) {
-      // 両方存在 → 統合し、ドロータグは片方だけに偏るため曖昧なので出さない
-      label = g.key + ' s/o'; isSuited = false; isMerged = true; g.drawType = null;
-    } else if (g.suitedCombos > 0) {
-      label = g.key + 's'; isSuited = true;
-    } else {
-      label = g.key + 'o'; isSuited = false;
-    }
-    return { ...g, hand: g.key, label, isSuited, isMerged };
-  });
-}
+// ── 同ランクの suited/offsuit をまとめる（v3.9.57でcore/nuts_display.jsの
+// mergeSuitedOffsuitCombos()へ移植済み。以前はここに同等のmergeSuitedOffsuit()
+// が定義されていたが、renderNuts()の書き換えに伴い呼び出し元が無くなったため
+// 削除した）。
 
 
 
 function renderNuts(data, features) {
-  // v3.9.30: 他AIレビュー指摘・依存関係確認済みでdead code一式を撤去。
-  // isRiver=false → renderRiverPolar() → #river-polar (HTML/CSS) → polar-* CSS全般を
-  // 全検索し、index.html内でこれらを参照する経路が他に存在しないことを確認した上で
-  // まとめて削除（River Polar Viewはv3.6.1で既に機能として廃止済みだったが、コード自体は
-  // 未削除のまま残っていた）。
+  // v3.9.57（④-3）: 分析ロジック（帯分類・combos集計・flush分割判定等）は
+  // core/nuts_display.js の computeNutDisplayData() へ移した（このファイルの
+  // 上のAUTO-GENERATED-START/ENDブロックに自動注入されている）。ここに残るのは
+  // DOM操作・色・ラベル文字列・HTML生成のみ。計算結果は変えていない
+  // （golden testでcomputeNutDisplayData()の出力を固定し、既存の見た目との
+  // 一致も実機で確認済み）。
   const nutsEl  = document.getElementById('nuts-list');
   const secLbl  = document.getElementById('nuts-sec-label');
 
@@ -4828,77 +5254,24 @@ function renderNuts(data, features) {
   const SSYM = { s:'♠', h:'♥', d:'♦', c:'♣' };
   const SCOL = { s:'#a0a8c0', h:'#e04060', d:'#4080e0', c:'#30b060' };
 
-  // ── ボードのスート集計 ──
-  const suitCnt = {};
-  currentBoard.forEach(c => suitCnt[c[1]] = (suitCnt[c[1]] || 0) + 1);
-  const suitsSorted   = Object.entries(suitCnt).sort((a,b) => b[1]-a[1]);
-  const dominantSuit  = suitsSorted[0]?.[0] || 'h';
-  const dominantCount = suitsSorted[0]?.[1] || 0;
+  // ── 帯名 → 色（表示専用。分類・閾値はcomputeNutDisplayData()側） ──
+  const BAND_STYLE = {
+    'ROYAL FLUSH':     { color:'#ffffff', textColor:'#ffffff' },
+    'STRAIGHT FLUSH':  { color:'#ffd700', textColor:'#ffd700' },
+    'FOUR OF A KIND':  { color:'#ff3b3b', textColor:'#ff8080' },
+    'FULL HOUSE':      { color:'#ff7c00', textColor:'#ffaa55' },
+    'FLUSH':           { color:'#a855f7', textColor:'#c084fc' },
+    'STRAIGHT':        { color:'#3b82f6', textColor:'#60a5fa' },
+    'THREE OF A KIND': { color:'#00d4ff', textColor:'#00d4ff' },
+    'TWO PAIR':        { color:'#00ff9d', textColor:'#00ff9d' },
+    'ONE PAIR':        { color:'#6b7280', textColor:'#9ca3af' },
+    'HIGH CARD':       { color:'#374151', textColor:'rgba(160,200,230,.35)' }
+  };
 
-  // ── pairStructure判定 ──
-  // PAIRED以上（PAIRED/DOUBLE_PAIRED/TRIPS_BOARD/QUADS_BOARD）のボードでは
-  // 全ハンドが最低1ペアになるためHIGH CARDは存在しない
-  const pairStruct = features?.pairStructure || '';
-  const boardHasPair = ['PAIRED','DOUBLE_PAIRED','TRIPS_BOARD','FULL_HOUSE_BOARD','QUADS_BOARD'].includes(pairStruct);
-  // 同様にストレート/フラッシュが「確定」しているボードの判定
-  const boardFlushComplete = features?.flushPressure === 'FOUR_FLUSH' || features?.flushPressure === 'FIVE_FLUSH';
+  const d = computeNutDisplayData(data, features, currentBoard);
+  const dominantSuit = d.dominantSuit;
 
-  // ── 役バンド定義（SPECTRA Strength Band） ──
-  // v3.9.29: 他AIレビューで指摘・ユーザー確認済み。ここでの名称（ROYAL FLUSH等）は
-  // evaluate7()の実際の役判定結果(categoryName)を直接使っているのではなく、
-  // computeMadeStrength()が返す連続値strengthスコアを閾値で区分した「SPECTRA独自の
-  // 強度分類（Strength Band）」。computeMadeStrength()側でboardAdjustmentがカテゴリ
-  // 境界を跨がないようclampされているため通常は実際の役と一致するが、二つの分類ロジック
-  // が独立して存在すること自体は将来の閾値変更時にズレうるリスクとして残る。UI上は
-  // help-qツールチップでこの旨を明示済み。数学的に厳密な役判定が必要な箇所（Hero分析の
-  // 「役:」表示等）は引き続きevaluate7()のcategoryNameをそのまま使う。
-  // Royal FlushをSFから分離（madeStrength ≥ 0.99）
-  const HAND_BANDS = [
-    { name:'ROYAL FLUSH',    min:0.955, color:'#ffffff', textColor:'#ffffff',              confirmed: false },
-    { name:'STRAIGHT FLUSH', min:0.896, color:'#ffd700', textColor:'#ffd700',              confirmed: false },
-    { name:'FOUR OF A KIND', min:0.796, color:'#ff3b3b', textColor:'#ff8080',              confirmed: false },
-    { name:'FULL HOUSE',     min:0.676, color:'#ff7c00', textColor:'#ffaa55',              confirmed: false },
-    { name:'FLUSH',          min:0.576, color:'#a855f7', textColor:'#c084fc',              confirmed: boardFlushComplete },
-    { name:'STRAIGHT',       min:0.466, color:'#3b82f6', textColor:'#60a5fa',              confirmed: false },
-    { name:'THREE OF A KIND',min:0.376, color:'#00d4ff', textColor:'#00d4ff',              confirmed: false },
-    { name:'TWO PAIR',       min:0.256, color:'#00ff9d', textColor:'#00ff9d',              confirmed: false },
-    { name:'ONE PAIR',       min:0.096, color:'#6b7280', textColor:'#9ca3af',              confirmed: boardHasPair },
-    { name:'HIGH CARD',      min:0.000, color:'#374151', textColor:'rgba(160,200,230,.35)',hidden: boardHasPair },
-  ];
-
-  // ── 集計 ──
-  // density===0（ボードでブロックされ実質不可能なコンボ、例: KKKボードでのKK）は
-  // この時点で除外される。個々のハンドの combos>0 チェックとあわせて二重に保証。
-  const live = data.filter(h => (h.density ?? 1) > 0);
-  let totalCombos = 0;
-  const bands = HAND_BANDS.map(b => ({ ...b, combos: 0, items: [] }));
-
-  live.forEach(h => {
-    const isPair    = h.hand.length === 2 && h.hand[0] === h.hand[1];
-    const isSuited  = h.hand.endsWith('s');
-    const baseTotal = isPair ? 6 : isSuited ? 4 : 12;
-    // バグ修正: 以前は density(=カードがブロックされていないコンボ数の割合)を
-    // そのままコンボ数として使っていたが、これは「同じ役に到達したコンボ数」ではない。
-    // 通常は問題ないが、ボードが既に濃いフラッシュ絡み（3+同スート）の場合、
-    // スーテッドハンド4通りのうち実際にボードと同スートが揃うのは1通りだけ、
-    // ということが起きる（例: 4-flushボード+スーテッドハンド=ロイヤルは
-    // 本来1コンボしかないのに、density基準だと4のまま表示されてしまっていた）。
-    // → Worker側で計算済みのtopClassCombos（実際にその役へ到達したコンボ数）を優先して使う。
-    const combos = h.topClassCombos ?? Math.round((h.density ?? 1) * baseTotal);
-    totalCombos    += combos;
-    const score = h.madeStrength ?? h.rawScore ?? 0;
-    const bi = bands.findIndex(b => score >= b.min);
-    if (bi >= 0 && combos > 0) {
-      bands[bi].combos += combos;
-      bands[bi].items.push({ hand: h.hand, combos, isSuited, isPair, drawType: h.drawType, outs: h.outs, score });
-    }
-  });
-
-  // ── 表示対象フィルター ──
-  // hidden=true（HIGH CARD on pair board等）、combos=0 は非表示
-  const activeBands = bands.filter(b => !b.hidden && b.combos > 0);
-
-  if (!activeBands.length) {
+  if (!d.bands.length) {
     nutsEl.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:8px;color:rgba(160,200,230,.3);padding:6px;">--</div>';
     return;
   }
@@ -4906,69 +5279,49 @@ function renderNuts(data, features) {
   // CURRENT NUTS表示は廃止（v3.7.2）:
   // 複数ハンドが同点最強の場合に1つしか出せず実態と合わない上、
   // 一番上の帯を見れば最強役は分かるため冗長だった、というフィードバックにより削除。
-  nutsEl.innerHTML = activeBands.map(b => {
-    const pct  = totalCombos > 0 ? (b.combos / totalCombos * 100) : 0;
-    const barW = Math.min(100, Math.round(pct));
-
-    const isFlushBand = b.name === 'FLUSH' || b.name === 'STRAIGHT FLUSH' || b.name === 'ROYAL FLUSH';
-
-    // ── 該当ハンドのチップ表示 ──
-    // 従来は上位2〜3件を略式表示していたが、1役あたり4行程度のスペースを使って
-    // より多くの該当ハンドをチップとして並べる（折り返し表示）。
-    // s/o統合: 同じ帯内でATs/AToが両方あれば「AT s/o」の1チップに統合してノイズを減らす。
-    const mergedItems = mergeSuitedOffsuit(b.items);
-    const sortedItems = [...mergedItems].sort((x, y) => y.bestScore - x.bestScore);
-    const CHIP_LIMIT  = 10;
+  nutsEl.innerHTML = d.bands.map(b => {
+    const style = BAND_STYLE[b.name] || { color:'#888', textColor:'#888' };
+    const barW  = Math.min(100, Math.round(b.pct));
+    const CHIP_LIMIT = 10;
 
     // ── フラッシュ帯のみ: ボードのフラッシュカードを超えるか否かで2分割 ──
     // ボードに既にA♣等の高いフラッシュカードが乗っていると、それより低いキッカーの
     // スーテッドハンドは実質「ボードのAがトップカード」になり、同グループ同士で
     // チョップが多発する。これを可視化するため、ボードの最高フラッシュカードより
-    // 上/下でチップを分けて表示する。
+    // 上/下でチップを分けて表示する（分割の判定自体はcomputeNutDisplayData()側）。
     let flushSplitHtml = null;
-    if (isFlushBand && b.name === 'FLUSH') {
-      const boardFlushRanks = currentBoard
-        .filter(c => c[1] === dominantSuit)
-        .map(c => RANK_IDX[c[0]]);
-      const boardTopFlushRank = boardFlushRanks.length ? Math.min(...boardFlushRanks) : null;
+    if (b.flushSplit) {
+      const renderGroup = (arr, limit) => arr.slice(0, limit).map(i => {
+        const sc = SCOL[dominantSuit], sym = SSYM[dominantSuit];
+        const label = `${i.key[0]}${sym}${i.key[1]}${sym}`;
+        return `<span style="display:inline-block;padding:2px 5px;margin:0 3px 3px 0;
+          border:1px solid ${sc}55;border-radius:2px;background:rgba(255,255,255,.03);
+          font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:-0.3px;color:${sc};">${label}</span>`;
+      }).join('');
 
-      if (boardTopFlushRank !== null) {
-        const suitedOnly = sortedItems.filter(i => i.isSuited);
-        const beatsBoard  = suitedOnly.filter(i => i.bestRankIdx < boardTopFlushRank);
-        const chopRisk    = suitedOnly.filter(i => i.bestRankIdx >= boardTopFlushRank);
+      const { beatsBoard, chopRisk, boardTopIsAce } = b.flushSplit;
+      const chopNote = boardTopIsAce
+        ? `<span style="color:rgba(255,180,0,.8)">⚠ ボードの${SSYM[dominantSuit]}Aがキッカー確定 → 同士討ちはチョップ濃厚</span>`
+        : `<span style="color:rgba(160,200,230,.4)">キッカーはボード基準（同士討ちはチョップ寄り）</span>`;
 
-        const renderGroup = (arr, limit) => arr.slice(0, limit).map(i => {
-          const sc = SCOL[dominantSuit], sym = SSYM[dominantSuit];
-          const label = `${i.key[0]}${sym}${i.key[1]}${sym}`;
-          return `<span style="display:inline-block;padding:2px 5px;margin:0 3px 3px 0;
-            border:1px solid ${sc}55;border-radius:2px;background:rgba(255,255,255,.03);
-            font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:-0.3px;color:${sc};">${label}</span>`;
-        }).join('');
-
-        const boardTopIsAce = boardTopFlushRank === 0;
-        const chopNote = boardTopIsAce
-          ? `<span style="color:rgba(255,180,0,.8)">⚠ ボードの${SSYM[dominantSuit]}Aがキッカー確定 → 同士討ちはチョップ濃厚</span>`
-          : `<span style="color:rgba(160,200,230,.4)">キッカーはボード基準（同士討ちはチョップ寄り）</span>`;
-
-        flushSplitHtml = `
-          <div style="margin-top:2px;">
-            <div style="font-size:7.5px;color:rgba(160,200,230,.5);margin-bottom:1px;">▸ ボード超え（キッカーで差がつく）</div>
-            <div style="display:flex;flex-wrap:wrap;align-items:center;">${beatsBoard.length ? renderGroup(beatsBoard, CHIP_LIMIT) : '<span style="font-size:8px;color:rgba(160,200,230,.3);">--</span>'}</div>
-            <div style="font-size:7.5px;color:rgba(160,200,230,.5);margin:3px 0 1px;">▸ ボード以下（${chopNote}）</div>
-            <div style="display:flex;flex-wrap:wrap;align-items:center;">${chopRisk.length ? renderGroup(chopRisk, CHIP_LIMIT) : '<span style="font-size:8px;color:rgba(160,200,230,.3);">--</span>'}</div>
-          </div>`;
-      }
+      flushSplitHtml = `
+        <div style="margin-top:2px;">
+          <div style="font-size:7.5px;color:rgba(160,200,230,.5);margin-bottom:1px;">▸ ボード超え（キッカーで差がつく）</div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;">${beatsBoard.length ? renderGroup(beatsBoard, CHIP_LIMIT) : '<span style="font-size:8px;color:rgba(160,200,230,.3);">--</span>'}</div>
+          <div style="font-size:7.5px;color:rgba(160,200,230,.5);margin:3px 0 1px;">▸ ボード以下（${chopNote}）</div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;">${chopRisk.length ? renderGroup(chopRisk, CHIP_LIMIT) : '<span style="font-size:8px;color:rgba(160,200,230,.3);">--</span>'}</div>
+        </div>`;
     }
 
-    const shown       = sortedItems.slice(0, CHIP_LIMIT);
-    const overflow    = sortedItems.length - shown.length;
+    const shown    = b.items.slice(0, CHIP_LIMIT);
+    const overflow = b.items.length - shown.length;
 
     const chipsHtml = shown.map(i => {
-      let label = i.label ?? i.hand;
-      let color = 'rgba(210,225,245,.8)';
+      let label  = nutItemLabel(i);
+      let color  = 'rgba(210,225,245,.8)';
       let border = 'rgba(255,255,255,.10)';
 
-      if (isFlushBand && i.isSuited) {
+      if (b.isFlushBand && i.isSuited) {
         // スーテッド → 支配スートで表示（A♣K♣ 等）
         const sc  = SCOL[dominantSuit];
         const sym = SSYM[dominantSuit];
@@ -4983,7 +5336,6 @@ function renderNuts(data, features) {
       // ── ドロー重複タグ ──
       // このハンドがドローも持っている場合、種類とアウツ概算を小さく併記する。
       // 例: 「T9s FD·9o」= フラッシュドローも持っていて、あと9枚くれば強くなる、の目安。
-      // ※特定のランクが来たら何に化けるかまでの厳密な算出は未実装（別タスク）
       const drawBadge = i.drawType
         ? `<span style="color:${drawColor(i.drawType)};font-size:7.5px;margin-left:2px;opacity:.9;" title="${DRAW_TYPE_EXPLAIN[i.drawType] || ''}">${i.drawType}${i.outs ? '·' + i.outs + 'o' : ''}</span>`
         : '';
@@ -4997,13 +5349,10 @@ function renderNuts(data, features) {
       ? `<span style="font-family:'Share Tech Mono',monospace;font-size:8px;color:rgba(160,200,230,.35);align-self:center;">+${overflow}</span>`
       : '';
 
-    // ── フラッシュ帯以外：subHtmlは使わない（フラッシュ帯はflushSplitHtmlに統合済み）──
-    const subHtml = '';
-
     // ── confirmed バッジ ──
     // 「確定」表示：PAIREDボードのONE PAIR、FLUSHコンプリートボードのFLUSH等
     const confirmedHtml = b.confirmed
-      ? `<span style="font-family:'Orbitron',monospace;font-size:6.5px;color:${b.textColor};opacity:.7;margin-left:3px;letter-spacing:.5px" title="ボードの状況から既に確定している役です">CONFIRMED</span>`
+      ? `<span style="font-family:'Orbitron',monospace;font-size:6.5px;color:${style.textColor};opacity:.7;margin-left:3px;letter-spacing:.5px" title="ボードの状況から既に確定している役です">CONFIRMED</span>`
       : '';
 
     // ── 帯の折りたたみ ──
@@ -5017,22 +5366,32 @@ function renderNuts(data, features) {
            onclick="toggleNutBand('${b.name}')">
         <div style="display:flex;align-items:center;gap:3px;">
           <span style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:rgba(160,200,230,.4);width:8px;display:inline-block;">${caret}</span>
-          <span style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:.5px;color:${b.textColor};">${b.name}</span>
+          <span style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:.5px;color:${style.textColor};">${b.name}</span>
           ${confirmedHtml}
         </div>
         <div style="display:flex;align-items:baseline;gap:4px;">
           <span style="font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11px;font-weight:800;color:rgba(180,220,255,.85);" title="${b.combos} live combos">(${b.combos})</span>
-          <span style="font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:13.5px;font-weight:900;color:${b.textColor};text-shadow:0 0 8px ${b.textColor}55;">${pct.toFixed(1)}%</span>
+          <span style="font-family:'Roboto Mono','JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:13.5px;font-weight:900;color:${style.textColor};text-shadow:0 0 8px ${style.textColor}55;">${b.pct.toFixed(1)}%</span>
         </div>
       </div>
       <div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin-bottom:3px;">
-        <div style="height:100%;width:${barW}%;background:${b.color};border-radius:2px;transition:width .5s ease;"></div>
+        <div style="height:100%;width:${barW}%;background:${style.color};border-radius:2px;transition:width .5s ease;"></div>
       </div>
       ${isCollapsed ? '' : (flushSplitHtml !== null
         ? flushSplitHtml
-        : `<div style="display:flex;flex-wrap:wrap;align-items:center;">${chipsHtml}${overflowHtml}</div>${subHtml}`)}
+        : `<div style="display:flex;flex-wrap:wrap;align-items:center;">${chipsHtml}${overflowHtml}</div>`)}
     </div>`;
   }).join('');
+}
+
+// v3.9.57: computeNutDisplayData()が返す集計値（key/isPair/suitedCombos/
+// offsuitCombos）からチップのラベル文字列を組み立てる、表示専用のヘルパー。
+// 元のmergeSuitedOffsuit()内で行っていたラベル生成をそのまま踏襲している。
+function nutItemLabel(i) {
+  if (i.isPair) return i.key;
+  if (i.suitedCombos > 0 && i.offsuitCombos > 0) return i.key + ' s/o';
+  if (i.suitedCombos > 0) return i.key + 's';
+  return i.key + 'o';
 }
 
 function toggleNutBand(name) {
@@ -6209,6 +6568,7 @@ function onHeroChanged() {
   updateOutsPanel();
   updateBoardCards();
   requestHeroRank(); // v3.9.39: 強さ目安v1。triggerUpdate()等メインのWorker経路は呼ばない、独立リクエスト
+  requestEquityDebounced(); // v3.9.56: 数学的Equity。同じく独立リクエスト
   renderHeroAnalysis(); // v3.9.16: 独立表示。メインのtriggerUpdate等は一切呼ばない
 }
 
@@ -6430,6 +6790,65 @@ function renderDecisionBar(container, label, pct, color) {
   container.appendChild(row);
 }
 
+// v3.9.56（⑥-H）: 数学的Equityの専用表示。renderHeroAnalysis()とは
+// 意図的に分離している（HERO_RANKの「強さ目安」欄を上書きしない）。
+// 4つの内部状態（IDLE=未計算 / CALC=計算中 / OK=正常 / ERROR=入力エラー）を
+// 区別して描画する——equity=0は正常な0%であり、計算失敗とは別物なので、
+// 数値だけを見て判断しない。
+function renderEquity() {
+  const row     = document.getElementById('equity-row');
+  const valueEl = document.getElementById('equity-value');
+  const winEl   = document.getElementById('equity-win');
+  const tieEl   = document.getElementById('equity-tie');
+  const lossEl  = document.getElementById('equity-loss');
+  const noteEl  = document.getElementById('equity-note');
+  if (!row || !valueEl) return;
+
+  const pct = (x) => (x * 100).toFixed(1) + '%';
+
+  if (equityState === 'CALC') {
+    valueEl.textContent = '計算中…';
+    winEl.textContent = tieEl.textContent = lossEl.textContent = '--';
+    noteEl.textContent = '';
+    return;
+  }
+
+  if (equityState === 'ERROR') {
+    valueEl.textContent = 'エラー';
+    winEl.textContent = tieEl.textContent = lossEl.textContent = '--';
+    // reasonはWorkerが返した英語の技術的理由なので、そのままでは出さず
+    // 短い日本語の補足に留める（詳細はtitle属性で参照できるようにする）。
+    noteEl.textContent = '計算できません';
+    noteEl.title = equityErrorMsg || '';
+    return;
+  }
+
+  // 現在のboard+heroと一致する結果が無ければ未計算表示。
+  // Preflopもここに該当する（requestEquity()が送信せずIDLEにしている）。
+  const key = equityKey(currentBoard, heroHand);
+  if (equityState !== 'OK' || !lastEquityData || lastEquityKey !== key) {
+    valueEl.textContent = '--';
+    winEl.textContent = tieEl.textContent = lossEl.textContent = '--';
+    noteEl.textContent = (currentBoard.length > 0 && currentBoard.length < 3)
+      ? 'Preflopでは利用不可'
+      : '';
+    noteEl.title = '';
+    return;
+  }
+
+  const d = lastEquityData;
+  valueEl.textContent = pct(d.equity);
+  winEl.textContent   = pct(d.winProbability);
+  tieEl.textContent   = pct(d.tieProbability);
+  lossEl.textContent  = pct(d.lossProbability);
+  // preciseで厳密値とMonte Carlo推計を区別する。単に数値だけを出すと
+  // 全街が同じ精度に見えてしまうため、flopでは明示する。
+  // 誤差幅（±x%）の表示は、50,000回という試行数が結果によって標準誤差が
+  // 変わる性質を持つため、現段階では意図的に付けない。
+  noteEl.textContent = d.precise ? '厳密値（完全列挙）' : 'Monte Carlo推計';
+  noteEl.title = '';
+}
+
 function renderHeroAnalysis() {
   const panel = document.getElementById('hero-analysis');
   if (!panel) return;
@@ -6549,6 +6968,7 @@ function renderHeroAnalysis() {
   document.getElementById('hero-handname').textContent  = isPreflop ? 'プリフロップ' : handNameText;
   document.getElementById('hero-strength').textContent  = heroRankText;
   document.getElementById('hero-potential').textContent = (potential01 * 100).toFixed(0) + '%';
+  renderEquity(); // v3.9.56: パネル表示時にEquity欄も現在の状態で描画（独立した表示枠）
 
   const combined = strength01 + potential01 * 0.3;
 
@@ -6642,6 +7062,13 @@ function resetHeatmapUI() {
   // 追加時にstale stateの温床になりうるため、盤面クリアと同時にリセットする。
   lastHeatmapData = [];
   lastNutsFeatures = null;
+  // v3.9.56: Equity側も同じ理由でリセットする（盤面クリア後に古いEquityが
+  // 残って再描画で表示されないように）。保留中のdebounceも取り消す。
+  if (_equityDebounce) { clearTimeout(_equityDebounce); _equityDebounce = null; }
+  lastEquityData = null;
+  lastEquityKey  = null;
+  equityState    = 'IDLE';
+  equityErrorMsg = null;
 }
 
 /* ══════════════════════════════

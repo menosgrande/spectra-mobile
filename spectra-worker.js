@@ -43,7 +43,7 @@ self.onmessage = function (e) {
         // ここだけを機械的に同期する仕組みも無いため、精度の低い数字を
         // 更新し続けるより「追跡していない」ことを明示する方が安全と判断。
         version: 'unspecified (see README changelog)',
-        capabilities: ['BOARD_INTELLIGENCE', 'EVAL_169', 'TEXTURE', 'HERO_RANK']
+        capabilities: ['BOARD_INTELLIGENCE', 'EVAL_169', 'TEXTURE', 'HERO_RANK', 'EQUITY']
       });
       return;
     }
@@ -166,6 +166,77 @@ self.onmessage = function (e) {
 
       self.postMessage({
         type: 'HERO_RANK',
+        requestId,
+        data: result,
+        cached: false,
+        calcTime: ms
+      });
+      return;
+    }
+
+    if (type === 'EQUITY') {
+      // v3.9.55（⑥-G）: computeEquity()（core/equity.js）のWorker公開API。
+      // HERO_RANKと同じ設計方針：BOARD_INTELLIGENCE(analyzeBoard())の
+      // パイプラインには一切触れない独立リクエストで、triggerUpdate()は呼ばない。
+      // HERO_RANKとは数学的に別物（HERO_RANK=静的な強さのpercentile、
+      // EQUITY=Villainレンジとrunoutを尽くしたshowdown結果）なので、
+      // 計算コアもメッセージ型も意図的に分離している。
+      const t0           = performance.now();
+      const board        = payload.board || [];
+      const hero         = payload.hero  || [];
+      const villainRange = payload.villainRange || null;
+      const iterations   = payload.iterations || null;
+
+      // computeEquity()側も同じガードを持つが、Workerの境界で早めに
+      // 弾いて分かりやすいreasonを返す（HERO_RANKと同じ方針）。
+      if (board.length < 3 || hero.length !== 2) {
+        self.postMessage({
+          type: 'EQUITY',
+          requestId,
+          data: null,
+          reason: 'EQUITY requires board.length>=3 and hero.length===2 (Preflop is out of scope: evaluate7 needs 5+ cards)',
+          cached: false
+        });
+        return;
+      }
+
+      const cacheKey = equityCacheKey(board, hero, villainRange, iterations);
+
+      if (equityCache.has(cacheKey)) {
+        self.postMessage({
+          type: 'EQUITY',
+          requestId,
+          data: equityCache.get(cacheKey),
+          cached: true,
+          calcTime: 0
+        });
+        return;
+      }
+
+      // computeEquity()はvillainRangeの検証失敗（有効コンボ0件、全weight=0、
+      // 不正なcards/weight等）で例外を投げる。これは呼び出し側の入力起因の
+      // エラーであってエンジンの障害ではないため、ENGINE_ERRORとして扱わず
+      // reason付きのEQUITY応答として返す（外側のcatchに落とすと
+      // ENGINE ERRORバッジが点灯してしまい、UIの意味が変わってしまう）。
+      let result;
+      try {
+        result = computeEquity({ hero, board, villainRange, iterations });
+      } catch (e) {
+        self.postMessage({
+          type: 'EQUITY',
+          requestId,
+          data: null,
+          reason: 'invalid EQUITY request: ' + (e?.message || String(e)),
+          cached: false
+        });
+        return;
+      }
+
+      const ms = Math.round(performance.now() - t0);
+      equityCacheSet(cacheKey, result);
+
+      self.postMessage({
+        type: 'EQUITY',
         requestId,
         data: result,
         cached: false,
