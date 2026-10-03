@@ -65,6 +65,40 @@ function heroRankCacheSet(key, value) {
   heroRankCache.set(key, value);
 }
 
+// v3.9.55（⑥-G）: EQUITY専用キャッシュ。heroRankCacheと同じFIFO方式・同じ
+// 責務分離の考え方（BOARD_INTELLIGENCEのパイプラインには一切触れない独立API）。
+// ただしキー設計はHERO_RANKより複雑：computeEquity()はvillainRangeとiterations
+// にも依存するため、これらをキーに含める必要がある。
+//   - villainRangeは順序に依存しないよう各コンボをソートしてから正規化する
+//     （同じレンジを違う順序で渡しても同一キーになるべき）。
+//   - iterationsはflopのMonte Carlo精度を変えるため、同じboard/heroでも
+//     iterationsが違えば別エントリにする（1万試行の結果と5万試行の結果を
+//     同じキーで返してしまうと、preciseの意味が曖昧になる）。
+// 1件あたりの計算コストがHERO_RANKより高い（flopは5万試行）ため、上限は
+// 控えめの200件に設定する。
+let equityCache = new Map();
+const EQUITY_CACHE_MAX = 200;
+function equityCacheSet(key, value) {
+  if (equityCache.size >= EQUITY_CACHE_MAX && !equityCache.has(key)) {
+    const oldestKey = equityCache.keys().next().value;
+    equityCache.delete(oldestKey);
+  }
+  equityCache.set(key, value);
+}
+
+function equityCacheKey(board, hero, villainRange, iterations) {
+  const b = [...board].sort().join(',');
+  const h = [...hero].sort().join(',');
+  const r = villainRange
+    ? villainRange
+        .map(c => [...c.cards].sort().join('') + ':' + c.weight)
+        .sort()
+        .join(',')
+    : 'default';
+  const i = iterations == null ? 'auto' : String(iterations);
+  return `eq:${b}|${h}|${r}|${i}`;
+}
+
 function clamp01(x) {
   return Math.max(0, Math.min(1, x));
 }
