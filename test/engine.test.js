@@ -28,7 +28,13 @@ let code = '';
 for (const f of FILES) {
   code += fs.readFileSync(path.join(CORE_DIR, f), 'utf8') + '\n';
 }
-// eval()内で定義された関数をこのスコープに晒すため、そのままevalする
+// eval()内で定義された関数をこのスコープに晒すため、そのままevalする。
+// v3.9.57: core/nuts_display.jsはspectra-worker.jsのimportScriptsには
+// 含まれない（メインスレッド専用、Workerには不要）。完全自己完結（他の
+// core/*.jsに依存しない）にしてあるため単独でevalしても動くが、
+// FILESには加えない（Workerの実際の読み込み順を模したものではなくなる
+// ため）。テストの都合で同じeval呼び出しの文字列に連結している。
+code += fs.readFileSync(path.join(CORE_DIR, 'nuts_display.js'), 'utf8') + '\n';
 eval(code);
 
 let pass = 0, fail = 0;
@@ -619,24 +625,379 @@ test('computeEquity: クアッズ2ボード(2c,2d,2h,2s,Kc)でHero=As,Qd — 手
   assert.ok(Math.abs(r.equity - (861 / 990 + 129 / 990 * 0.5)) < 1e-9);
 });
 
-test('computeEquity: turn(board.length===4)は⑥-D未実装のため明示的にエラー', () => {
-  assert.throws(() => computeEquity({ hero: ['As', 'Ks'], board: ['2c', '7d', '9s', 'Jh'] }), /turn.*not yet implemented/);
+console.log('\n=== v3.9.52: computeEquity() ⑥-E（flop Monte Carlo）golden test ===');
+// 方針（完全一致ではなく統計的検証）:
+//  1. 確率の合計が1に近いこと
+//  2. equity = win + tie*0.5 の関係が成立すること
+//  3. 完全列挙できる小規模基準ケースとの誤差が許容範囲内であること
+//  4. 同一seed・同一入力で完全に再現できること
+// Monte Carloの乱数結果そのものをgolden testの期待値にはしない（実装変更に弱いため）。
+
+test('computeEquityFlop: flopで既にロイヤルフラッシュ完成(Ah,Kh on Th,Jh,Qh)は退化ケースとしてMC全試行が厳密にequity=1.0になる', () => {
+  // ランアウトに関わらず結果が変わらない退化ケースなので、統計的ばらつきが
+  // 一切無く、全試行が例外なく一致するはず（MCの配線ミスがあれば即座に破綻する）。
+  const r = computeEquity({ hero: ['Ah', 'Kh'], board: ['Th', 'Jh', 'Qh'] });
+  assert.strictEqual(r.precise, false);
+  assert.strictEqual(r.totalWeight, 50000); // DEFAULT_FLOP_ITERATIONS
+  assert.strictEqual(r.winCount, 50000);
+  assert.strictEqual(r.equity, 1);
 });
 
-test('computeEquity: flop(board.length===3)は⑥-F未実装のため明示的にエラー', () => {
-  assert.throws(() => computeEquity({ hero: ['As', 'Ks'], board: ['2c', '7d', '9s'] }), /flop.*not yet implemented/);
+test('computeEquityFlop: 確率の合計は1に近い（win+tie+loss probability ≈ 1）', () => {
+  const deadSet = new Set(['2c', '7d', '9s', 'As', 'Kd']);
+  const combos = buildDefaultVillainCombos(deadSet);
+  const r = computeEquityFlop(['As', 'Kd'], ['2c', '7d', '9s'], combos, 20000, 1);
+  const sum = r.winProbability + r.tieProbability + r.lossProbability;
+  assert.ok(Math.abs(sum - 1) < 1e-9, `確率の合計が1から乖離: ${sum}`);
+});
+
+test('computeEquityFlop: equity = winProbability + tieProbability*0.5 の関係が成立する', () => {
+  const deadSet = new Set(['2c', '7d', '9s', 'As', 'Kd']);
+  const combos = buildDefaultVillainCombos(deadSet);
+  const r = computeEquityFlop(['As', 'Kd'], ['2c', '7d', '9s'], combos, 20000, 2);
+  assert.ok(Math.abs(r.equity - (r.winProbability + r.tieProbability * 0.5)) < 1e-12);
+});
+
+test('computeEquityFlop: 完全列挙した基準値との誤差が許容範囲内（As,Kd on 2c,7d,9s）', () => {
+  // 基準値は本テストの作成時に、Villain全1081コンボ×残り45枚から2枚の
+  // 完全列挙（C(45,2)=990、計1,070,190回のevaluate7ペア比較、実行時間
+  // 約6.5秒）で一度だけ計測した厳密値。実行の都度この完全列挙をやり直すと
+  // テストスイートが著しく遅くなるため、値をコメント付きで固定している。
+  // 厳密値: win=554910, tie=11522, loss=503758, total=1070190,
+  //         equity=0.5238985600687728
+  const deadSet = new Set(['2c', '7d', '9s', 'As', 'Kd']);
+  const combos = buildDefaultVillainCombos(deadSet);
+  const r = computeEquityFlop(['As', 'Kd'], ['2c', '7d', '9s'], combos, 50000, 7);
+  const exactEquity = 0.5238985600687728;
+  // n=50000のBernoulli近似で標準誤差は√(p(1-p)/n)≈0.0022。10標準誤差分の
+  // 余裕(0.03)を見ても偶発的なflakinessは実質発生しない水準。
+  assert.ok(Math.abs(r.equity - exactEquity) < 0.03, `MC推計値${r.equity}が厳密値${exactEquity}から乖離しすぎ`);
+});
+
+test('computeEquityFlop: 同一seed・同一入力なら完全に再現できる（再現性の担保）', () => {
+  const deadSet = new Set(['2c', '7d', '9s', 'As', 'Kd']);
+  const combos = buildDefaultVillainCombos(deadSet);
+  const a = computeEquityFlop(['As', 'Kd'], ['2c', '7d', '9s'], combos, 3000, 999);
+  const b = computeEquityFlop(['As', 'Kd'], ['2c', '7d', '9s'], combos, 3000, 999);
+  assert.deepStrictEqual(a, b);
+});
+
+test('computeEquityFlop: 異なるseedなら（極めて高確率で）異なる結果になる', () => {
+  const deadSet = new Set(['2c', '7d', '9s', 'As', 'Kd']);
+  const combos = buildDefaultVillainCombos(deadSet);
+  const a = computeEquityFlop(['As', 'Kd'], ['2c', '7d', '9s'], combos, 3000, 111);
+  const b = computeEquityFlop(['As', 'Kd'], ['2c', '7d', '9s'], combos, 3000, 222);
+  assert.notDeepStrictEqual(a, b);
+});
+
+console.log('\n=== v3.9.57: computeNutDisplayData()（④-3、renderNuts()の純粋計算部分をcanonical化）golden test ===');
+test('computeNutDisplayData: 3枚spadeフラッシュボード(Ks,Qs,Js,2d,7h)の帯構成・combos・flush分割が実測値と一致', () => {
+  const board = ['Ks', 'Qs', 'Js', '2d', '7h'];
+  const r = analyzeBoard(board, {});
+  const d = computeNutDisplayData(r.rangeMatrix, r.features, board);
+  assert.strictEqual(d.dominantSuit, 's');
+  assert.strictEqual(d.totalCombos, 964);
+  const byName = Object.fromEntries(d.bands.map(b => [b.name, b]));
+  assert.strictEqual(byName['ROYAL FLUSH'].combos, 1);
+  assert.strictEqual(byName['FLUSH'].combos, 43);
+  assert.strictEqual(byName['ONE PAIR'].combos, 390);
+  assert.strictEqual(byName['HIGH CARD'].combos, 402);
+  // ボードはKs-Qs-Jsで既にフラッシュ完成ではないのでFLUSH帯はconfirmed:falseのはず
+  assert.strictEqual(byName['FLUSH'].confirmed, false);
+  // flush帯の分割: ボードの最強spadeはKs(rank idx=1)。それより強い(idx<1、つまりAs絡み)
+  // コンボがbeatsBoard、それ以外(K以下でspadeを持つ)がchopRisk。
+  assert.strictEqual(byName['FLUSH'].flushSplit.boardTopFlushRank, 1);
+  assert.strictEqual(byName['FLUSH'].flushSplit.boardTopIsAce, false);
+  assert.strictEqual(byName['FLUSH'].flushSplit.beatsBoard.length, 8);
+  assert.strictEqual(byName['FLUSH'].flushSplit.chopRisk.length, 35);
+});
+
+test('computeNutDisplayData: ペアボード(7c,7d,2h,9s,4c)ではHIGH CARDが除外され、ONE PAIRがconfirmedになる', () => {
+  const board = ['7c', '7d', '2h', '9s', '4c'];
+  const r = analyzeBoard(board, {});
+  const d = computeNutDisplayData(r.rangeMatrix, r.features, board);
+  assert.ok(!d.bands.some(b => b.name === 'HIGH CARD'), 'ペアボードではHIGH CARD帯が出力に含まれないはず（board自体が既に一対持っているため全員最低でもワンペア）');
+  const onePair = d.bands.find(b => b.name === 'ONE PAIR');
+  assert.strictEqual(onePair.confirmed, true);
+  assert.strictEqual(onePair.combos, 576);
+});
+
+test('computeNutDisplayData: 純粋関数であり、DOM/UI状態（document, collapsedNutBands等）に一切依存しない（コメントを除いた実コードに出現しないことの確認）', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'core', 'nuts_display.js'), 'utf8');
+  // コメント行を除去してから検査する（コメント中でこれらの語を説明として
+  // 言及すること自体は許容するため、自己言及で誤検出しないようにする）。
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  for (const forbidden of ['document.', 'collapsedNutBands', 'window.', 'localStorage']) {
+    assert.ok(!codeOnly.includes(forbidden), `core/nuts_display.jsのコード本体に "${forbidden}" が含まれている（純粋関数の境界違反）`);
+  }
+});
+
+console.log('\n=== v3.9.55: Worker EQUITYメッセージ型（⑥-G）統合テスト ===');
+// core/*.jsだけをevalする既存ハーネスにはspectra-worker.js（self.onmessage）が
+// 含まれていないため、このブロックだけは別途Worker本体を読み込んでselfをスタブし、
+// 実際にメッセージを投げて応答を受け取る形で検証する（Workerの配線ミスは
+// core側のテストでは一切検出できないため、統合テストとして必要）。
+//
+// 注意（v3.9.55で判明）: core/*.jsのキャッシュは`let equityCache = ...`という
+// let宣言のため、このファイル冒頭のeval(code)で作られたスコープの外からは
+// 参照できない（function宣言は巻き上げでグローバル的に見えるが、letは
+// eval毎のスコープに閉じる）。そのためWorker本体を別のeval呼び出しで読むと
+// 「equityCache is not defined」になる。実際のWorkerではimportScriptsで
+// 同一グローバルに読み込まれるためこの問題は起きないので、テスト側で
+// core+workerを1つの文字列として結合し、同一スコープでevalする。
+(function testWorkerEquity() {
+  let coreCode = '';
+  for (const f of FILES) {
+    coreCode += fs.readFileSync(path.join(CORE_DIR, f), 'utf8') + '\n';
+  }
+  const workerSrc = fs.readFileSync(path.join(__dirname, '..', 'spectra-worker.js'), 'utf8')
+    // importScripts(...)はNode上では実行できない。上でcoreCodeとして直接
+    // 結合しているため、宣言だけを取り除けばWorker本体はそのまま動く
+    // （実際のWorkerでのimportScriptsと同じ「同一グローバルへの読み込み」を再現）。
+    .replace(/importScripts\([\s\S]*?\);/, '');
+
+  const posted = [];
+  const self = {
+    postMessage: (m) => posted.push(m),
+    onmessage: null
+  };
+  const performance = globalThis.performance || { now: () => Date.now() };
+  eval(coreCode + '\n' + workerSrc);
+
+  function send(payloadObj) {
+    posted.length = 0;
+    self.onmessage({ data: payloadObj });
+    return posted[posted.length - 1];
+  }
+
+  test('Worker EQUITY: INIT_OKのcapabilitiesに EQUITY が含まれる', () => {
+    const r = send({ type: 'INIT', requestId: 1, payload: {} });
+    assert.strictEqual(r.type, 'INIT_OK');
+    assert.ok(r.capabilities.includes('EQUITY'), `capabilities に EQUITY が無い: ${JSON.stringify(r.capabilities)}`);
+  });
+
+  test('Worker EQUITY: riverのリクエストがdata付きで返り、計算コアと同じ結果になる', () => {
+    const board = ['2c', '2d', '2h', '2s', 'Kc'];
+    const hero  = ['As', 'Qd'];
+    const r = send({ type: 'EQUITY', requestId: 2, payload: { board, hero } });
+    assert.strictEqual(r.type, 'EQUITY');
+    assert.strictEqual(r.cached, false);
+    assert.ok(r.data, `dataがnull: reason=${r.reason}`);
+    // core側を直接呼んだ結果と一致すること（Workerが余計な加工をしていない確認）
+    assert.deepStrictEqual(r.data, computeEquity({ hero, board }));
+    assert.strictEqual(r.data.precise, true);
+  });
+
+  test('Worker EQUITY: 2回目の同一リクエストはキャッシュ命中する（cached:true, calcTime:0）', () => {
+    const board = ['2c', '2d', '2h', '2s', 'Kc'];
+    const hero  = ['As', 'Qd'];
+    send({ type: 'EQUITY', requestId: 3, payload: { board, hero } });
+    const r = send({ type: 'EQUITY', requestId: 4, payload: { board, hero } });
+    assert.strictEqual(r.cached, true);
+    assert.strictEqual(r.calcTime, 0);
+  });
+
+  test('Worker EQUITY: villainRangeが異なれば別キャッシュエントリになる（キーにvillainRangeが含まれている）', () => {
+    const board = ['2c', '7d', '9s', 'Jh', 'Kd'];
+    const hero  = ['As', 'Ks'];
+    const a = send({ type: 'EQUITY', requestId: 5, payload: { board, hero, villainRange: [{ cards: ['Qh', 'Qd'], weight: 1 }] } });
+    const b = send({ type: 'EQUITY', requestId: 6, payload: { board, hero, villainRange: [{ cards: ['Ah', 'Ad'], weight: 1 }] } });
+    assert.strictEqual(a.cached, false);
+    assert.strictEqual(b.cached, false); // 別レンジなので命中してはいけない
+    assert.notDeepStrictEqual(a.data, b.data);
+  });
+
+  test('Worker EQUITY: preflopはENGINE_ERRORではなくreason付きのEQUITY応答で返る', () => {
+    const r = send({ type: 'EQUITY', requestId: 7, payload: { board: ['2c', '7d'], hero: ['As', 'Ks'] } });
+    assert.strictEqual(r.type, 'EQUITY');
+    assert.strictEqual(r.data, null);
+    assert.ok(/Preflop/.test(r.reason), `reasonがPreflopに言及していない: ${r.reason}`);
+  });
+
+  test('Worker EQUITY: 不正なvillainRange（有効コンボ0件）もENGINE_ERRORにせずreason付きEQUITY応答で返す', () => {
+    // 入力起因のエラーでENGINE ERRORバッジを点灯させてはいけない（UIの意味が変わる）。
+    const r = send({
+      type: 'EQUITY',
+      requestId: 8,
+      payload: {
+        board: ['2c', '7d', '9s', 'Jh', 'Kd'],
+        hero: ['As', 'Ks'],
+        villainRange: [{ cards: ['As', 'Qd'], weight: 1 }] // heroと衝突して全滅
+      }
+    });
+    assert.strictEqual(r.type, 'EQUITY');
+    assert.strictEqual(r.data, null);
+    assert.ok(/invalid EQUITY request/.test(r.reason), `reason: ${r.reason}`);
+  });
+})();
+
+console.log('\n=== v3.9.54: flop/river-turnのcountフィールドの単位差を明文化する回帰テスト（他AIレビュー指摘）===');
+test('computeEquity: river/turnのtotalWeightはvillainRangeのweight合計、flopのtotalWeightはMonte Carlo試行回数——単位が違うことを明示的に固定する', () => {
+  const villainRange = [
+    { cards: ['Qh', 'Qd'], weight: 1 },
+    { cards: ['Ah', 'Ad'], weight: 3 }
+  ];
+  // river: totalWeightはweight合計(1+3=4)そのもの。
+  const river = computeEquity({ hero: ['As', 'Ks'], board: ['2c', '7d', '9s', 'Jh', 'Kd'], villainRange });
+  assert.strictEqual(river.precise, true);
+  assert.strictEqual(river.totalWeight, 4);
+  // turn: totalWeightはweight合計(4)×残りriver枚数(44) = 176。
+  const turn = computeEquity({ hero: ['As', 'Ks'], board: ['2c', '7d', '9s', 'Jh'], villainRange });
+  assert.strictEqual(turn.precise, true);
+  assert.strictEqual(turn.totalWeight, 176);
+  // flop: totalWeightはweight合計とは無関係に、Monte Carloのiterations数と一致する。
+  const flop = computeEquity({ hero: ['As', 'Ks'], board: ['2c', '7d', '9s'], villainRange, iterations: 1234 });
+  assert.strictEqual(flop.precise, false);
+  assert.strictEqual(flop.totalWeight, 1234); // weight合計(4)ではなくiterations数
+});
+
+console.log('\n=== v3.9.51: computeEquity() ⑥-D（turn完全列挙）golden test ===');
+test('computeEquity: クアッズ2ボード(2c,2d,2h,2s)turn、Hero=As,Qd — riverによってtie/winが分岐するケースを手計算と厳密照合', () => {
+  // turnで既にクアッズ2完成。決着はキッカー（board外の最高カード）のみ。
+  // HeroはAsを保持しているため、Villainが残り3枚のエース(Ah/Ac/Ad)の
+  // いずれかを「ホールカードとして」持てば、riverが何であれ必ずtie。
+  // Villainがエースを持たない場合は、riverでエースが出た瞬間だけ
+  // （共有カードとして両者がアクセスできるため）tieに転じ、それ以外の
+  // riverでは常にHeroの勝ち。lossは数学的に0通り（Heroのキッカーが
+  // 既に最強のAのため、Villainが上回る手段が無い）。
+  // 手計算: 総コンボ=C(46,2)=1035。うちエースを1枚以上持つ132コンボは
+  // 全44river×tie=132*44=5808。エース非保持903コンボは、残り3枚の
+  // エースがriverに来る3通りだけtie（903*3=2709）、残り41通りはwin
+  // （903*41=37023）。tie合計=5808+2709=8517、win合計=37023、
+  // total=1035*44=45540。
+  const r = computeEquity({ hero: ['As', 'Qd'], board: ['2c', '2d', '2h', '2s'] });
+  assert.strictEqual(r.totalWeight, 45540);
+  assert.strictEqual(r.winCount, 37023);
+  assert.strictEqual(r.tieCount, 8517);
+  assert.strictEqual(r.lossCount, 0);
+  assert.ok(Math.abs(r.equity - (37023 / 45540 + 8517 / 45540 * 0.5)) < 1e-9);
 });
 
 test('computeEquity: preflop(board.length<3)はHERO_RANKと同じ理由で非対応、明示的にエラー', () => {
   assert.throws(() => computeEquity({ hero: ['As', 'Ks'], board: [] }), /preflop/);
 });
 
-test('computeEquity: villainRange指定はMVPで未実装のため黙って無視せず明示的にエラー（API予約のみ）', () => {
+console.log('\n=== v3.9.53: computeEquity() ⑥-F（villainRange重み付きコンボ）golden test ===');
+
+test('computeEquity: villainRange未指定時は既存の均等母集団（buildDefaultVillainCombos）と完全に同じ結果になる（回帰確認）', () => {
+  const withDefault  = computeEquity({ hero: ['As', 'Qd'], board: ['2c', '2d', '2h', '2s', 'Kc'] });
+  const deadSet       = new Set(['2c', '2d', '2h', '2s', 'Kc', 'As', 'Qd']);
+  const explicitCombos = buildDefaultVillainCombos(deadSet).map(c => ({ cards: c.cards, weight: c.weight }));
+  const withExplicit  = computeEquity({ hero: ['As', 'Qd'], board: ['2c', '2d', '2h', '2s', 'Kc'], villainRange: explicitCombos });
+  assert.deepStrictEqual(withExplicit, withDefault);
+});
+
+test('computeEquity(river): villainRangeで明示的に2コンボ(weight=1均等)を指定すると、その2コンボだけの厳密な勝敗になる', () => {
+  // Hero=As,Ks on board 2c,7d,9s,Jh,Kd（Heroはキング・ペア＋Aキッカー）。
+  // Villain1=QhQd、Villain2=ThTcはいずれもHeroに劣るため両方Hero勝ちの
+  // 自明ケースで、weight=1均等の動作を確認する。
+  const r = computeEquity({
+    hero: ['As', 'Ks'],
+    board: ['2c', '7d', '9s', 'Jh', 'Kd'],
+    villainRange: [
+      { cards: ['Qh', 'Qd'], weight: 1 },
+      { cards: ['Th', 'Tc'], weight: 1 }
+    ]
+  });
+  assert.strictEqual(r.totalWeight, 2);
+  assert.strictEqual(r.winCount, 2);
+  assert.strictEqual(r.equity, 1);
+});
+
+test('computeEquity(river): weight=0のコンボは結果に一切影響しない', () => {
+  const r = computeEquity({
+    hero: ['As', 'Ks'],
+    board: ['2c', '7d', '9s', 'Jh', 'Kd'],
+    villainRange: [
+      { cards: ['Qh', 'Qd'], weight: 1 },
+      { cards: ['Ah', 'Ad'], weight: 0 } // Heroに勝つ手だがweight=0なので無視されるはず
+    ]
+  });
+  assert.strictEqual(r.totalWeight, 1);
+  assert.strictEqual(r.winCount, 1);
+  assert.strictEqual(r.equity, 1); // weight=0のAhAd（本来なら負け要因）が無視され続けている
+});
+
+test('computeEquity(river): weight比1:2が実際に1:2の寄与になる', () => {
+  // Villain1=QhQd（Hero勝ち）、Villain2=AhAd（Hero負け、AAがボードのK
+  // ペアを上回る）をweight 1:2で指定。勝敗の重みがそのまま反映されるはず。
+  const r = computeEquity({
+    hero: ['As', 'Ks'],
+    board: ['2c', '7d', '9s', 'Jh', 'Kd'],
+    villainRange: [
+      { cards: ['Qh', 'Qd'], weight: 1 },
+      { cards: ['Ah', 'Ad'], weight: 2 }
+    ]
+  });
+  assert.strictEqual(r.totalWeight, 3);
+  assert.strictEqual(r.winCount, 1);
+  assert.strictEqual(r.lossCount, 2);
+  assert.ok(Math.abs(r.winProbability - (1 / 3)) < 1e-9);
+});
+
+test('computeEquity: Hero/boardと衝突するコンボは黙って除外され、残りの有効コンボだけで計算される', () => {
+  const r = computeEquity({
+    hero: ['As', 'Ks'],
+    board: ['2c', '7d', '9s', 'Jh', 'Kd'],
+    villainRange: [
+      { cards: ['As', 'Qd'], weight: 1 }, // Asがhero自身のカードと衝突、除外されるはず
+      { cards: ['Th', 'Tc'], weight: 1 }  // 有効
+    ]
+  });
+  assert.strictEqual(r.totalWeight, 1); // 衝突コンボが除外され、有効な1コンボのみ残る
+});
+
+test('computeEquity: 全コンボがHero/boardと衝突して有効コンボが0件になった場合は明示的にエラー', () => {
   assert.throws(() => computeEquity({
     hero: ['As', 'Ks'],
-    board: ['2c', '7d', '9s', 'Jh', 'Kc'],
-    villainRange: [{ cards: ['Qh', 'Qd'], weight: 1 }]
-  }), /villainRange.*not yet implemented/);
+    board: ['2c', '7d', '9s', 'Jh', 'Kd'],
+    villainRange: [
+      { cards: ['As', 'Qd'], weight: 1 }, // Asがheroと衝突
+      { cards: ['Kd', 'Th'], weight: 1 }  // Kdがboardと衝突
+    ]
+  }), /no valid combos/);
+});
+
+test('computeEquity: 全コンボがweight=0の場合も明示的にエラー（加重サンプリング・集計が数学的に不能なため）', () => {
+  assert.throws(() => computeEquity({
+    hero: ['As', 'Ks'],
+    board: ['2c', '7d', '9s', 'Jh', 'Kd'],
+    villainRange: [{ cards: ['Qh', 'Qd'], weight: 0 }]
+  }), /zero total weight/);
+});
+
+test('computeEquity(turn): villainRangeの重みがturnでも正しく反映される', () => {
+  const r = computeEquity({
+    hero: ['As', 'Ks'],
+    board: ['2c', '7d', '9s', 'Jh'],
+    villainRange: [
+      { cards: ['Qh', 'Qd'], weight: 1 },
+      { cards: ['Ah', 'Ad'], weight: 3 }
+    ]
+  });
+  // turnはriverカード1枚（dead除外後の残り44枚）を完全列挙するため、
+  // totalWeight = (1+3) * 44 = 176 になるはず。
+  assert.strictEqual(r.totalWeight, 176);
+});
+
+test('computeEquity(flop): villainRangeの重みがMonte Carloの加重サンプリングに正しく反映される', () => {
+  // Hero=2c,3d（ゴミ手）に対し、QQ・AAどちらのVillainも確実に上回るため、
+  // Heroの勝率はほぼ0になるはず（統計的検証。厳密0ではなくバックドア等の
+  // 極小確率は残るため閾値で判定する）。
+  const r = computeEquity({
+    hero: ['2c', '3d'],
+    board: ['7h', '9s', 'Jc'],
+    villainRange: [
+      { cards: ['Qh', 'Qd'], weight: 1 },
+      { cards: ['Ah', 'Ad'], weight: 9 }
+    ],
+    iterations: 20000
+  });
+  assert.strictEqual(r.totalWeight, 20000);
+  assert.strictEqual(r.precise, false);
+  assert.ok(r.winProbability < 0.05, `HeroがQQ/AA相手に想定外に勝ちすぎている: ${r.winProbability}`);
 });
 
 console.log('\n=== v3.9.49: FULL_HOUSE_BOARD分離（TRIPS_BOARDから独立、⑤対応）golden test ===');
