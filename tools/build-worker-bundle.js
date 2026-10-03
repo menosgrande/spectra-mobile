@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * SPECTRA — Worker Bundle Builder（v3.9.45で新規追加、v3.9.46でcanonical source確定）
+ * SPECTRA — Worker Bundle Builder（v3.9.45で新規追加、v3.9.46でcanonical source確定、
+ * v3.9.57でmain-thread注入を追加）
  *
  * Canonical source architecture（v3.9.46で確定）：
  *   core/*.js（9ファイル）と spectra-worker.js が canonical source。
@@ -17,6 +18,16 @@
  *   全てcore側へ反映し、本番Blobとcore/*.jsを完全一致させた上でこの
  *   canonical化を行った（全ファイルの機械的な差分棚卸しにより、逆方向
  *   ＝core側にしかない実質差分は0件だったことを確認済み）。
+ *
+ *   v3.9.57（④-3、UI構造整理）で2つ目の生成先を追加：core/nuts_display.js
+ *   （renderNuts()の純粋計算部分をcanonical化したもの）は、他のcore/*.jsと
+ *   違ってWorkerではなくメインスレッド（UIスレッド）からしか呼ばれない
+ *   （renderNuts()自体がメインスレッド関数のため）。WorkerとUIスレッドは
+ *   グローバルスコープを共有しないので、Workerバンドルへ含めても意味が無く、
+ *   index.html側のメインスレッド用<script>ブロックに直接注入する必要がある。
+ *   ここは「汎用的な複数ファイル注入の仕組み」は作らず、core/nuts_display.js
+ *   1ファイル専用の単純な文字列置換として実装している（過剰な一般化を避ける
+ *   というユーザー方針）。将来同種のファイルが増えた場合に初めて一般化を検討する。
  *
  * 目的：
  *   index.html の <script type="text/plain" id="spectra-worker-src"> は
@@ -41,6 +52,9 @@
  *     引数は './core/xxx.js' 形式の文字列リテラルの配列であること
  *   - index.html に <script type="text/plain" id="spectra-worker-src"> が
  *     ちょうど1箇所存在すること
+ *   - index.html に /* AUTO-GENERATED-START: core/nuts_display.js *\/ ...
+ *     /* AUTO-GENERATED-END: core/nuts_display.js *\/ のマーカー対が
+ *     ちょうど1箇所存在すること（メインスレッド注入先）
  */
 
 const fs = require('fs');
@@ -50,6 +64,9 @@ const ROOT           = path.join(__dirname, '..');
 const WORKER_FILE     = path.join(ROOT, 'spectra-worker.js');
 const INDEX_FILE       = path.join(ROOT, 'index.html');
 const MARKER_ID         = 'spectra-worker-src';
+const NUTS_DISPLAY_FILE = path.join(ROOT, 'core', 'nuts_display.js');
+const NUTS_START_MARKER = '/* AUTO-GENERATED-START: core/nuts_display.js */';
+const NUTS_END_MARKER   = '/* AUTO-GENERATED-END: core/nuts_display.js */';
 
 function readFile(p) {
   return fs.readFileSync(p, 'utf8');
@@ -94,11 +111,31 @@ function buildBundle() {
   return `/* SPECTRA WORKER BUNDLE AUTO-GENERATED */\n\n${coreSection}${workerSection}\n`;
 }
 
+// マーカー対の間の中身を置き換える汎用ヘルパー（core/nuts_display.js専用の
+// 呼び出しにのみ使う。複数ファイルを扱う一般化された仕組みではない）。
+function findMarkerRange(html, startMarker, endMarker, label) {
+  const openIdx = html.indexOf(startMarker);
+  if (openIdx === -1) {
+    console.error(`index.html に ${label} の開始マーカーが見つかりません。`);
+    process.exit(2);
+  }
+  const contentStart = openIdx + startMarker.length;
+  const closeIdx = html.indexOf(endMarker, contentStart);
+  if (closeIdx === -1) {
+    console.error(`index.html に ${label} の終了マーカーが見つかりません。`);
+    process.exit(2);
+  }
+  return { contentStart, closeIdx };
+}
+
 function main() {
   const check = process.argv.includes('--check');
   const bundle = buildBundle();
+  const nutsDisplaySrc = readFile(NUTS_DISPLAY_FILE).replace(/\s+$/, '');
 
-  const html = readFile(INDEX_FILE);
+  let html = readFile(INDEX_FILE);
+
+  // ── ターゲット1: Worker bundle（<script type="text/plain">）──
   const openTag  = `<script type="text/plain" id="${MARKER_ID}">`;
   const closeTag = '</script>';
   const openIdx  = html.indexOf(openTag);
@@ -106,44 +143,66 @@ function main() {
     console.error(`index.html に ${openTag} が見つかりません。`);
     process.exit(2);
   }
-  const contentStart = openIdx + openTag.length;
-  const closeIdx = html.indexOf(closeTag, contentStart);
-  if (closeIdx === -1) {
+  const wContentStart = openIdx + openTag.length;
+  const wCloseIdx = html.indexOf(closeTag, wContentStart);
+  if (wCloseIdx === -1) {
     console.error('対応する </script> が見つかりません。');
     process.exit(2);
   }
+  const currentWorkerBundle = html.slice(wContentStart + 1, wCloseIdx); // +1: 開始タグ直後の改行をスキップ
 
-  const currentBundle = html.slice(contentStart + 1, closeIdx); // +1: 開始タグ直後の改行をスキップ
-  const newFull = html.slice(0, contentStart) + '\n' + bundle + html.slice(closeIdx);
+  // ── ターゲット2: main-thread注入（core/nuts_display.js）──
+  const { contentStart: nContentStart, closeIdx: nCloseIdx } =
+    findMarkerRange(html, NUTS_START_MARKER, NUTS_END_MARKER, 'core/nuts_display.js');
+  const currentNutsInjection = html.slice(nContentStart, nCloseIdx);
+  const newNutsInjection = `\n${nutsDisplaySrc}\n`;
+
+  const workerMismatch = currentWorkerBundle !== bundle;
+  const nutsMismatch   = currentNutsInjection !== newNutsInjection;
 
   if (check) {
-    if (currentBundle === bundle) {
+    if (!workerMismatch && !nutsMismatch) {
       console.log('OK: index.html の Worker バンドルは spectra-worker.js / core/*.js と同期しています。');
       process.exit(0);
-    } else {
-      console.error('NG: index.html の Worker バンドルが spectra-worker.js / core/*.js とズレています。');
-      console.error('    `node tools/build-worker-bundle.js` を実行して再生成してください。');
-      // 簡易diff: 最初に食い違う行を報告する
-      const a = currentBundle.split('\n');
-      const b = bundle.split('\n');
-      const n = Math.max(a.length, b.length);
+    }
+    console.error('NG: index.html が spectra-worker.js / core/*.js とズレています。');
+    console.error('    `node tools/build-worker-bundle.js` を実行して再生成してください。');
+    const reportDiff = (label, a, b) => {
+      const aLines = a.split('\n'), bLines = b.split('\n');
+      const n = Math.max(aLines.length, bLines.length);
       for (let i = 0; i < n; i++) {
-        if (a[i] !== b[i]) {
-          console.error(`  最初の食い違い（行 ${i + 1}）:`);
-          console.error(`    現在の index.html: ${JSON.stringify(a[i])}`);
-          console.error(`    再生成した内容    : ${JSON.stringify(b[i])}`);
+        if (aLines[i] !== bLines[i]) {
+          console.error(`  [${label}] 最初の食い違い（行 ${i + 1}）:`);
+          console.error(`    現在の index.html: ${JSON.stringify(aLines[i])}`);
+          console.error(`    再生成した内容    : ${JSON.stringify(bLines[i])}`);
           break;
         }
       }
-      process.exit(1);
-    }
+    };
+    if (workerMismatch) reportDiff('Worker bundle', currentWorkerBundle, bundle);
+    if (nutsMismatch)   reportDiff('main-thread注入 (core/nuts_display.js)', currentNutsInjection, newNutsInjection);
+    process.exit(1);
   } else {
-    if (currentBundle === bundle) {
+    if (!workerMismatch && !nutsMismatch) {
       console.log('変更なし（既に同期済み）。');
       return;
     }
-    fs.writeFileSync(INDEX_FILE, newFull, 'utf8');
-    console.log('index.html の Worker バンドルを再生成しました。');
+    // 後ろ側（nuts_display注入）から書き換えるとWorker bundle側のオフセットに
+    // 影響しないため、この順で文字列を組み立てる。
+    let newHtml = html;
+    if (nutsMismatch) {
+      newHtml = newHtml.slice(0, nContentStart) + newNutsInjection + newHtml.slice(nCloseIdx);
+    }
+    if (workerMismatch) {
+      // nuts注入で長さが変わっている可能性があるため、Worker bundle側の
+      // 位置はnewHtmlに対して取り直す。
+      const oi = newHtml.indexOf(openTag);
+      const cs = oi + openTag.length;
+      const ci = newHtml.indexOf(closeTag, cs);
+      newHtml = newHtml.slice(0, cs) + '\n' + bundle + newHtml.slice(ci);
+    }
+    fs.writeFileSync(INDEX_FILE, newHtml, 'utf8');
+    console.log('index.html を再生成しました（Worker バンドル' + (nutsMismatch ? ' + main-thread注入' : '') + '）。');
   }
 }
 
